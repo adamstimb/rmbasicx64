@@ -1,14 +1,10 @@
 package main
 
 import (
-	"fmt"
 	_ "image/png"
 	"log"
-	"os"
-	"strings"
 
 	"github.com/adamstimb/nimgobus"
-	"github.com/elastic/go-sysinfo"
 	"github.com/hajimehoshi/ebiten"
 )
 
@@ -36,47 +32,8 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return outsideWidth, outsideHeight
 }
 
-// convert bytes to Gb
-func bToGb(b uint64) uint64 {
-	return b / 1024 / 1024 / 1024
-}
-
-// welcomeScreen draws the RM Basic welcome screen
-func welcomeScreen(g *Game) {
-	// Collect system info
-	host, err := sysinfo.Host()
-	if err != nil {
-		panic("Could not detect system information")
-	}
-	memInfo, err := host.Memory()
-	// Draw welcome screen
-	g.SetMode(80)
-	g.PlonkLogo(0, 220)
-	g.SetCurpos(1, 5)
-	g.SetCursor(0)
-	g.Print("This is a tribute project and is in no way linked to or endorsed by RM plc.")
-	g.Print("")
-	g.Print("RM BASICx64 version 0.00 9th December 2020")
-	// Generate and print workspace available notification
-	workspaceAvailable := fmt.Sprintf("%dG bytes workspace available", bToGb(memInfo.Available))
-	g.Print(workspaceAvailable)
-}
-
 func App(g *Game) {
-	// Draw welcome screen then start main interpreter loop
-	welcomeScreen(g)
-	for {
-		// get raw console input
-		rawInput := g.Input(":")
-		if strings.ToUpper(rawInput) == "BYE" {
-			// Exit with success code
-			os.Exit(0)
-		}
-		if rawInput != "" {
-			g.Print("Syntax error - well actually I don't know how to interpet BASIC yet!")
-		}
-
-	}
+	StartUi(g)
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
