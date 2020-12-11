@@ -1,7 +1,37 @@
 package main
 
-// All tokens defined here
+// Token types defined here
 const (
+	// Punctuation
+	PnDivideLine          int = 1
+	PnValueSeparator      int = 2
+	PnCoordinateSeperator int = 3
+	// Mathematical
+	MaAssign              int = 10
+	MaExponential         int = 11
+	MaAddition            int = 12
+	MaSubtraction         int = 13
+	MaMultiplication      int = 14
+	MaDivision            int = 15
+	MaIntegerDivision     int = 16
+	MaEquality            int = 17
+	MaInequality1         int = 18
+	MaInequality2         int = 19
+	MaLessThan            int = 20
+	MaGreaterThan         int = 21
+	MaLessThanEqualTo1    int = 22
+	MaLessThanEqualTo2    int = 23
+	MaGreaterThanEqualTo1 int = 24
+	MaGreaterThanEqualTo2 int = 25
+	MaInterestinglyEqual  int = 26
+	MaVariableString      int = 27
+	MaVariableInteger     int = 28
+	MaVariableFloat       int = 29
+	// Literals
+	LiString  int = 50
+	LiInteger int = 51
+	LiFloat   int = 52
+	// Keywords
 	KwABS        int = 100
 	KwAND        int = 101
 	KwAREA       int = 103
@@ -181,8 +211,59 @@ const (
 	KxXOR        int = 278
 )
 
-// TokenMap returns a map of keywords to tokens
-func TokenMap() map[string]int {
+// invertStringIntMap receives a map[string][int], swaps the keys for values and returns a map[int][string]
+func invertStringIntMap(mapToInvert map[string]int) map[int]string {
+	var newMap map[int]string
+	for k, v := range mapToInvert {
+		newMap[v] = k
+	}
+	return newMap
+}
+
+// PunctuationToTokens returns a map of punctuation symbols to tokens
+func PunctuationToTokens() map[string]int {
+	return map[string]int{
+		":": PnDivideLine,
+		",": PnValueSeparator,
+		";": PnCoordinateSeperator,
+	}
+}
+
+// TokensToPunctuation returns a map of tokens to punctuation symbols
+func TokensToPunctuation() map[int]string {
+	return invertStringIntMap(PunctuationToTokens())
+}
+
+// MathematicalToTokens returns a map of mathematical symbols to tokens
+func MathematicalToTokens() map[string]int {
+	return map[string]int{
+		":=": MaAssign,
+		"^":  MaExponential,
+		"+":  MaAddition,
+		"-":  MaSubtraction,
+		"*":  MaMultiplication,
+		"/":  MaDivision,
+		"\\": MaIntegerDivision,
+		"=":  MaEquality,
+		"<>": MaInequality1,
+		"><": MaInequality2,
+		"<":  MaLessThan,
+		">":  MaGreaterThan,
+		"<=": MaLessThanEqualTo1,
+		"=<": MaLessThanEqualTo2,
+		">=": MaGreaterThanEqualTo1,
+		"=>": MaGreaterThanEqualTo2,
+		"==": MaInterestinglyEqual,
+	}
+}
+
+// TokensToMathematical returns a map of tokens to mathematical symbols
+func TokensToMathematical() map[int]string {
+	return invertStringIntMap(MathematicalToTokens())
+}
+
+// KeywordsToTokens returns a map of keyword symbols to tokens
+func KeywordsToTokens() map[string]int {
 	return map[string]int{
 		"ABS":        KwABS,
 		"AND":        KwAND,
@@ -362,4 +443,9 @@ func TokenMap() map[string]int {
 		"WRITING":    KwWRITING,
 		"XOR":        KxXOR,
 	}
+}
+
+// TokensToKeywords returns a map of tokens to keywords
+func TokensToKeywords() map[int]string {
+	return invertStringIntMap(KeywordsToTokens())
 }

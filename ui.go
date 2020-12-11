@@ -46,8 +46,8 @@ func Editor(g *Game) {
 			os.Exit(0)
 		}
 		if rawInput != "" {
-			g.Print("Tokenizer")
-			GetStringValues((rawInput))
+			formatted := Format(rawInput)
+			g.Print(formatted)
 		}
 
 	}
