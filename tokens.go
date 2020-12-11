@@ -208,7 +208,8 @@ const (
 	KwWARN       int = 275
 	KwWIDTH      int = 276
 	KwWRITING    int = 277
-	KxXOR        int = 278
+	KwXOR        int = 278
+	KwSET        int = 279
 )
 
 // invertStringIntMap receives a map[string][int], swaps the keys for values and returns a map[int][string]
@@ -441,7 +442,8 @@ func KeywordsToTokens() map[string]int {
 		"WARN":       KwWARN,
 		"WIDTH":      KwWIDTH,
 		"WRITING":    KwWRITING,
-		"XOR":        KxXOR,
+		"XOR":        KwXOR,
+		"SET":        KwSET,
 	}
 }
 

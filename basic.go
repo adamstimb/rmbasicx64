@@ -72,7 +72,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 func main() {
 	// Set up resizeable window
-	ebiten.SetWindowSize(1232, 1000)
+	ebiten.SetWindowSize(1260, 1000)
 	ebiten.SetWindowTitle("RM BASICx64")
 	ebiten.SetWindowResizable(true)
 

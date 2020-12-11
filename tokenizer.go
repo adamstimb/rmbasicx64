@@ -78,7 +78,7 @@ func GetNumericalLiterals(code string) []Token {
 			panic("Internal error: Failed to convert numerical literal")
 		}
 	}
-	// get all string value positions and add to tokens
+	// get all numerical value positions and add to tokens
 	for i, location := range r.FindAllIndex(b, -1) {
 		var thisToken Token
 		// integer or float?
@@ -124,16 +124,13 @@ func StringIndexAll(s, sep string) []int {
 func GetKeywords(code string) []Token {
 	// tokens are collected in this slice
 	tokens := []Token{}
-	// finding keywords is much simpler if we pad the code and then search for keywords
-	// that are enclosed by white space
-	code = PadString(code)
 	// find all matching keyword symbols and add tokens
 	for symbol, typeID := range KeywordsToTokens() {
 		for _, index := range StringIndexAll(strings.ToUpper(code), PadString(symbol)) {
 			var thisToken Token
 			thisToken.Type = typeID
 			thisToken.Symbol = symbol
-			thisToken.Location = []int{index, index + len(symbol) - 1}
+			thisToken.Location = []int{index + 1, index + len(symbol)} // take padding of symbol into account
 			tokens = append(tokens, thisToken)
 		}
 	}
@@ -218,7 +215,7 @@ func GetVariables(tokens []Token, code string) []Token {
 		}
 	}
 	code = string(bytes)
-	print("masked: ")
+	print("masked code: ")
 	println(code)
 	// split potential keywords using fields - upper case
 	code = strings.ToUpper(code)
@@ -255,6 +252,9 @@ func Tokenize(code string) []Token {
 	// String literals
 	print("TOKENIZE: ")
 	println(code)
+	// finding tokenizing is much simpler if we pad the code and then search for keywords
+	// that are enclosed by white space
+	code = PadString(code)
 	println("string literals:")
 	for _, thisToken := range GetStringLiterals(code) {
 		PrintToken(thisToken)
@@ -329,7 +329,7 @@ func Format(code string) string {
 		formatted = formatted + symbols[k]
 		// If REM append the comment that we collected earlier and break
 		if symbols[k] == "REM" {
-			formatted = formatted + code[commentIndex:]
+			formatted = formatted + " " + code[commentIndex:]
 			break
 		}
 		// add a space if not at end of string
