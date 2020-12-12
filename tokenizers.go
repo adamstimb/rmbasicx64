@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -33,8 +32,8 @@ type Token struct {
 	ValueFloat  float64
 }
 
-// GetStringLiterals returns tokens of string literals
-func GetStringLiterals(code string) []Token {
+// TokenizeStringLiterals returns tokens of string literals
+func TokenizeStringLiterals(code string) []Token {
 	// convert string to bytes
 	b := []byte(code)
 	// tokens are collected in this slice
@@ -58,8 +57,8 @@ func GetStringLiterals(code string) []Token {
 	return tokens
 }
 
-// GetNumericalLiterals returns tokens of numerical literals
-func GetNumericalLiterals(code string) []Token {
+// TokenizeNumericalLiterals returns tokens of numerical literals
+func TokenizeNumericalLiterals(code string) []Token {
 	// convert string to bytes
 	b := []byte(code)
 	// tokens are collected in this slice
@@ -119,9 +118,9 @@ func StringIndexAll(s, sep string) []int {
 	return indexes
 }
 
-// GetKeywords returns tokens of keywords.  Note that lines divided by ":" need to be
+// TokenizeKeywords returns tokens of keywords.  Note that lines divided by ":" need to be
 // split before this function is called.
-func GetKeywords(code string) []Token {
+func TokenizeKeywords(code string) []Token {
 	// tokens are collected in this slice
 	tokens := []Token{}
 	// find all matching keyword symbols and add tokens
@@ -137,8 +136,8 @@ func GetKeywords(code string) []Token {
 	return tokens
 }
 
-// GetPunctuation returns tokens of punctuation symbols
-func GetPunctuation(code string) []Token {
+// TokenizePunctuation returns tokens of punctuation symbols
+func TokenizePunctuation(code string) []Token {
 	// tokens are collected in this slice
 	tokens := []Token{}
 	// find all matching punctuation symbols and add tokens
@@ -162,8 +161,8 @@ func GetPunctuation(code string) []Token {
 	return tokens
 }
 
-// GetMathematical returns tokens of mathematical symbols
-func GetMathematical(code string) []Token {
+// TokenizeMathematical returns tokens of mathematical symbols
+func TokenizeMathematical(code string) []Token {
 	// tokens are collected in this slice
 	tokens := []Token{}
 	// find all matching punctuation symbols and add tokens
@@ -201,8 +200,8 @@ func GetMathematical(code string) []Token {
 	return filteredTokens
 }
 
-// GetVariables receives tokens collected so far and code and returns tokens for the variables
-func GetVariables(tokens []Token, code string) []Token {
+// TokenizeVariables receives tokens collected so far and code and returns tokens for the variables
+func TokenizeVariables(tokens []Token, code string) []Token {
 	// new tokens are collected in this slice
 	newTokens := []Token{}
 	print("code: ")
@@ -243,99 +242,4 @@ func GetVariables(tokens []Token, code string) []Token {
 		}
 	}
 	return newTokens
-}
-
-// Tokenize receives a line of code and returns a list of tokens
-func Tokenize(code string) []Token {
-	// tokens are collected in this slice
-	tokens := []Token{}
-	// String literals
-	print("TOKENIZE: ")
-	println(code)
-	// finding tokenizing is much simpler if we pad the code and then search for keywords
-	// that are enclosed by white space
-	code = PadString(code)
-	println("string literals:")
-	for _, thisToken := range GetStringLiterals(code) {
-		PrintToken(thisToken)
-		tokens = append(tokens, thisToken)
-		// Mask this string so we don't tokenize inside them
-		bytes := []byte(code)
-		for i := range bytes {
-			if i >= thisToken.Location[0] && i <= thisToken.Location[1] {
-				bytes[i] = ' '
-			}
-			code = string(bytes)
-		}
-	}
-	// Punctuation
-	println("punctuation:")
-	for _, thisToken := range GetPunctuation(code) {
-		PrintToken(thisToken)
-		tokens = append(tokens, thisToken)
-	}
-	// Mathematical
-	println("mathematical:")
-	for _, thisToken := range GetMathematical(code) {
-		PrintToken(thisToken)
-		tokens = append(tokens, thisToken)
-	}
-	println("numerical literals:")
-	for _, thisToken := range GetNumericalLiterals(code) {
-		PrintToken(thisToken)
-		tokens = append(tokens, thisToken)
-	}
-	// Keywords
-	println("keywords:")
-	for _, thisToken := range GetKeywords(code) {
-		PrintToken(thisToken)
-		tokens = append(tokens, thisToken)
-	}
-	// Variables
-	println("variables:")
-	for _, thisToken := range GetVariables(tokens, code) {
-		PrintToken(thisToken)
-		tokens = append(tokens, thisToken)
-	}
-	// done
-	return tokens
-}
-
-// Format receives a line of code and returns properly formatted code
-func Format(code string) string {
-	// Tokenize the code then reconstruct the code from the token's symbols
-	// Symbols won't be in the correct order so first load the symbols into a map
-	// where key is the start position of the symbol and value is in the symbol
-	symbols := make(map[int]string)
-	tokens := Tokenize(code)
-	keys := make([]int, len(tokens))
-	commentIndex := 0
-	print("FORMAT: ")
-	println(code)
-	for i, thisToken := range tokens {
-		PrintToken(thisToken)
-		symbols[thisToken.Location[0]] = thisToken.Symbol
-		keys[i] = thisToken.Location[0]
-		// If a REM was detected remember the start index of the subsequent comment
-		if thisToken.Type == KwREM {
-			commentIndex = thisToken.Location[1] + 1
-		}
-	}
-	// sort keys
-	sort.Ints(keys)
-	// create the formatted string
-	var formatted string
-	for i, k := range keys {
-		formatted = formatted + symbols[k]
-		// If REM append the comment that we collected earlier and break
-		if symbols[k] == "REM" {
-			formatted = formatted + " " + code[commentIndex:]
-			break
-		}
-		// add a space if not at end of string
-		if i < len(keys) {
-			formatted = formatted + " "
-		}
-	}
-	return formatted
 }

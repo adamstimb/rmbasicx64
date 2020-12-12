@@ -1,6 +1,6 @@
 package main
 
-// Token types defined here
+// Token types/IDs defined here
 const (
 	// Punctuation
 	PnDivideLine          int = 1
@@ -221,7 +221,7 @@ func invertStringIntMap(mapToInvert map[string]int) map[int]string {
 	return newMap
 }
 
-// PunctuationToTokens returns a map of punctuation symbols to tokens
+// PunctuationToTokens returns a map of punctuation symbols to token ids
 func PunctuationToTokens() map[string]int {
 	return map[string]int{
 		":": PnDivideLine,
@@ -235,7 +235,7 @@ func TokensToPunctuation() map[int]string {
 	return invertStringIntMap(PunctuationToTokens())
 }
 
-// MathematicalToTokens returns a map of mathematical symbols to tokens
+// MathematicalToTokens returns a map of mathematical symbols to token ids
 func MathematicalToTokens() map[string]int {
 	return map[string]int{
 		":=": MaAssign,
@@ -263,7 +263,7 @@ func TokensToMathematical() map[int]string {
 	return invertStringIntMap(MathematicalToTokens())
 }
 
-// KeywordsToTokens returns a map of keyword symbols to tokens
+// KeywordsToTokens returns a map of keyword symbols to token ids
 func KeywordsToTokens() map[string]int {
 	return map[string]int{
 		"ABS":        KwABS,
