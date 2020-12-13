@@ -1,6 +1,4 @@
-# RM Basicx64
-
-A backwards-compatible RM Basic interpreter for 64-bit machines.
+# ![RM Basicx64](rmbasicx64Banner.png)
 
 _RM Basicx64 is a tribute project and is in no way linked to or endorsed by RM plc._
 
