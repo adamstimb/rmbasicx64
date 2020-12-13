@@ -28,7 +28,7 @@ func WelcomeScreen(g *Game) {
 	g.SetCursor(0)
 	g.Print("This is a tribute project and is in no way linked to or endorsed by RM plc.")
 	g.Print("")
-	g.Print("RM Basicx64 version 0.00 9th December 2020")
+	g.Print("RM Basicx64 v0.00 9th December 2020")
 	// Generate and print workspace available notification
 	workspaceAvailable := fmt.Sprintf("%dG bytes workspace available", bToGb(memInfo.Available))
 	g.Print(workspaceAvailable)
