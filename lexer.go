@@ -4,6 +4,19 @@ import (
 	"sort"
 )
 
+// maskSymbols masks tokenized symbols in a line of code
+func maskSymbols(code string, tokens []Token) string {
+	bytes := []byte(code)
+	for _, thisToken := range tokens {
+		for i := range bytes {
+			if i >= thisToken.Location[0] && i <= thisToken.Location[1] {
+				bytes[i] = ' '
+			}
+		}
+	}
+	return string(bytes)
+}
+
 // Tokenize receives a line of code and returns a list of tokens
 func Tokenize(code string) []Token {
 	// tokens are collected in this slice
@@ -17,15 +30,8 @@ func Tokenize(code string) []Token {
 	println("string literals:")
 	for _, thisToken := range TokenizeStringLiterals(code) {
 		PrintToken(thisToken)
+		code = maskSymbols(code, []Token{thisToken}) // mask symbol so it isn't retokenized
 		tokens = append(tokens, thisToken)
-		// Mask this string so we don't tokenize inside them
-		bytes := []byte(code)
-		for i := range bytes {
-			if i >= thisToken.Location[0] && i <= thisToken.Location[1] {
-				bytes[i] = ' '
-			}
-			code = string(bytes)
-		}
 	}
 	// Punctuation
 	println("punctuation:")

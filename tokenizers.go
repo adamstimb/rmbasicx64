@@ -86,9 +86,9 @@ func TokenizeNumericalLiterals(code string) []Token {
 		} else {
 			thisToken.Type = LiFloat
 		}
-		thisToken.Location = location
 		// covert back to string to get the symbol
 		thisToken.Symbol = strconv.FormatFloat(numericalVals[i], 'f', -1, 64)
+		thisToken.Location = []int{location[0], location[0] + len(thisToken.Symbol) - 1}
 		thisToken.ValueFloat = numericalVals[i]
 		tokens = append(tokens, thisToken)
 	}
@@ -171,7 +171,7 @@ func TokenizeMathematical(code string) []Token {
 			var thisToken Token
 			thisToken.Type = typeID
 			thisToken.Symbol = symbol
-			thisToken.Location = []int{index, index + len(symbol)}
+			thisToken.Location = []int{index, index + len(symbol) - 1}
 			tokens = append(tokens, thisToken)
 		}
 	}
@@ -207,20 +207,21 @@ func TokenizeVariables(tokens []Token, code string) []Token {
 	print("code: ")
 	println(code)
 	// first mask everything that was already tokenized
-	bytes := []byte(code)
-	for _, thisToken := range tokens {
-		for i := thisToken.Location[0]; i <= thisToken.Location[1]; i++ {
-			bytes[i] = ' '
-		}
-	}
-	code = string(bytes)
+	code = maskSymbols(code, tokens)
 	print("masked code: ")
 	println(code)
 	// split potential keywords using fields - upper case
 	code = strings.ToUpper(code)
 	fields := strings.Fields(code)
 	// tokenize keywords
+	lastField := ""
 	for _, thisField := range fields {
+		// skip duplicates
+		if lastField == thisField {
+			continue
+		} else {
+			lastField = thisField
+		}
 		print(thisField)
 		print(">")
 		for _, index := range StringIndexAll(code, thisField) {
