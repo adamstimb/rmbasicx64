@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -14,7 +13,7 @@ func PrintToken(thisToken Token) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(string(out))
+	logMsg(string(out))
 }
 
 // PadString pads a string between spaces
@@ -149,7 +148,7 @@ func TokenizePunctuation(code string) []Token {
 			thisToken.Location = []int{index, index + len(symbol) - 1}
 			// if a dividing : is followed by = then don't collect this token
 			// because it's actually := symbol
-			if thisToken.Type == PnDivideLine && thisToken.Location[1] < len(code) {
+			if thisToken.Type == PnStatementSeparator && thisToken.Location[1] < len(code) {
 				if code[thisToken.Location[1]+1:thisToken.Location[1]+2] == "=" {
 					// it's := so skip
 					continue
@@ -202,19 +201,18 @@ func TokenizeMathematical(code string) []Token {
 
 // TokenizeVariables receives tokens collected so far and code and returns tokens for the variables
 func TokenizeVariables(tokens []Token, code string) []Token {
+	logMsg("TokenizeVariables")
 	// new tokens are collected in this slice
 	newTokens := []Token{}
-	print("code: ")
-	println(code)
 	// first mask everything that was already tokenized
 	code = maskSymbols(code, tokens)
-	print("masked code: ")
-	println(code)
+	logMsg("Masked=" + code)
 	// split potential keywords using fields - upper case
 	code = strings.ToUpper(code)
 	fields := strings.Fields(code)
 	// tokenize keywords
 	lastField := ""
+	logMsg("Fields:")
 	for _, thisField := range fields {
 		// skip duplicates
 		if lastField == thisField {
@@ -222,8 +220,7 @@ func TokenizeVariables(tokens []Token, code string) []Token {
 		} else {
 			lastField = thisField
 		}
-		print(thisField)
-		print(">")
+		logMsg(thisField)
 		for _, index := range StringIndexAll(code, thisField) {
 			var thisToken Token
 			thisToken.Location = []int{index, index + len(thisField) - 1}

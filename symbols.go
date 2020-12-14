@@ -3,9 +3,11 @@ package main
 // Token types/IDs defined here
 const (
 	// Punctuation
-	PnDivideLine          int = 1
+	PnStatementSeparator  int = 1
 	PnValueSeparator      int = 2
 	PnCoordinateSeperator int = 3
+	PnLeftParenthesis     int = 4
+	PnRightParenthesis    int = 5
 	// Mathematical
 	MaAssign              int = 10
 	MaExponential         int = 11
@@ -224,9 +226,11 @@ func invertStringIntMap(mapToInvert map[string]int) map[int]string {
 // PunctuationToTokens returns a map of punctuation symbols to token ids
 func PunctuationToTokens() map[string]int {
 	return map[string]int{
-		":": PnDivideLine,
+		":": PnStatementSeparator,
 		",": PnValueSeparator,
 		";": PnCoordinateSeperator,
+		"(": PnLeftParenthesis,
+		")": PnRightParenthesis,
 	}
 }
 

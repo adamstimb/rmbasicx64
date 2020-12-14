@@ -3,6 +3,7 @@ package main
 import (
 	_ "image/png"
 	"log"
+	"os"
 
 	"github.com/adamstimb/nimgobus"
 	"github.com/hajimehoshi/ebiten"
@@ -33,6 +34,7 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 }
 
 func App(g *Game) {
+	log.SetOutput(os.Stdout)
 	StartUi(g)
 }
 
@@ -73,7 +75,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 func main() {
 	// Set up resizeable window
 	ebiten.SetWindowSize(1260, 1000)
-	ebiten.SetWindowTitle("RM Basicx64")
+	ebiten.SetWindowTitle("RM BASICx64")
 	ebiten.SetWindowResizable(true)
 
 	// Create a new game and pass it to RunGame method

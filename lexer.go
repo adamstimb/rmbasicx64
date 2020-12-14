@@ -17,68 +17,89 @@ func maskSymbols(code string, tokens []Token) string {
 	return string(bytes)
 }
 
+// sortTokens returns the token list in the order they appear in the code
+func sortTokens(tokens []Token) []Token {
+	// first make a map of token locations to tokens and list the locations
+	locations := []int{}
+	mappedTokens := make(map[int]Token)
+	for _, thisToken := range tokens {
+		mappedTokens[thisToken.Location[0]] = thisToken
+		locations = append(locations, thisToken.Location[0])
+	}
+	// now make a new list of tokens in the correct order
+	sort.Ints(locations)
+	sortedTokens := []Token{}
+	for _, k := range locations {
+		sortedTokens = append(sortedTokens, mappedTokens[k])
+	}
+	return sortedTokens
+}
+
 // Tokenize receives a line of code and returns a list of tokens
 func Tokenize(code string) []Token {
+	logMsg("Tokenize")
 	// tokens are collected in this slice
 	tokens := []Token{}
 	// String literals
-	print("TOKENIZE: ")
-	println(code)
-	// finding tokenizing is much simpler if we pad the code and then search for keywords
+	// tokenizing is much simpler if we pad the code and then search for keywords
 	// that are enclosed by white space
 	code = PadString(code)
-	println("string literals:")
+	logMsg("String literals:")
 	for _, thisToken := range TokenizeStringLiterals(code) {
 		PrintToken(thisToken)
 		code = maskSymbols(code, []Token{thisToken}) // mask symbol so it isn't retokenized
 		tokens = append(tokens, thisToken)
 	}
 	// Punctuation
-	println("punctuation:")
+	logMsg("Punctuation:")
 	for _, thisToken := range TokenizePunctuation(code) {
 		PrintToken(thisToken)
 		tokens = append(tokens, thisToken)
 	}
 	// Mathematical
-	println("mathematical:")
+	logMsg("Mathematical:")
 	for _, thisToken := range TokenizeMathematical(code) {
 		PrintToken(thisToken)
 		tokens = append(tokens, thisToken)
 	}
-	println("numerical literals:")
+	logMsg("Numerical literals:")
 	for _, thisToken := range TokenizeNumericalLiterals(code) {
 		PrintToken(thisToken)
 		tokens = append(tokens, thisToken)
 	}
 	// Keywords
-	println("keywords:")
+	logMsg("Keywords:")
 	for _, thisToken := range TokenizeKeywords(code) {
 		PrintToken(thisToken)
 		tokens = append(tokens, thisToken)
 	}
 	// Variables
-	println("variables:")
+	logMsg("Variables:")
 	for _, thisToken := range TokenizeVariables(tokens, code) {
 		PrintToken(thisToken)
 		tokens = append(tokens, thisToken)
 	}
-	// done
-	return tokens
+	// done - sort tokens and return
+	sortedTokens := sortTokens(tokens)
+	if DEBUG {
+		logMsg("Final list of tokens:")
+		for _, thisToken := range sortedTokens {
+			PrintToken(thisToken)
+		}
+	}
+	return sortTokens(tokens)
 }
 
-// Format receives a line of code and returns properly formatted code
-func Format(code string) string {
+// Format receives a line of code and tokens returns properly formatted code
+func Format(code string, tokens []Token) string {
+	logMsg("Format")
 	// Tokenize the code then reconstruct the code from the token's symbols
 	// Symbols won't be in the correct order so first load the symbols into a map
 	// where key is the start position of the symbol and value is in the symbol
 	symbols := make(map[int]string)
-	tokens := Tokenize(code)
 	keys := make([]int, len(tokens))
 	commentIndex := 0
-	print("FORMAT: ")
-	println(code)
 	for i, thisToken := range tokens {
-		PrintToken(thisToken)
 		symbols[thisToken.Location[0]] = thisToken.Symbol
 		keys[i] = thisToken.Location[0]
 		// If a REM was detected remember the start index of the subsequent comment
@@ -86,21 +107,41 @@ func Format(code string) string {
 			commentIndex = thisToken.Location[1] + 1
 		}
 	}
-	// sort keys
-	sort.Ints(keys)
-	// create the formatted string
+	//tokens = sortTokens(tokens)
 	var formatted string
-	for i, k := range keys {
-		formatted = formatted + symbols[k]
+	for i, thisToken := range tokens {
+		formatted = formatted + thisToken.Symbol
 		// If REM append the comment that we collected earlier and break
-		if symbols[k] == "REM" {
+		if thisToken.Symbol == "REM" {
 			formatted = formatted + " " + code[commentIndex:]
 			break
 		}
-		// add a space if not at end of string
-		if i < len(keys) {
+		// if this isn't the last token then decide if we need to add a space
+		// before the next symbol
+		spaceRequired := true
+		if i < len(tokens)-1 {
+			// parentheses
+			if thisToken.Type == PnLeftParenthesis {
+				spaceRequired = false
+			}
+			if (thisToken.Type == MaVariableFloat ||
+				thisToken.Type == MaVariableInteger ||
+				thisToken.Type == MaVariableString) &&
+				tokens[i+1].Type == PnRightParenthesis {
+				spaceRequired = false
+			}
+			// value lists
+			if (thisToken.Type == MaVariableFloat ||
+				thisToken.Type == MaVariableInteger ||
+				thisToken.Type == MaVariableString) &&
+				(tokens[i+1].Type == PnValueSeparator || tokens[i+1].Type == PnCoordinateSeperator) {
+				spaceRequired = false
+			}
+		}
+		if spaceRequired {
 			formatted = formatted + " "
 		}
 	}
+	logMsg("Formatted=" + formatted)
 	return formatted
 }
