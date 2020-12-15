@@ -36,7 +36,7 @@ func sortTokens(tokens []Token) []Token {
 }
 
 // Tokenize receives a line of code and returns a list of tokens
-func Tokenize(code string) []Token {
+func tokenize(code string) []Token {
 	logMsg("Tokenize")
 	// tokens are collected in this slice
 	tokens := []Token{}
@@ -48,6 +48,7 @@ func Tokenize(code string) []Token {
 	for _, thisToken := range TokenizeStringLiterals(code) {
 		PrintToken(thisToken)
 		code = maskSymbols(code, []Token{thisToken}) // mask symbol so it isn't retokenized
+		println(code)
 		tokens = append(tokens, thisToken)
 	}
 	// Punctuation
@@ -69,7 +70,7 @@ func Tokenize(code string) []Token {
 	}
 	// Keywords
 	logMsg("Keywords:")
-	for _, thisToken := range TokenizeKeywords(code) {
+	for _, thisToken := range TokenizeKeywords(tokens, code) {
 		PrintToken(thisToken)
 		tokens = append(tokens, thisToken)
 	}
@@ -91,7 +92,7 @@ func Tokenize(code string) []Token {
 }
 
 // Format receives a line of code and tokens returns properly formatted code
-func Format(code string, tokens []Token) string {
+func format(code string, tokens []Token) string {
 	logMsg("Format")
 	// Tokenize the code then reconstruct the code from the token's symbols
 	// Symbols won't be in the correct order so first load the symbols into a map

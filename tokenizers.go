@@ -48,9 +48,9 @@ func TokenizeStringLiterals(code string) []Token {
 	for i, location := range r.FindAllIndex(b, -1) {
 		var thisToken Token
 		thisToken.Type = LiString
-		thisToken.Location = location
+		thisToken.Location = []int{location[0], location[1] - 1}
 		thisToken.Symbol = stringVals[i]
-		thisToken.ValueString = stringVals[i]
+		thisToken.ValueString = stringVals[i][1 : len(stringVals[i])-1] // don't store ""
 		tokens = append(tokens, thisToken)
 	}
 	return tokens
@@ -119,20 +119,22 @@ func StringIndexAll(s, sep string) []int {
 
 // TokenizeKeywords returns tokens of keywords.  Note that lines divided by ":" need to be
 // split before this function is called.
-func TokenizeKeywords(code string) []Token {
+func TokenizeKeywords(tokens []Token, code string) []Token {
+	// first mask everything that was already tokenized
+	code = maskSymbols(code, tokens)
 	// tokens are collected in this slice
-	tokens := []Token{}
+	newTokens := tokens
 	// find all matching keyword symbols and add tokens
-	for symbol, typeID := range KeywordsToTokens() {
+	for symbol, typeID := range keywordsToTokens() {
 		for _, index := range StringIndexAll(strings.ToUpper(code), PadString(symbol)) {
 			var thisToken Token
 			thisToken.Type = typeID
 			thisToken.Symbol = symbol
 			thisToken.Location = []int{index + 1, index + len(symbol)} // take padding of symbol into account
-			tokens = append(tokens, thisToken)
+			newTokens = append(newTokens, thisToken)
 		}
 	}
-	return tokens
+	return newTokens
 }
 
 // TokenizePunctuation returns tokens of punctuation symbols
@@ -140,7 +142,7 @@ func TokenizePunctuation(code string) []Token {
 	// tokens are collected in this slice
 	tokens := []Token{}
 	// find all matching punctuation symbols and add tokens
-	for symbol, typeID := range PunctuationToTokens() {
+	for symbol, typeID := range punctuationToTokens() {
 		for _, index := range StringIndexAll(code, symbol) {
 			var thisToken Token
 			thisToken.Type = typeID
@@ -165,7 +167,7 @@ func TokenizeMathematical(code string) []Token {
 	// tokens are collected in this slice
 	tokens := []Token{}
 	// find all matching punctuation symbols and add tokens
-	for symbol, typeID := range MathematicalToTokens() {
+	for symbol, typeID := range mathematicalToTokens() {
 		for _, index := range StringIndexAll(code, symbol) {
 			var thisToken Token
 			thisToken.Type = typeID
@@ -206,7 +208,7 @@ func TokenizeVariables(tokens []Token, code string) []Token {
 	newTokens := []Token{}
 	// first mask everything that was already tokenized
 	code = maskSymbols(code, tokens)
-	logMsg("Masked=" + code)
+	//logMsg("Masked=" + code)
 	// split potential keywords using fields - upper case
 	code = strings.ToUpper(code)
 	fields := strings.Fields(code)

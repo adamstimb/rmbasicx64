@@ -223,8 +223,8 @@ func invertStringIntMap(mapToInvert map[string]int) map[int]string {
 	return newMap
 }
 
-// PunctuationToTokens returns a map of punctuation symbols to token ids
-func PunctuationToTokens() map[string]int {
+// punctuationToTokens returns a map of punctuation symbols to token ids
+func punctuationToTokens() map[string]int {
 	return map[string]int{
 		":": PnStatementSeparator,
 		",": PnValueSeparator,
@@ -234,13 +234,13 @@ func PunctuationToTokens() map[string]int {
 	}
 }
 
-// TokensToPunctuation returns a map of tokens to punctuation symbols
-func TokensToPunctuation() map[int]string {
-	return invertStringIntMap(PunctuationToTokens())
+// tokensToPunctuation returns a map of tokens to punctuation symbols
+func tokensToPunctuation() map[int]string {
+	return invertStringIntMap(punctuationToTokens())
 }
 
-// MathematicalToTokens returns a map of mathematical symbols to token ids
-func MathematicalToTokens() map[string]int {
+// mathematicalToTokens returns a map of mathematical symbols to token ids
+func mathematicalToTokens() map[string]int {
 	return map[string]int{
 		":=": MaAssign,
 		"^":  MaExponential,
@@ -262,13 +262,13 @@ func MathematicalToTokens() map[string]int {
 	}
 }
 
-// TokensToMathematical returns a map of tokens to mathematical symbols
-func TokensToMathematical() map[int]string {
-	return invertStringIntMap(MathematicalToTokens())
+// tokensToMathematical returns a map of tokens to mathematical symbols
+func tokensToMathematical() map[int]string {
+	return invertStringIntMap(mathematicalToTokens())
 }
 
-// KeywordsToTokens returns a map of keyword symbols to token ids
-func KeywordsToTokens() map[string]int {
+// keywordsToTokens returns a map of keyword symbols to token ids
+func keywordsToTokens() map[string]int {
 	return map[string]int{
 		"ABS":        KwABS,
 		"AND":        KwAND,
@@ -451,7 +451,7 @@ func KeywordsToTokens() map[string]int {
 	}
 }
 
-// TokensToKeywords returns a map of tokens to keywords
-func TokensToKeywords() map[int]string {
-	return invertStringIntMap(KeywordsToTokens())
+// tokensToKeywords returns a map of tokens to keywords
+func tokensToKeywords() map[int]string {
+	return invertStringIntMap(keywordsToTokens())
 }

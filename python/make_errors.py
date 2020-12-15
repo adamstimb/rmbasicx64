@@ -25,8 +25,8 @@ if __name__ == '__main__':
             f.write(f'    Er{variable} = {counter}\n')
             counter += 1
         f.write(')\n\n')
-        f.write('// ErrorMessages returns a map of error codes and their messages\n')
-        f.write('func ErrorMessages() map[int]string {\n')
+        f.write('// errorMessages returns a map of error codes and their messages\n')
+        f.write('func errorMessages() map[int]string {\n')
         f.write('    return map[int]string{\n')
         for string in strings:
             variable = string.title().replace('/', '').replace('\'', '').replace('(', '').replace(')', '').replace(':', '').replace(' ', '')

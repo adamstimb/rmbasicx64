@@ -12,6 +12,10 @@ High-level goals:
 - Get on the internet - extend the dialect to handle http requests
 - Authentic 1980s user experience - recreate the original code editor, but also support easy-to-use modern editors such as VSCode
 
+## Functionality
+
+This project is in pre-release so don't expect any useable functionality just yet.
+
 ### Screenshot
 # ![editor](editor.png)
 

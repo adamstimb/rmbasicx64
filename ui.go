@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"strings"
 
 	"github.com/elastic/go-sysinfo"
 )
@@ -26,7 +24,7 @@ func logMsg(msg string) {
 }
 
 // welcomeScreen draws the RM Basic welcome screen
-func WelcomeScreen(g *Game) {
+func welcomeScreen(g *Game) {
 	logMsg("welcomeScreen")
 	// Collect system info
 	host, err := sysinfo.Host()
@@ -47,25 +45,29 @@ func WelcomeScreen(g *Game) {
 	g.Print(workspaceAvailable)
 }
 
-// Editor is used to receive commands from the user in direct mode and edit
+// raiseError prints an error message
+func raiseError(g *Game, err int) {
+	logMsg("RaiseError: " + errorMessages()[err])
+	g.Print(errorMessages()[err])
+}
+
+// editor is used to receive commands from the user in direct mode and edit
 // BASIC programs
-func Editor(g *Game) {
-	logMsg("Editor")
+func editor(g *Game) {
+	logMsg("editor")
 	// loop to prompt user for input and process that input
 	for {
-		// get raw console input
+		// get raw console input for parsing
 		rawInput := g.Input(":")
 		logMsg("rawInput=" + rawInput)
-		if strings.ToUpper(rawInput) == "BYE" {
-			// Exit with success code
-			logMsg("Exit")
-			os.Exit(0)
-		}
 		if rawInput != "" {
-			tokens := Tokenize(rawInput)
-			formattedCode := Format(rawInput, tokens)
-			g.Print(formattedCode)
-			parseTokens(tokens)
+			tokens := tokenize(rawInput)
+			formattedCode := format(rawInput, tokens)
+			err := parseTokens(g, tokens)
+			if err > 0 {
+				g.Print(formattedCode)
+				raiseError(g, err)
+			}
 		}
 
 	}
@@ -76,6 +78,6 @@ func Editor(g *Game) {
 // the editor.
 func StartUi(g *Game) {
 	logMsg("StartUi")
-	WelcomeScreen(g)
-	Editor(g)
+	welcomeScreen(g)
+	editor(g)
 }
