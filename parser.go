@@ -99,7 +99,7 @@ func numberValueToString(token Token) string {
 	logMsg("NumberValueToString")
 	if token.Type == LiFloat || token.Type == MaVariableFloat ||
 		token.Type == LiInteger || token.Type == MaVariableInteger {
-		return strconv.FormatFloat(token.ValueFloat, 'e', -1, 64)
+		return strconv.FormatFloat(token.ValueFloat, 'f', -1, 64)
 	}
 	// need to handle unexpected better than this:
 	return ""
