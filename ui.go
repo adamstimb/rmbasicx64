@@ -81,8 +81,10 @@ func editor(g *Game) {
 				// Commit line to programListing
 				formattedCode := format(rawInput, tokens)
 				logMsg("Commit to programListing: " + formattedCode)
+				// append store key for this line to programListing
 				g.Store["programListing"] = append(g.Store["programListing"], nimgobus.StoreItem{0, "10"})
-				g.Store["10"] = []nimgobus.StoreItem{nimgobus.StoreItem{0, formattedCode}}
+				// add store key with formatted code as value
+				g.Store["10"] = []nimgobus.StoreItem{{0, formattedCode}}
 			} else {
 				// Execute line
 				err := parseTokens(g, tokens)
