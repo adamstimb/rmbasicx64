@@ -45,12 +45,7 @@ func tokenize(code string) []Token {
 	// that are enclosed by white space
 	code = PadString(code)
 	logMsg("String literals:")
-	for _, thisToken := range TokenizeStringLiterals(code) {
-		PrintToken(thisToken)
-		code = maskSymbols(code, []Token{thisToken}) // mask symbol so it isn't retokenized
-		println(code)
-		tokens = append(tokens, thisToken)
-	}
+	tokens = TokenizeStringLiterals(code)
 	// Punctuation
 	logMsg("Punctuation:")
 	for _, thisToken := range TokenizePunctuation(code) {
@@ -70,10 +65,7 @@ func tokenize(code string) []Token {
 	}
 	// Keywords
 	logMsg("Keywords:")
-	for _, thisToken := range TokenizeKeywords(tokens, code) {
-		PrintToken(thisToken)
-		tokens = append(tokens, thisToken)
-	}
+	tokens = TokenizeKeywords(tokens, code)
 	// Variables
 	logMsg("Variables:")
 	for _, thisToken := range TokenizeVariables(tokens, code) {
