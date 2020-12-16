@@ -23,8 +23,8 @@ func NewGame() *Game {
 func (g *Game) Update() error {
 	if g.count == 0 {
 		go App(g) // Launch the Nimbus app on first iteration
+		g.count++
 	}
-	g.count++
 	g.Nimbus.Update() // Update the app on all subsequent iterations
 	return nil
 }
@@ -39,6 +39,7 @@ func App(g *Game) {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
+
 	// Draw the Nimbus monitor on the screen and scale to current window size.
 	monitorWidth, monitorHeight := g.Monitor.Size()
 
@@ -67,8 +68,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// Apply scale and centre monitor on screen
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(scale, scale)
-	op.GeoM.Translate(offsetX, offsetY)
 	op.Filter = ebiten.FilterLinear
+	op.GeoM.Translate(offsetX, offsetY)
 	screen.DrawImage(g.Monitor, op)
 }
 

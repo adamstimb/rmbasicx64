@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/hajimehoshi/ebiten"
+
 	"github.com/elastic/go-sysinfo"
 )
 
@@ -68,6 +70,8 @@ func editor(g *Game) {
 				g.Print(formattedCode)
 				raiseError(g, err)
 			}
+		} else {
+			println(ebiten.CurrentTPS())
 		}
 
 	}

@@ -1,5 +1,7 @@
 package main
 
+import "strconv"
+
 // Statement types defined here
 const (
 	StaVariableAssignment       = 3000
@@ -91,6 +93,18 @@ func getStatementType(tokens []Token) int {
 	return StaInvalid
 }
 
+// numberValueToString receives a token with a numeric value and returns
+// the value as a string
+func numberValueToString(token Token) string {
+	logMsg("NumberValueToString")
+	if token.Type == LiFloat || token.Type == MaVariableFloat ||
+		token.Type == LiInteger || token.Type == MaVariableInteger {
+		return strconv.FormatFloat(token.ValueFloat, 'e', -1, 64)
+	}
+	// need to handle unexpected better than this:
+	return ""
+}
+
 func parseBye(g *Game, tokens []Token) int {
 	logMsg("ParseBye")
 	if len(tokens) > 1 {
@@ -117,9 +131,14 @@ func parsePrint(g *Game, tokens []Token) int {
 	}
 	// now convert to string if required then call print
 	var text string
-	if nextToken.Type == LiString {
+	if nextToken.Type == LiString || nextToken.Type == MaVariableString {
 		text = nextToken.ValueString
 		return internalPrint(g, text)
+	} else {
+		// should be numeric so convert
+		text = numberValueToString(nextToken)
+		return internalPrint(g, text)
+
 	}
 	return 0
 }
@@ -136,6 +155,11 @@ func parseInternalProcedureCall(g *Game, tokens []Token) int {
 	return 0
 }
 
+func parseVariableAssignment() int {
+	logMsg("ParseVariableAssignment")
+	return 0
+}
+
 // parseTokens receives a list of tokens and produces one or more syntax trees
 func parseTokens(g *Game, tokens []Token) int {
 	// Get statements from code.  RM BASIC supports multiple statements per line
@@ -145,7 +169,6 @@ func parseTokens(g *Game, tokens []Token) int {
 	for _, statement := range statements {
 		// Parse this statement
 		logMsg("New statement:")
-		var err int
 		if DEBUG {
 			for _, thisToken := range statement {
 				PrintToken(thisToken)
@@ -154,14 +177,14 @@ func parseTokens(g *Game, tokens []Token) int {
 		// Get statement type - raise error and return if invalid
 		statementType := getStatementType(statement)
 		if statementType == 0 {
-			err = ErUnknownCommandProcedure
+			return ErUnknownCommandProcedure
 		}
-		// Continue parsing the statement
+		// Otherwise continue parsing the statement
 		if statementType == StaInternalProcedureCall {
-			err = parseInternalProcedureCall(g, statement)
+			return parseInternalProcedureCall(g, statement)
 		}
-		if err != 0 {
-			return err
+		if statementType == StaVariableAssignment {
+			return parseVariableAssignment()
 		}
 	}
 	return 0
