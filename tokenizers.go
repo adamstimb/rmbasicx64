@@ -24,11 +24,9 @@ func PadString(s string) string {
 // Token defines the actual token returned from the tokenizer and sent to the parser
 // and code-formatter
 type Token struct {
-	Type        int
-	Location    []int
-	Symbol      string
-	ValueString string
-	ValueFloat  float64
+	Type     int
+	Location []int
+	Symbol   string
 }
 
 // TokenizeStringLiterals returns tokens of string literals
@@ -50,7 +48,6 @@ func TokenizeStringLiterals(code string) []Token {
 		thisToken.Type = LiString
 		thisToken.Location = []int{location[0], location[1] - 1}
 		thisToken.Symbol = stringVals[i]
-		thisToken.ValueString = stringVals[i][1 : len(stringVals[i])-1] // don't store ""
 		tokens = append(tokens, thisToken)
 	}
 	return tokens
@@ -65,30 +62,32 @@ func TokenizeNumericalLiterals(code string) []Token {
 	// use a regex to find a string between double quotes
 	r, _ := regexp.Compile("[-+]?\\d*\\.\\d+|\\d+")
 	// get all numerical values and put them in this list
-	// for simplicity we'll store everything to float but in the token we'll use the type ID
-	// to remember if it should be a float or int
+	// for simplicity we'll store everything to string but in the token we'll use the type ID
+	// to remember if it should be a float or int (or just number)
 	numericalVals := []float64{}
 	for _, numericalVal := range r.FindAll(b, -1) {
-		// try to convert to float64 and add it
+		// try to convert to float64 to validate int or float...and what about bool?
 		if numericalValFloat, err := strconv.ParseFloat(string(numericalVal), 64); err == nil {
 			numericalVals = append(numericalVals, float64(numericalValFloat))
 		} else {
+			// change this to return error code
 			panic("Internal error: Failed to convert numerical literal")
 		}
 	}
-	// get all numerical value positions and add to tokens
+	// get all validated numerical value positions and add to tokens
 	for i, location := range r.FindAllIndex(b, -1) {
 		var thisToken Token
-		// integer or float?
-		if numericalVals[i] == float64(int64(numericalVals[i])) {
-			thisToken.Type = LiInteger
-		} else {
-			thisToken.Type = LiFloat
-		}
+		// integer or float? or bool?
+		//if numericalVals[i] == float64(int64(numericalVals[i])) {
+		//	thisToken.Type = LiInteger
+		//} else {
+		//	thisToken.Type = LiFloat
+		//}
+
 		// covert back to string to get the symbol
+		thisToken.Type = LiNumber
 		thisToken.Symbol = strconv.FormatFloat(numericalVals[i], 'f', -1, 64)
 		thisToken.Location = []int{location[0], location[0] + len(thisToken.Symbol) - 1}
-		thisToken.ValueFloat = numericalVals[i]
 		tokens = append(tokens, thisToken)
 	}
 	return tokens

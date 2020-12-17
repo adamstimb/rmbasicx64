@@ -33,6 +33,7 @@ const (
 	LiString  int = 50
 	LiInteger int = 51
 	LiFloat   int = 52
+	LiNumber  int = 53
 	// Keywords
 	KwABS        int = 100
 	KwAND        int = 101

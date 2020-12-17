@@ -60,15 +60,12 @@ func editor(g *Game) {
 	logMsg("editor")
 	// Initialize a program listing (this will eventually be the 'NEW' command)
 	g.Store["programListing"] = []nimgobus.StoreItem{}
+	g.Store["nextLineNumber"] = []nimgobus.StoreItem{{0, "10"}}
 	// loop to prompt user for input and process that input
-	nextLineNumber := 10
 	for {
-		// update nextLineNumber
-		if len(g.Store["programListing"]) == 0 {
-			nextLineNumber = 10
-		} else {
-			nextLineNumber = nextLineNumber + 10
-		}
+		// AUTO will use this:
+		//nextLineNumber, err := strconv.Atoi(g.Store["nextLineNumber"][0].Value)
+
 		// get raw console input for parsing
 		rawInput := g.Input(":")
 		logMsg("rawInput=" + rawInput)
@@ -82,9 +79,9 @@ func editor(g *Game) {
 				formattedCode := format(rawInput, tokens)
 				logMsg("Commit to programListing: " + formattedCode)
 				// append store key for this line to programListing
-				g.Store["programListing"] = append(g.Store["programListing"], nimgobus.StoreItem{0, "10"})
+				g.Store["programListing"] = append(g.Store["programListing"], nimgobus.StoreItem{0, tokens[0].Symbol})
 				// add store key with formatted code as value
-				g.Store["10"] = []nimgobus.StoreItem{{0, formattedCode}}
+				g.Store[tokens[0].Symbol] = []nimgobus.StoreItem{{0, formattedCode}}
 			} else {
 				// Execute line
 				err := parseTokens(g, tokens)

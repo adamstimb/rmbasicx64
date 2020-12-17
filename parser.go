@@ -1,6 +1,6 @@
 package main
 
-import "strconv"
+import "github.com/adamstimb/nimgobus"
 
 // Statement types defined here
 const (
@@ -95,15 +95,15 @@ func getStatementType(tokens []Token) int {
 
 // numberValueToString receives a token with a numeric value and returns
 // the value as a string
-func numberValueToString(token Token) string {
-	logMsg("NumberValueToString")
-	if token.Type == LiFloat || token.Type == MaVariableFloat ||
-		token.Type == LiInteger || token.Type == MaVariableInteger {
-		return strconv.FormatFloat(token.ValueFloat, 'f', -1, 64)
-	}
-	// need to handle unexpected better than this:
-	return ""
-}
+//func numberValueToString(token Token) string {
+//	logMsg("NumberValueToString")
+//	if token.Type == LiFloat || token.Type == MaVariableFloat ||
+//		token.Type == LiInteger || token.Type == MaVariableInteger {
+//		return strconv.FormatFloat(token.ValueFloat, 'f', -1, 64)
+//	}
+//	// need to handle unexpected better than this:
+//	return ""
+//}
 
 func parseBye(g *Game, tokens []Token) int {
 	logMsg("ParseBye")
@@ -119,27 +119,15 @@ func parsePrint(g *Game, tokens []Token) int {
 		return ErNotEnoughParameters
 	}
 	nextToken := tokens[1]
-	// validate next token (must be "number of string")
-	if nextToken.Type == MaVariableFloat ||
-		nextToken.Type == MaVariableInteger ||
-		nextToken.Type == MaVariableString ||
-		nextToken.Type == LiFloat ||
-		nextToken.Type == LiInteger ||
-		nextToken.Type == LiString {
-	} else {
-		return ErNumberOrStringNeeded
+	// trim the symbol as necessary based on type then call print
+	if nextToken.Type == LiFloat ||
+		nextToken.Type == LiInteger {
+		return internalPrint(g, nextToken.Symbol)
 	}
-	// now convert to string if required then call print
-	var text string
-	if nextToken.Type == LiString || nextToken.Type == MaVariableString {
-		text = nextToken.ValueString
-		return internalPrint(g, text)
-	} else {
-		// should be numeric so convert
-		text = numberValueToString(nextToken)
-		return internalPrint(g, text)
-
+	if nextToken.Type == MaVariableString {
+		return internalPrint(g, nextToken.Symbol[1:len(nextToken.Symbol)-1])
 	}
+	// handle bad type for print here:
 	return 0
 }
 
@@ -155,8 +143,29 @@ func parseInternalProcedureCall(g *Game, tokens []Token) int {
 	return 0
 }
 
-func parseVariableAssignment() int {
+func parseVariableAssignment(g *Game, tokens []Token) int {
 	logMsg("ParseVariableAssignment")
+	// Token 0 is defines the variable that will store the result.  Token 1 is the assignment
+	// symbol (this has already been checked by the time this function has been called).  Token 2
+	// is either a literal or a value.  At least 3 tokens are therefore required.
+	// After Token 2 there has to be an operator followed by a literal or variable and so on.
+
+	// First decide if it's a straightforward assignment of a literal or variable that doesn't need
+	// further evaluation:
+	if len(tokens) == 3 {
+		// must be a straightforward assignment so try to evaluate it
+		// only thing to validate here is that a string can't be assigned to number - double check that!
+		if tokens[0].Type == LiNumber && tokens[2].Type == LiString {
+			return ErNumericExpressionNeeded
+		}
+		if tokens[2].Type == LiNumber ||
+			tokens[2].Type == LiString {
+			// assign literal to variable in store
+			logMsg("Assign value " + tokens[2].Symbol + " to variable " + tokens[0].Symbol)
+			g.Store[tokens[0].Symbol] = []nimgobus.StoreItem{{tokens[2].Type, tokens[2].Symbol}}
+		}
+
+	}
 	return 0
 }
 
@@ -184,7 +193,7 @@ func parseTokens(g *Game, tokens []Token) int {
 			return parseInternalProcedureCall(g, statement)
 		}
 		if statementType == StaVariableAssignment {
-			return parseVariableAssignment()
+			return parseVariableAssignment(g, statement)
 		}
 	}
 	return 0

@@ -78,7 +78,6 @@ func main() {
 	ebiten.SetWindowSize(1260, 1000)
 	ebiten.SetWindowTitle("RM BASICx64")
 	ebiten.SetWindowResizable(true)
-
 	// Create a new game and pass it to RunGame method
 	game := NewGame()
 	if err := ebiten.RunGame(game); err != nil {
