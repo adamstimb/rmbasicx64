@@ -1,7 +1,5 @@
 package main
 
-import "github.com/adamstimb/nimgobus"
-
 // Statement types defined here
 const (
 	StaVariableAssignment       = 3000
@@ -105,32 +103,6 @@ func getStatementType(tokens []Token) int {
 //	return ""
 //}
 
-func parseBye(g *Game, tokens []Token) int {
-	logMsg("ParseBye")
-	if len(tokens) > 1 {
-		return ErEndOfInstructionExpected
-	}
-	return internalBye(g)
-}
-
-func parsePrint(g *Game, tokens []Token) int {
-	logMsg("ParsePrint")
-	if len(tokens) == 1 {
-		return ErNotEnoughParameters
-	}
-	nextToken := tokens[1]
-	// trim the symbol as necessary based on type then call print
-	if nextToken.Type == LiFloat ||
-		nextToken.Type == LiInteger {
-		return internalPrint(g, nextToken.Symbol)
-	}
-	if nextToken.Type == MaVariableString {
-		return internalPrint(g, nextToken.Symbol[1:len(nextToken.Symbol)-1])
-	}
-	// handle bad type for print here:
-	return 0
-}
-
 func parseInternalProcedureCall(g *Game, tokens []Token) int {
 	logMsg("ParseInternalProcedureCall")
 	firstToken := tokens[0]
@@ -143,6 +115,55 @@ func parseInternalProcedureCall(g *Game, tokens []Token) int {
 	return 0
 }
 
+// resolveVariable tries to get a variable's value from the store
+func resolveVariable(g *Game, token Token) (string, int) {
+	item, exists := g.Store[token.Symbol]
+	if exists {
+		// variable exists and therefore has a value
+		return item[0].Value, 0
+	} else {
+		// variable does not exist so return error code
+		return "", ErVariableWithoutAnyValue
+	}
+}
+
+func parseStringExpression(g *Game, tokens []Token) (string, int) {
+	logMsg("ParseStringExpression")
+	// The only string expression supported by RM Basic is string concatenation so we look for this
+	// pattern only: | [string variable / string literal] ... + |
+	result := ""
+	expectValue := true
+	for _, token := range tokens {
+		if expectValue {
+			// if we expect a value then it must be a string literal or string variable
+			if token.Type != LiString && token.Type != MaVariableString {
+				return "", ErInvalidExpressionFound
+			}
+			if token.Type == LiString {
+				// is a string literal so concat it to result
+				result = result + token.Symbol
+			}
+			if token.Type == MaVariableString {
+				// is a string variable so try to get value and concat it to result
+				value, err := resolveVariable(g, token)
+				if err != 0 {
+					return "", err
+				} else {
+					result = result + value
+				}
+			}
+		} else {
+			// if we don't expect a value then it must be an addition symbol
+			if token.Type != MaAddition {
+				return "", ErInvalidExpressionFound
+			}
+		}
+
+	}
+	logMsg("result=" + result)
+	return result, 0
+}
+
 func parseVariableAssignment(g *Game, tokens []Token) int {
 	logMsg("ParseVariableAssignment")
 	// Token 0 is defines the variable that will store the result.  Token 1 is the assignment
@@ -152,20 +173,21 @@ func parseVariableAssignment(g *Game, tokens []Token) int {
 
 	// First decide if it's a straightforward assignment of a literal or variable that doesn't need
 	// further evaluation:
-	if len(tokens) == 3 {
-		// must be a straightforward assignment so try to evaluate it
-		// only thing to validate here is that a string can't be assigned to number - double check that!
-		if tokens[0].Type == LiNumber && tokens[2].Type == LiString {
-			return ErNumericExpressionNeeded
-		}
-		if tokens[2].Type == LiNumber ||
-			tokens[2].Type == LiString {
-			// assign literal to variable in store
-			logMsg("Assign value " + tokens[2].Symbol + " to variable " + tokens[0].Symbol)
-			g.Store[tokens[0].Symbol] = []nimgobus.StoreItem{{tokens[2].Type, tokens[2].Symbol}}
-		}
+	//if len(tokens) == 3 {
+	//	// must be a straightforward assignment so try to evaluate it
+	//	// only thing to validate here is that a string can't be assigned to number - double check that!
+	//	if tokens[0].Type == LiNumber && tokens[2].Type == LiString {
+	//		return ErNumericExpressionNeeded
+	//	}
+	//	if tokens[2].Type == LiNumber ||
+	//		tokens[2].Type == LiString {
+	//		// assign literal to variable in store
+	//		logMsg("Assign value " + tokens[2].Symbol + " to variable " + tokens[0].Symbol)
+	//		g.Store[tokens[0].Symbol] = []nimgobus.StoreItem{{tokens[2].Type, tokens[2].Symbol}}
+	//	}
+	//
+	//}
 
-	}
 	return 0
 }
 

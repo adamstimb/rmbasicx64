@@ -78,11 +78,6 @@ func TokenizeNumericalLiterals(code string) []Token {
 	for i, location := range r.FindAllIndex(b, -1) {
 		var thisToken Token
 		// integer or float? or bool?
-		//if numericalVals[i] == float64(int64(numericalVals[i])) {
-		//	thisToken.Type = LiInteger
-		//} else {
-		//	thisToken.Type = LiFloat
-		//}
 
 		// covert back to string to get the symbol
 		thisToken.Type = LiNumber
