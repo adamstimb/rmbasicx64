@@ -154,11 +154,15 @@ func parseStringExpression(g *Game, tokens []Token) (string, int) {
 					result = result + value
 				}
 			}
+			// set flag to expect addition symbol in next token
+			expectValue = false
 		} else {
 			// if we don't expect a value then it must be an addition symbol
 			if token.Type != MaAddition {
 				return "", ErInvalidExpressionFound
 			}
+			// set flag to expect string valyue in next token
+			expectValue = true
 		}
 	}
 	logMsg("result=" + result)

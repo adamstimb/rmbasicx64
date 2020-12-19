@@ -40,7 +40,7 @@ func TokenizeStringLiterals(code string) []Token {
 	// get all string values and put them in this list
 	stringVals := []string{}
 	for _, stringVal := range r.FindAll(b, -1) {
-		stringVals = append(stringVals, string(stringVal))
+		stringVals = append(stringVals, string(stringVal[1:len(stringVal)-1])) // don't include the ""s
 	}
 	// get all string value positions and add to tokens
 	for i, location := range r.FindAllIndex(b, -1) {

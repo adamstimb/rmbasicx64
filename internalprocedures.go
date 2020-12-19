@@ -29,11 +29,11 @@ func parsePrint(g *Game, tokens []Token) int {
 		return internalPrint(g, nextToken.Symbol)
 	}
 	if nextToken.Type == LiString {
-		return internalPrint(g, nextToken.Symbol[1:len(nextToken.Symbol)-1])
+		return internalPrint(g, nextToken.Symbol)
 	}
-	// if printing a variable then try to resolve it and print value
+	// if printing a string variable or string expression then try to evaluate it and print result
 	if nextToken.Type == MaVariableString {
-		value, err := resolveVariable(g, nextToken)
+		value, err := parseStringExpression(g, tokens[1:])
 		if err != 0 {
 			return err
 		} else {
