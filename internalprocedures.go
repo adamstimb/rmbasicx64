@@ -28,8 +28,17 @@ func parsePrint(g *Game, tokens []Token) int {
 		nextToken.Type == LiInteger {
 		return internalPrint(g, nextToken.Symbol)
 	}
-	if nextToken.Type == MaVariableString {
+	if nextToken.Type == LiString {
 		return internalPrint(g, nextToken.Symbol[1:len(nextToken.Symbol)-1])
+	}
+	// if printing a variable then try to resolve it and print value
+	if nextToken.Type == MaVariableString {
+		value, err := resolveVariable(g, nextToken)
+		if err != 0 {
+			return err
+		} else {
+			return internalPrint(g, value)
+		}
 	}
 	// handle bad type for print here:
 	return 0

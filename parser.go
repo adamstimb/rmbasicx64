@@ -1,5 +1,7 @@
 package main
 
+import "github.com/adamstimb/nimgobus"
+
 // Statement types defined here
 const (
 	StaVariableAssignment       = 3000
@@ -158,7 +160,6 @@ func parseStringExpression(g *Game, tokens []Token) (string, int) {
 				return "", ErInvalidExpressionFound
 			}
 		}
-
 	}
 	logMsg("result=" + result)
 	return result, 0
@@ -169,25 +170,18 @@ func parseVariableAssignment(g *Game, tokens []Token) int {
 	// Token 0 is defines the variable that will store the result.  Token 1 is the assignment
 	// symbol (this has already been checked by the time this function has been called).  Token 2
 	// is either a literal or a value.  At least 3 tokens are therefore required.
-	// After Token 2 there has to be an operator followed by a literal or variable and so on.
-
-	// First decide if it's a straightforward assignment of a literal or variable that doesn't need
-	// further evaluation:
-	//if len(tokens) == 3 {
-	//	// must be a straightforward assignment so try to evaluate it
-	//	// only thing to validate here is that a string can't be assigned to number - double check that!
-	//	if tokens[0].Type == LiNumber && tokens[2].Type == LiString {
-	//		return ErNumericExpressionNeeded
-	//	}
-	//	if tokens[2].Type == LiNumber ||
-	//		tokens[2].Type == LiString {
-	//		// assign literal to variable in store
-	//		logMsg("Assign value " + tokens[2].Symbol + " to variable " + tokens[0].Symbol)
-	//		g.Store[tokens[0].Symbol] = []nimgobus.StoreItem{{tokens[2].Type, tokens[2].Symbol}}
-	//	}
-	//
-	//}
-
+	if len(tokens) < 3 {
+		return ErInvalidExpressionFound
+	}
+	// if the assignment is to a string variable then parse string expression
+	if tokens[0].Type == MaVariableString {
+		value, err := parseStringExpression(g, tokens[2:])
+		if err != 0 {
+			return err
+		} else {
+			g.Store[tokens[0].Symbol] = []nimgobus.StoreItem{{0, value}}
+		}
+	}
 	return 0
 }
 
