@@ -100,12 +100,18 @@ func format(code string, tokens []Token) string {
 			commentIndex = thisToken.Location[1] + 1
 		}
 	}
-	//tokens = sortTokens(tokens)
 	var formatted string
 	for i, thisToken := range tokens {
-		formatted = formatted + thisToken.Symbol
+		// literal strings require ""
+		var thisSymbol string
+		if thisToken.Type == LiString {
+			thisSymbol = "\"" + thisToken.Symbol + "\""
+		} else {
+			thisSymbol = thisToken.Symbol
+		}
+		formatted = formatted + thisSymbol
 		// If REM append the comment that we collected earlier and break
-		if thisToken.Symbol == "REM" {
+		if thisSymbol == "REM" {
 			formatted = formatted + " " + code[commentIndex:]
 			break
 		}

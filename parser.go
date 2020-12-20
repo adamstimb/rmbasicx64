@@ -137,15 +137,21 @@ func parseStringExpression(g *Game, tokens []Token) (string, int) {
 	expectValue := true
 	for _, token := range tokens {
 		if expectValue {
-			// if we expect a value then it must be a string literal or string variable
-			if token.Type != LiString && token.Type != MaVariableString {
+			// If we expect a value then it can be a literal or a variable.  Anything else
+			// will be invalid
+			if token.Type != LiString && token.Type != LiNumber &&
+				token.Type != MaVariableString && token.Type != MaVariableInteger &&
+				token.Type != MaVariableFloat {
 				return "", ErInvalidExpressionFound
 			}
-			if token.Type == LiString {
-				// is a string literal so concat it to result
+			// Otherwise handle the literal or variable:
+			if token.Type == LiString || token.Type == LiNumber {
+				// is a string literal so concat its symbol to result
 				result = result + token.Symbol
 			}
-			if token.Type == MaVariableString {
+			// if it's a variable then resolve its value and concat
+			if token.Type == MaVariableString || token.Type == MaVariableFloat ||
+				token.Type == MaVariableInteger {
 				// is a string variable so try to get value and concat it to result
 				value, err := resolveVariable(g, token)
 				if err != 0 {
