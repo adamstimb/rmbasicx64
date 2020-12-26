@@ -175,6 +175,35 @@ func parseStringExpression(g *Game, tokens []Token) (string, int) {
 	return result, 0
 }
 
+func parseNumericalExpression(g *Game, tokens []Token) (float64, int) {
+	logMsg("ParseNumericalExpression")
+	// Parse a numerical expression in the same order that RM Basic did it:
+	// 	+ -				unary plus minus
+	// 	* / \ 			multiplication division
+	// 	+ -				addition subtraction
+	//	< <= >= etc.	relational operators
+	//	NOT				unary NOT
+	//	AND				logical AND
+	//	OR				logical OR
+	//	XOR				logical XOR
+	//
+	// Tokens will be reparsed and stored in this slice:
+	var newTokens []Token
+	// Unary minus:
+	// 1. find all minus tokens
+	minusTokens := findToken(tokens, MaSubtraction)
+	// 2. recognize a unary minus as a minus with either no token in front of it, or a token that is not
+	// a literal or variable
+	for i, thisMinusToken := range minusTokens {
+		// first off, trailing minus is not allowed
+		if i == len(tokens)-2 {
+			// is a trailing minus so raise error
+			return 0, ErNumericVariableNeeded
+		}
+	}
+
+}
+
 func parseVariableAssignment(g *Game, tokens []Token) int {
 	logMsg("ParseVariableAssignment")
 	// Token 0 is defines the variable that will store the result.  Token 1 is the assignment
