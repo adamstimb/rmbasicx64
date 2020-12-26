@@ -61,6 +61,26 @@ func (s *Scanner) addToken(tokenType int, lexeme string, literal string) {
 // scanToken generates a token for the current rune
 func (s *Scanner) scanToken() {
 	switch r := s.advance(); r {
+	// evaluate two-character tokens first
+	case ':' && s.match('='):
+		s.addToken(Assign, "", "")
+	case '/' && s.match('/'):
+		s.addToken(IntegerDivision, "", "")
+	case '<' && s.match('>'):
+		s.addToken(Inequality1)
+	case '>' && s.match('<'):
+		s.addToken(Inequality2)
+	case '<' && s.match('='):
+		s.addToken(LessThanEqualTo1)
+	case '=' && s.match('<'):
+		s.addToken(LessThanEqualTo2)
+	case '>' && s.match('='):
+		s.addToken(GreaterThanEqualTo1)
+	case '=' && s.match('>'):
+		s.addToken(GreaterThanEqualTo2)
+	case '=' && s.match('='):
+		s.addToken(InterestinglyEqual)
+	// then single-character
 	case '(':
 		s.addToken(LeftParen, "", "")
 	case ')':
