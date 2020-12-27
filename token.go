@@ -37,6 +37,10 @@ const (
 	GreaterThanEqualTo2
 	InterestinglyEqual
 
+	// Literals
+	StringLiteral
+	NumericalLiteral
+
 	// Keywords
 	ABS
 	AND
