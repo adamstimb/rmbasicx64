@@ -1,10 +1,12 @@
 package main
 
-import "unicode"
+import (
+	"strings"
+	"unicode"
+)
 
-// Scanner describes a type with methods for scanning a line of source
-// code and generating tokens.  To tokenize a line of source code all
-// we do is this:
+// Scanner describes a type with methods for scanning a line of source code and generating
+// tokens.  To tokenize a line of source code all we do is this:
 // 		s := &Scanner{}
 //		tokens, err := s.ScanTokens(source)
 // To handle errors err will be zero is successful otherwise it will correspond
@@ -104,6 +106,46 @@ func (s *Scanner) getNumber(firstRune rune) {
 	s.addToken(NumericalLiteral, stringVal, "")
 }
 
+// getIdentifier extracts an identifier (keyword, variable, etc) from the source code
+func (s *Scanner) getIdentifier(firstRune rune) {
+	// collect first rune
+	stringVal := ""
+	stringVal = append(stringVal, firstRune)
+	// then collect rest of the identifier
+	for unicode.IsDigit(s.peek()) || unicode.IsLetter(s.peek()) {
+		stringVal = append(stringVal, s.advance())
+	}
+	// Got the full identifier so now see if it matches a keyword.  If it matches a
+	// keyword add token with the token type identifying the keyword, otherwise add
+	// a variable (which in RM Basic then requires checking for a trailing $ or % to
+	// get the type, if any)
+	keywords := keywordMap()
+	if t, found := keywords[strings.ToUpper(stringVal)]; found {
+		// is a keyword
+		s.addToken(t, "", "")
+	} else {
+		// is a variable
+		// Check for trailing $ and % to determine type.  Initially assume float (no trailing
+		// char)
+		t := FloatVariable
+		if s.peek() == '$' {
+			// is string ($) so consume this char and add token
+			stringVal = append(stringVal, s.advance())
+			s.addToken(StringVariable, "", "")
+			return
+		}
+		if s.peek() == '%' {
+			// is integer (%) ...
+			stringVal = append(stringVal, s.advance())
+			s.addToken(IntegerVariable, "", "")
+			return
+		}
+		// otherwise is float
+		s.addToken(FloatVariable, "", "")
+		return
+	}
+}
+
 // scanToken generates a token for the current rune
 func (s *Scanner) scanToken() {
 	switch r := s.advance(); r {
@@ -185,11 +227,11 @@ func (s *Scanner) scanToken() {
 	default:
 		// numerical literal
 		if unicode.IsDigit(r) {
-			// number(r)
+			s.getNumber(r)
 			return
 		}
 		if unicode.IsLetter(r) {
-			// identifier()
+			// identifier(r)
 			return
 		}
 	}
