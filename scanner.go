@@ -122,19 +122,14 @@ func (s *Scanner) getIdentifier(firstRune rune) {
 	keywords := keywordMap()
 	if t, found := keywords[strings.ToUpper(string(stringVal))]; found {
 		// is a keyword
-		s.addToken(t, "", "")
+		s.addToken(t, strings.ToUpper(string(stringVal)), "")
 	} else {
-		// Is another kind of identifier.  Check for trailing $ and % to determine type before
-		// adding token:
+		// Is another kind of identifier.  Check for trailing $ and % before adding token:
 		if s.peek() == '$' || s.peek() == '%' {
 			// consume this char and add token
 			stringVal = append(stringVal, s.advance())
-			s.addToken(Identifier, "", "")
-			return
 		}
-		// otherwise add as-is
-		s.addToken(Identifier, "", "")
-		return
+		s.addToken(Identifier, strings.ToTitle(string(stringVal)), "")
 	}
 }
 

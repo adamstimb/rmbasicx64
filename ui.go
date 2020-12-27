@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/adamstimb/nimgobus"
-	"github.com/hajimehoshi/ebiten"
-
 	"github.com/elastic/go-sysinfo"
 )
 
@@ -58,42 +55,19 @@ func raiseError(g *Game, err int) {
 // BASIC programs
 func editor(g *Game) {
 	logMsg("editor")
-	// Initialize a program listing (this will eventually be the 'NEW' command)
-	g.Store["programListing"] = []nimgobus.StoreItem{}
-	g.Store["nextLineNumber"] = []nimgobus.StoreItem{{0, "10"}}
 	// loop to prompt user for input and process that input
 	for {
-		// AUTO will use this:
-		//nextLineNumber, err := strconv.Atoi(g.Store["nextLineNumber"][0].Value)
-
 		// get raw console input for parsing
 		rawInput := g.Input(":")
 		logMsg("rawInput=" + rawInput)
 		if rawInput != "" {
-			tokens := tokenize(rawInput)
-			formattedCode := format(rawInput, tokens)
-			// If the first token is for a literal integer than this is a program line so
-			// commit it to the programListing in the store, otherwise try to execute it.
-			if tokens[0].Type == LiInteger {
-				// Commit line to programListing
-				formattedCode := format(rawInput, tokens)
-				logMsg("Commit to programListing: " + formattedCode)
-				// append store key for this line to programListing
-				g.Store["programListing"] = append(g.Store["programListing"], nimgobus.StoreItem{0, tokens[0].Symbol})
-				// add store key with formatted code as value
-				g.Store[tokens[0].Symbol] = []nimgobus.StoreItem{{0, formattedCode}}
-			} else {
-				// Execute line
-				err := parseTokens(g, tokens)
-				if err > 0 {
-					g.Print(formattedCode)
-					raiseError(g, err)
-				}
+			s := &Scanner{}
+			tokens := s.ScanTokens(rawInput)
+			logMsg(rawInput)
+			for _, token := range tokens {
+				PrintToken(token)
 			}
-		} else {
-			println(ebiten.CurrentTPS())
 		}
-
 	}
 }
 
