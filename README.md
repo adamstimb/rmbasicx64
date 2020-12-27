@@ -23,7 +23,7 @@ Still laying the ground work.  Some features work, some don't, some aren't imple
 
 - [Ebiten](https://ebiten.org/)
 - [nimgobus](https://github.com/adamstimb/nimgobus)
-- [Crafting Interpreters](https://craftinginterpreters.com/) - Much of the scanning & parsing code was refactored in to Go from the Java examples in this book
+- [Crafting Interpreters](https://craftinginterpreters.com/) - Much of the scanning & parsing code was inspired by the examples in this book
 - [Facebook](https://www.facebook.com/RMNimbus/) - RM Nimbus facebook group
 - [Center for Computing History](http://www.computinghistory.org.uk/) - original RM Nimbus manuals and technical data
 - [Center for Computing History - RM Nimbus PC (Later Beige Model)](http://www.computinghistory.org.uk/det/41537/RM-Nimbus-PC-(Later-Beige-Model)/) - online exhibit

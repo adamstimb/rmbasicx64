@@ -8,10 +8,7 @@ import (
 // Scanner describes a type with methods for scanning a line of source code and generating
 // tokens.  To tokenize a line of source code all we do is this:
 // 		s := &Scanner{}
-//		tokens, err := s.ScanTokens(source)
-// To handle errors err will be zero is successful otherwise it will correspond
-// to one of the error constants.  To get the exact position where the error was detected
-// use s.CurrentPosition
+//		tokens := s.ScanTokens(source)
 type Scanner struct {
 	Source          string
 	Tokens          []Token
