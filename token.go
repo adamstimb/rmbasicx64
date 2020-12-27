@@ -44,6 +44,7 @@ const (
 	StringLiteral
 	NumericalLiteral
 	Identifier
+	Comment
 
 	// Keywords
 	ABS

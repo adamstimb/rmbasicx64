@@ -122,6 +122,10 @@ func (s *Scanner) getIdentifier(firstRune rune) {
 	if t, found := keywords[strings.ToUpper(string(stringVal))]; found {
 		// is a keyword
 		s.addToken(t, strings.ToUpper(string(stringVal)), "")
+		// Handle special case of REM (comment)
+		if t == REM {
+			s.getComment()
+		}
 	} else {
 		// Is another kind of identifier.  Check for trailing $ and % before adding token:
 		if s.peek() == '$' || s.peek() == '%' {
@@ -130,6 +134,13 @@ func (s *Scanner) getIdentifier(firstRune rune) {
 		}
 		s.addToken(Identifier, strings.Title(string(stringVal)), "")
 	}
+}
+
+// getComment assumes all remaining code is a comment, and puts it into a final token
+func (s *Scanner) getComment() {
+	stringVal := s.Source[s.CurrentPosition+1:]
+	s.addToken(Comment, stringVal, "")
+	s.CurrentPosition = len(s.Source)
 }
 
 // scanToken generates a token for the current rune
@@ -235,6 +246,8 @@ func (s *Scanner) scanToken() {
 			s.getIdentifier(r)
 			return
 		}
+		// unexpected
+
 	}
 }
 
