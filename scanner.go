@@ -139,6 +139,7 @@ func (s *Scanner) getIdentifier(firstRune rune) {
 // getComment assumes all remaining code is a comment, and puts it into a final token
 func (s *Scanner) getComment() {
 	stringVal := s.Source[s.CurrentPosition+1:]
+	s.advance()
 	s.addToken(Comment, stringVal, "")
 	s.CurrentPosition = len(s.Source)
 }
