@@ -63,7 +63,6 @@ func editor(g *Game) {
 		if rawInput != "" {
 			s := &Scanner{}
 			tokens := s.ScanTokens(rawInput)
-			logMsg(rawInput)
 			for _, token := range tokens {
 				PrintToken(token)
 			}

@@ -63,8 +63,8 @@ func (s *Scanner) match(r rune) bool {
 }
 
 // addToken creates a new token and adds it the slice of tokens
-func (s *Scanner) addToken(tokenType int, lexeme string, literal string) {
-	s.Tokens = append(s.Tokens, Token{tokenType, lexeme, literal, s.CurrentPosition - 1})
+func (s *Scanner) addToken(TokenType int, lexeme string, literal string) {
+	s.Tokens = append(s.Tokens, Token{TokenType, lexeme, literal, s.CurrentPosition - 1})
 }
 
 // getString extracts a string literal from the source code
@@ -73,11 +73,10 @@ func (s *Scanner) getString() {
 	for s.peek() != '"' && !s.isAtEnd() {
 		stringVal = append(stringVal, s.advance())
 	}
-	// handle unterminated string
-	if s.isAtEnd() {
-		logMsg("Unterminated string") // error handling tbc
+	// handle string termination then add the token
+	if s.peek() == '"' {
+		s.advance()
 	}
-	// otherwise add the token
 	s.addToken(StringLiteral, string(stringVal), "")
 }
 
@@ -129,7 +128,7 @@ func (s *Scanner) getIdentifier(firstRune rune) {
 			// consume this char and add token
 			stringVal = append(stringVal, s.advance())
 		}
-		s.addToken(Identifier, strings.ToTitle(string(stringVal)), "")
+		s.addToken(Identifier, strings.Title(string(stringVal)), "")
 	}
 }
 
@@ -142,84 +141,84 @@ func (s *Scanner) scanToken() {
 	// one- and two-character tokens
 	case ':':
 		if s.match('=') {
-			s.addToken(Assign, "", "")
+			s.addToken(Assign, ":=", "")
 			return
 		}
-		s.addToken(Colon, "", "")
+		s.addToken(Colon, ":", "")
 		return
 	case '/':
 		if s.match('/') {
-			s.addToken(IntegerDivision, "", "")
+			s.addToken(IntegerDivision, "//", "")
 			return
 		}
-		s.addToken(ForwardSlash, "", "")
+		s.addToken(ForwardSlash, "/", "")
 		return
 	case '<':
 		if s.match('>') {
-			s.addToken(Inequality1, "", "")
+			s.addToken(Inequality1, "<>", "")
 			return
 		}
 		if s.match('=') {
-			s.addToken(LessThanEqualTo1, "", "")
+			s.addToken(LessThanEqualTo1, "<=", "")
 			return
 		}
-		s.addToken(LessThan, "", "")
+		s.addToken(LessThan, "<", "")
 		return
 	case '>':
 		if s.match('<') {
-			s.addToken(Inequality2, "", "")
+			s.addToken(Inequality2, "><", "")
 			return
 		}
 		if s.match('=') {
-			s.addToken(GreaterThanEqualTo2, "", "")
+			s.addToken(GreaterThanEqualTo2, ">=", "")
 		}
-		s.addToken(GreaterThan, "", "")
+		s.addToken(GreaterThan, ">", "")
 		return
 	case '=':
 		if s.match('<') {
-			s.addToken(LessThanEqualTo2, "", "")
+			s.addToken(LessThanEqualTo2, "=<", "")
 			return
 		}
 		if s.match('>') {
-			s.addToken(GreaterThanEqualTo2, "", "")
+			s.addToken(GreaterThanEqualTo2, "=>", "")
 			return
 		}
 		if s.match('=') {
-			s.addToken(InterestinglyEqual, "", "")
+			s.addToken(InterestinglyEqual, "==", "")
 			return
 		}
-		s.addToken(Equal, "", "")
+		s.addToken(Equal, "=", "")
 		return
 	// then single-character
 	case '(':
-		s.addToken(LeftParen, "", "")
+		s.addToken(LeftParen, "(", "")
 		return
 	case ')':
-		s.addToken(RightParen, "", "")
+		s.addToken(RightParen, ")", "")
 		return
 	case ',':
-		s.addToken(Comma, "", "")
+		s.addToken(Comma, ",", "")
 		return
 	case '.':
-		s.addToken(Dot, "", "")
+		s.addToken(Dot, ".", "")
 		return
 	case '-':
-		s.addToken(Minus, "", "")
+		s.addToken(Minus, "-", "")
 		return
 	case '+':
-		s.addToken(Plus, "", "")
+		s.addToken(Plus, "+", "")
 		return
 	case ';':
-		s.addToken(Semicolon, "", "")
+		s.addToken(Semicolon, ";", "")
 		return
 	case '\\':
-		s.addToken(BackSlash, "", "")
+		s.addToken(BackSlash, "\\", "")
 		return
 	case '*':
-		s.addToken(Star, "", "")
+		s.addToken(Star, "*", "")
 		return
 	case '^':
-		s.addToken(Exponential, "", "")
+		s.addToken(Exponential, "^", "")
 		return
 	// string literal
 	case '"':
