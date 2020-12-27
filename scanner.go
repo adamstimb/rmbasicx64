@@ -42,10 +42,10 @@ func (s *Scanner) peek() rune {
 // peekNext returns the next rune but does not consume it. If we're at the end of the source
 // then newline \n is returned instead.
 func (s *Scanner) peekNext() rune {
-	if s.CurrentPosition + 1 >= len(s.Source) {
+	if s.CurrentPosition+1 >= len(s.Source) {
 		return rune('\n')
 	} else {
-		return rune(s.Source[s.CurrentPosition + 1])
+		return rune(s.Source[s.CurrentPosition+1])
 	}
 }
 
@@ -90,7 +90,7 @@ func (s *Scanner) getNumber(firstRune rune) {
 	for {
 		if unicode.IsDigit(s.peek()) {
 			// consume this digit
-			stringVal = append(stringVal, s.advance())	
+			stringVal = append(stringVal, s.advance())
 			continue
 		}
 		// look for fractional part
@@ -152,16 +152,25 @@ func (s *Scanner) scanToken() {
 	// ignore whitespace
 	case ' ':
 		return
-	// evaluate two-character tokens first
-	case ':' && s.match('='):
-		s.addToken(Assign, "", "")
-		return
-	case '/' && s.match('/'):
-		s.addToken(IntegerDivision, "", "")
-		return
-	case '<' && s.match('>'):
-		s.addToken(Inequality1)
-		return
+	// one- and two-character tokens
+	case ':':
+		if s.match('=') {
+			s.addToken(Assign, "", "")
+			return
+		}
+		s.addToken(Colon, "", "")
+	case '/':
+		if s.match('/') {
+			s.addToken(IntegerDivision, "", "")
+			return
+		}
+		s.addToken(ForwardSlash, "", "")
+	case '<':
+		if s.match('>') {
+			s.addToken(Inequality1, "", "")
+			return
+		}
+		s.addToken(LessThan, "", "")
 	case '>' && s.match('<'):
 		s.addToken(Inequality2)
 		return
@@ -202,10 +211,7 @@ func (s *Scanner) scanToken() {
 	case ';':
 		s.addToken(Semicolon, "", "")
 		return
-	case '/':
-		s.addToken(ForwardSlash, "", "")
-		return
-	case '\':
+	case '\\':
 		s.addToken(BackSlash, "", "")
 		return
 	case '*':
@@ -213,9 +219,6 @@ func (s *Scanner) scanToken() {
 		return
 	case '^':
 		s.addToken(Exponential, "", "")
-		return
-	case '<':
-		s.addToken(LessThan, "", "")
 		return
 	case '>':
 		s.addToken(GreaterThan, "", "")
