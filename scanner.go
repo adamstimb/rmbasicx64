@@ -69,7 +69,7 @@ func (s *Scanner) addToken(tokenType int, lexeme string, literal string) {
 
 // getString extracts a string literal from the source code
 func (s *Scanner) getString() {
-	stringVal := ""
+	stringVal := []rune{}
 	for s.peek() != '"' && !s.isAtEnd() {
 		stringVal = append(stringVal, s.advance())
 	}
@@ -78,13 +78,13 @@ func (s *Scanner) getString() {
 		logMsg("Unterminated string") // error handling tbc
 	}
 	// otherwise add the token
-	s.addToken(StringLiteral, stringVal, "")
+	s.addToken(StringLiteral, string(stringVal), "")
 }
 
 // getNumber extracts a numerical literal from the source code
 func (s *Scanner) getNumber(firstRune rune) {
 	// collect first rune
-	stringVal := ""
+	stringVal := []rune{}
 	stringVal = append(stringVal, firstRune)
 	// then collect the rest of the literal
 	for {
@@ -103,13 +103,13 @@ func (s *Scanner) getNumber(firstRune rune) {
 		break
 	}
 	// test if parsable number then add token
-	s.addToken(NumericalLiteral, stringVal, "")
+	s.addToken(NumericalLiteral, string(stringVal), "")
 }
 
 // getIdentifier extracts an identifier (keyword, variable, etc) from the source code
 func (s *Scanner) getIdentifier(firstRune rune) {
 	// collect first rune
-	stringVal := ""
+	stringVal := []rune{}
 	stringVal = append(stringVal, firstRune)
 	// then collect rest of the identifier
 	for unicode.IsDigit(s.peek()) || unicode.IsLetter(s.peek()) {
@@ -120,28 +120,20 @@ func (s *Scanner) getIdentifier(firstRune rune) {
 	// a variable (which in RM Basic then requires checking for a trailing $ or % to
 	// get the type, if any)
 	keywords := keywordMap()
-	if t, found := keywords[strings.ToUpper(stringVal)]; found {
+	if t, found := keywords[strings.ToUpper(string(stringVal))]; found {
 		// is a keyword
 		s.addToken(t, "", "")
 	} else {
-		// is a variable
-		// Check for trailing $ and % to determine type.  Initially assume float (no trailing
-		// char)
-		t := FloatVariable
-		if s.peek() == '$' {
-			// is string ($) so consume this char and add token
+		// Is another kind of identifier.  Check for trailing $ and % to determine type before
+		// adding token:
+		if s.peek() == '$' || s.peek() == '%' {
+			// consume this char and add token
 			stringVal = append(stringVal, s.advance())
-			s.addToken(StringVariable, "", "")
+			s.addToken(Identifier, "", "")
 			return
 		}
-		if s.peek() == '%' {
-			// is integer (%) ...
-			stringVal = append(stringVal, s.advance())
-			s.addToken(IntegerVariable, "", "")
-			return
-		}
-		// otherwise is float
-		s.addToken(FloatVariable, "", "")
+		// otherwise add as-is
+		s.addToken(Identifier, "", "")
 		return
 	}
 }
@@ -159,35 +151,49 @@ func (s *Scanner) scanToken() {
 			return
 		}
 		s.addToken(Colon, "", "")
+		return
 	case '/':
 		if s.match('/') {
 			s.addToken(IntegerDivision, "", "")
 			return
 		}
 		s.addToken(ForwardSlash, "", "")
+		return
 	case '<':
 		if s.match('>') {
 			s.addToken(Inequality1, "", "")
 			return
 		}
+		if s.match('=') {
+			s.addToken(LessThanEqualTo1, "", "")
+			return
+		}
 		s.addToken(LessThan, "", "")
-	case '>' && s.match('<'):
-		s.addToken(Inequality2)
 		return
-	case '<' && s.match('='):
-		s.addToken(LessThanEqualTo1)
+	case '>':
+		if s.match('<') {
+			s.addToken(Inequality2, "", "")
+			return
+		}
+		if s.match('=') {
+			s.addToken(GreaterThanEqualTo2, "", "")
+		}
+		s.addToken(GreaterThan, "", "")
 		return
-	case '=' && s.match('<'):
-		s.addToken(LessThanEqualTo2)
-		return
-	case '>' && s.match('='):
-		s.addToken(GreaterThanEqualTo1)
-		return
-	case '=' && s.match('>'):
-		s.addToken(GreaterThanEqualTo2)
-		return
-	case '=' && s.match('='):
-		s.addToken(InterestinglyEqual)
+	case '=':
+		if s.match('<') {
+			s.addToken(LessThanEqualTo2, "", "")
+			return
+		}
+		if s.match('>') {
+			s.addToken(GreaterThanEqualTo2, "", "")
+			return
+		}
+		if s.match('=') {
+			s.addToken(InterestinglyEqual, "", "")
+			return
+		}
+		s.addToken(Equal, "", "")
 		return
 	// then single-character
 	case '(':
@@ -220,9 +226,6 @@ func (s *Scanner) scanToken() {
 	case '^':
 		s.addToken(Exponential, "", "")
 		return
-	case '>':
-		s.addToken(GreaterThan, "", "")
-		return
 	// string literal
 	case '"':
 		s.getString()
@@ -233,8 +236,9 @@ func (s *Scanner) scanToken() {
 			s.getNumber(r)
 			return
 		}
+		// identifier
 		if unicode.IsLetter(r) {
-			// identifier(r)
+			s.getIdentifier(r)
 			return
 		}
 	}

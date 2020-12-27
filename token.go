@@ -36,14 +36,12 @@ const (
 	GreaterThanEqualTo1
 	GreaterThanEqualTo2
 	InterestinglyEqual
+	Equal
 
 	// Literals
 	StringLiteral
 	NumericalLiteral
 	Identifier
-	FloatVariable
-	IntegerVariable
-	StringVariable
 
 	// Keywords
 	ABS
