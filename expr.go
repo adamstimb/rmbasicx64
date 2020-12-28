@@ -1,7 +1,7 @@
 package main
 
-type Expr interface {
-	// ?
+type Expr struct {
+	expression []Token
 }
 
 type Binary struct {
