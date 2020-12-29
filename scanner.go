@@ -60,8 +60,8 @@ func (s *Scanner) match(r rune) bool {
 }
 
 // addToken creates a new token and adds it the slice of tokens
-func (s *Scanner) addToken(TokenType int, lexeme string, literal string) {
-	s.Tokens = append(s.Tokens, Token{TokenType, lexeme, literal, s.CurrentPosition - 1})
+func (s *Scanner) addToken(TokenType int, literal string) {
+	s.Tokens = append(s.Tokens, Token{TokenType, literal})
 }
 
 // getString extracts a string literal from the source code
@@ -74,7 +74,7 @@ func (s *Scanner) getString() {
 	if s.peek() == '"' {
 		s.advance()
 	}
-	s.addToken(StringLiteral, string(stringVal), "")
+	s.addToken(StringLiteral, string(stringVal))
 }
 
 // getNumber extracts a numerical literal from the source code
@@ -99,7 +99,7 @@ func (s *Scanner) getNumber(firstRune rune) {
 		break
 	}
 	// test if parsable number then add token
-	s.addToken(NumericalLiteral, string(stringVal), "")
+	s.addToken(NumericalLiteral, string(stringVal))
 }
 
 // getIdentifier extracts an identifier (keyword, variable, etc) from the source code
@@ -118,7 +118,7 @@ func (s *Scanner) getIdentifier(firstRune rune) {
 	keywords := keywordMap()
 	if t, found := keywords[strings.ToUpper(string(stringVal))]; found {
 		// is a keyword
-		s.addToken(t, strings.ToUpper(string(stringVal)), "")
+		s.addToken(t, strings.ToUpper(string(stringVal)))
 		// Handle special case of REM (comment)
 		if t == REM {
 			s.getComment()
@@ -129,7 +129,7 @@ func (s *Scanner) getIdentifier(firstRune rune) {
 			// consume this char and add token
 			stringVal = append(stringVal, s.advance())
 		}
-		s.addToken(Identifier, strings.Title(string(stringVal)), "")
+		s.addToken(Identifier, strings.Title(string(stringVal)))
 	}
 }
 
@@ -137,7 +137,7 @@ func (s *Scanner) getIdentifier(firstRune rune) {
 func (s *Scanner) getComment() {
 	stringVal := s.Source[s.CurrentPosition+1:]
 	s.advance()
-	s.addToken(Comment, stringVal, "")
+	s.addToken(Comment, stringVal)
 	s.CurrentPosition = len(s.Source)
 }
 
@@ -150,84 +150,84 @@ func (s *Scanner) scanToken() {
 	// one- and two-character tokens
 	case ':':
 		if s.match('=') {
-			s.addToken(Assign, ":=", "")
+			s.addToken(Assign, ":=")
 			return
 		}
-		s.addToken(Colon, ":", "")
+		s.addToken(Colon, ":")
 		return
 	case '/':
 		if s.match('/') {
-			s.addToken(IntegerDivision, "//", "")
+			s.addToken(IntegerDivision, "//")
 			return
 		}
-		s.addToken(ForwardSlash, "/", "")
+		s.addToken(ForwardSlash, "/")
 		return
 	case '<':
 		if s.match('>') {
-			s.addToken(Inequality1, "<>", "")
+			s.addToken(Inequality1, "<>")
 			return
 		}
 		if s.match('=') {
-			s.addToken(LessThanEqualTo1, "<=", "")
+			s.addToken(LessThanEqualTo1, "<=")
 			return
 		}
-		s.addToken(LessThan, "<", "")
+		s.addToken(LessThan, "<")
 		return
 	case '>':
 		if s.match('<') {
-			s.addToken(Inequality2, "><", "")
+			s.addToken(Inequality2, "><")
 			return
 		}
 		if s.match('=') {
-			s.addToken(GreaterThanEqualTo2, ">=", "")
+			s.addToken(GreaterThanEqualTo2, ">=")
 		}
-		s.addToken(GreaterThan, ">", "")
+		s.addToken(GreaterThan, ">")
 		return
 	case '=':
 		if s.match('<') {
-			s.addToken(LessThanEqualTo2, "=<", "")
+			s.addToken(LessThanEqualTo2, "=<")
 			return
 		}
 		if s.match('>') {
-			s.addToken(GreaterThanEqualTo2, "=>", "")
+			s.addToken(GreaterThanEqualTo2, "=>")
 			return
 		}
 		if s.match('=') {
-			s.addToken(InterestinglyEqual, "==", "")
+			s.addToken(InterestinglyEqual, "==")
 			return
 		}
-		s.addToken(Equal, "=", "")
+		s.addToken(Equal, "=")
 		return
 	// then single-character
 	case '(':
-		s.addToken(LeftParen, "(", "")
+		s.addToken(LeftParen, "(")
 		return
 	case ')':
-		s.addToken(RightParen, ")", "")
+		s.addToken(RightParen, ")")
 		return
 	case ',':
-		s.addToken(Comma, ",", "")
+		s.addToken(Comma, ",")
 		return
 	case '.':
-		s.addToken(Dot, ".", "")
+		s.addToken(Dot, ".")
 		return
 	case '-':
-		s.addToken(Minus, "-", "")
+		s.addToken(Minus, "-")
 		return
 	case '+':
-		s.addToken(Plus, "+", "")
+		s.addToken(Plus, "+")
 		return
 	case ';':
-		s.addToken(Semicolon, ";", "")
+		s.addToken(Semicolon, ";")
 		return
 	case '\\':
-		s.addToken(BackSlash, "\\", "")
+		s.addToken(BackSlash, "\\")
 		return
 	case '*':
-		s.addToken(Star, "*", "")
+		s.addToken(Star, "*")
 		return
 	case '^':
-		s.addToken(Exponential, "^", "")
+		s.addToken(Exponential, "^")
 		return
 	// string literal
 	case '"':
