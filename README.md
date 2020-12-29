@@ -23,8 +23,8 @@ Still laying the ground work.  Some features work, some don't, some aren't imple
 
 - [Ebiten](https://ebiten.org/) - A dead simple 2D game library for Go
 - [nimgobus](https://github.com/adamstimb/nimgobus) - An RM Nimbus-inspired Ebiten extension for building retro apps and games in Go
-- [Crafting Interpreters](https://craftinginterpreters.com/) - Much of the scanning code was inspired by the examples in this book
-- [Writing an Interpreter in Go](https://interpreterbook.com/) - The parsing code was inspired by the examples in this book
+- [Crafting Interpreters](https://craftinginterpreters.com/) - The scanner code was inspired by the examples in this book
+- [Writing an Interpreter in Go](https://interpreterbook.com/) - The parser code was inspired by the examples in this book
 - [Facebook](https://www.facebook.com/RMNimbus/) - RM Nimbus facebook group
 - [Center for Computing History](http://www.computinghistory.org.uk/) - original RM Nimbus manuals and technical data
 - [Center for Computing History - RM Nimbus PC (Later Beige Model)](http://www.computinghistory.org.uk/det/41537/RM-Nimbus-PC-(Later-Beige-Model)/) - online exhibit
