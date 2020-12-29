@@ -108,7 +108,7 @@ func (s *Scanner) getIdentifier(firstRune rune) {
 	stringVal := []rune{}
 	stringVal = append(stringVal, firstRune)
 	// then collect rest of the identifier
-	for unicode.IsDigit(s.peek()) || unicode.IsLetter(s.peek()) {
+	for unicode.IsDigit(s.peek()) || unicode.IsLetter(s.peek()) || s.peek() == '_' {
 		stringVal = append(stringVal, s.advance())
 	}
 	// Got the full identifier so now see if it matches a keyword.  If it matches a
@@ -244,8 +244,8 @@ func (s *Scanner) scanToken() {
 			s.getIdentifier(r)
 			return
 		}
-		// unexpected
-
+		// unexpected chars are tokenized as Illegal
+		s.addToken(Illegal, string(r))
 	}
 }
 

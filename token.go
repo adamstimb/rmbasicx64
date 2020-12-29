@@ -43,6 +43,7 @@ const (
 	NumericalLiteral
 	Identifier
 	Comment
+	Illegal
 
 	// Keywords
 	ABS
