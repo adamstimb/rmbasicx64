@@ -21,13 +21,13 @@ func PadString(s string) string {
 	return " " + s + " "
 }
 
-// Token defines the actual token returned from the tokenizer and sent to the parser
+//// Token defines the actual token returned from the tokenizer and sent to the parser
 // and code-formatter
-type Token struct {
-	Type     int
-	Location []int
-	Symbol   string
-}
+//type Token struct {
+//	Type     int
+//	Location []int
+//	Symbol   string
+//}
 
 // TokenizeStringLiterals returns tokens of string literals
 func TokenizeStringLiterals(code string) []Token {
