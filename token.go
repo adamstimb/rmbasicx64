@@ -41,7 +41,7 @@ const (
 	// Literals
 	StringLiteral
 	NumericalLiteral
-	Identifier
+	IdentifierLiteral
 	Comment
 	Illegal
 

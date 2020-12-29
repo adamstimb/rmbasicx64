@@ -129,7 +129,7 @@ func (s *Scanner) getIdentifier(firstRune rune) {
 			// consume this char and add token
 			stringVal = append(stringVal, s.advance())
 		}
-		s.addToken(Identifier, strings.Title(string(stringVal)))
+		s.addToken(IdentifierLiteral, strings.Title(string(stringVal)))
 	}
 }
 

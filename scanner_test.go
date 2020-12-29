@@ -35,11 +35,11 @@ func TestScanner(t *testing.T) {
 		{
 			Source: "this% :=that$+ meh - 5.1234",
 			ExpectedTokens: []Token{
-				{Identifier, "This%"},
+				{IdentifierLiteral, "This%"},
 				{Assign, ":="},
-				{Identifier, "That$"},
+				{IdentifierLiteral, "That$"},
 				{Plus, "+"},
-				{Identifier, "Meh"},
+				{IdentifierLiteral, "Meh"},
 				{Minus, "-"},
 				{NumericalLiteral, "5.1234"},
 			},
@@ -47,11 +47,11 @@ func TestScanner(t *testing.T) {
 		{
 			Source: "my_var% := yet_more_var% + foo_var",
 			ExpectedTokens: []Token{
-				{Identifier, "My_var%"},
+				{IdentifierLiteral, "My_var%"},
 				{Assign, ":="},
-				{Identifier, "Yet_more_var%"},
+				{IdentifierLiteral, "Yet_more_var%"},
 				{Plus, "+"},
-				{Identifier, "Foo_var"},
+				{IdentifierLiteral, "Foo_var"},
 			},
 		},
 	}
