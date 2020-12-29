@@ -257,6 +257,7 @@ func (s *Scanner) ScanTokens(source string) []Token {
 	for !s.isAtEnd() {
 		s.scanToken()
 	}
-	// All done
+	// All done - add end of line token and return
+	s.addToken(EndOfLine, "")
 	return s.Tokens
 }

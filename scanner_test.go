@@ -15,6 +15,7 @@ func TestScanner(t *testing.T) {
 			ExpectedTokens: []Token{
 				{PRINT, "PRINT"},
 				{StringLiteral, "Hello!"},
+				{EndOfLine, ""},
 			},
 		},
 		{
@@ -23,6 +24,7 @@ func TestScanner(t *testing.T) {
 				{PRINT, "PRINT"},
 				{StringLiteral, "Illegal char"},
 				{Illegal, "{"},
+				{EndOfLine, ""},
 			},
 		},
 		{
@@ -30,6 +32,7 @@ func TestScanner(t *testing.T) {
 			ExpectedTokens: []Token{
 				{REM, "REM"},
 				{Comment, "This is a comment"},
+				{EndOfLine, ""},
 			},
 		},
 		{
@@ -42,6 +45,7 @@ func TestScanner(t *testing.T) {
 				{IdentifierLiteral, "Meh"},
 				{Minus, "-"},
 				{NumericalLiteral, "5.1234"},
+				{EndOfLine, ""},
 			},
 		},
 		{
@@ -52,6 +56,7 @@ func TestScanner(t *testing.T) {
 				{IdentifierLiteral, "Yet_more_var%"},
 				{Plus, "+"},
 				{IdentifierLiteral, "Foo_var"},
+				{EndOfLine, ""},
 			},
 		},
 	}

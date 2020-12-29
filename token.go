@@ -44,6 +44,7 @@ const (
 	IdentifierLiteral
 	Comment
 	Illegal
+	EndOfLine
 
 	// Keywords
 	ABS
