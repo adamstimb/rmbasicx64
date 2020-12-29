@@ -34,6 +34,7 @@ type LetStatement struct {
 
 func (ls *LetStatement) statementNode() {}
 func (ls *LetStatement) TokenLiteral() string {
+	println("TokenLiteral()")
 	return ls.Token.Literal
 }
 

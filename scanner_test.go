@@ -36,6 +36,16 @@ func TestScanner(t *testing.T) {
 			},
 		},
 		{
+			Source: "let x = 5",
+			ExpectedTokens: []Token{
+				{LET, "LET"},
+				{IdentifierLiteral, "X"},
+				{Equal, "="},
+				{NumericalLiteral, "5"},
+				{EndOfLine, ""},
+			},
+		},
+		{
 			Source: "this% :=that$+ meh - 5.1234",
 			ExpectedTokens: []Token{
 				{IdentifierLiteral, "This%"},
@@ -67,10 +77,10 @@ func TestScanner(t *testing.T) {
 		tokens := s.ScanTokens(test.Source)
 		for j, token := range tokens {
 			if token.TokenType != test.ExpectedTokens[j].TokenType {
-				t.Fatalf("TestScanner [%d]: TokenType [%d] expected, got [%d] from source [%q]", i, test.ExpectedTokens[j].TokenType, token.TokenType, test.Source)
+				t.Fatalf("Token [%d]: TokenType [%d] expected, got [%d] from source [%q]", i, test.ExpectedTokens[j].TokenType, token.TokenType, test.Source)
 			}
 			if token.Literal != test.ExpectedTokens[j].Literal {
-				t.Fatalf("TestScanner [%d]: Literal [%q] expected, got [%q] from source [%q]", i, test.ExpectedTokens[j].Literal, token.Literal, test.Source)
+				t.Fatalf("Token [%d]: Literal [%q] expected, got [%q] from source [%q]", i, test.ExpectedTokens[j].Literal, token.Literal, test.Source)
 			}
 		}
 	}
