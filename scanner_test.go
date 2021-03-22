@@ -28,6 +28,14 @@ func TestScanner(t *testing.T) {
 			},
 		},
 		{
+			Source: "Print \"So-called \"\"test\"\" this is\"",
+			ExpectedTokens: []Token{
+				{PRINT, "PRINT"},
+				{StringLiteral, "So-called \"\"test\"\" this is"},
+				{EndOfLine, ""},
+			},
+		},
+		{
 			Source: "Rem This is a comment",
 			ExpectedTokens: []Token{
 				{REM, "REM"},

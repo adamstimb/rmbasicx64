@@ -68,8 +68,24 @@ func (s *Scanner) addToken(TokenType int, literal string) {
 // getString extracts a string literal from the source code
 func (s *Scanner) getString() {
 	stringVal := []rune{}
-	for s.peek() != '"' && !s.isAtEnd() {
-		stringVal = append(stringVal, s.advance())
+	//for s.peek() != '"' && !s.isAtEnd() {
+	//	stringVal = append(stringVal, s.advance())
+	//}
+	for !s.isAtEnd() {
+		// handle literal double-double quote "" or terminating double quote "
+		if s.peek() == '"' && s.peekNext() == '"' {
+			// is double-double quote so consume both and continue collecting
+			stringVal = append(stringVal, s.advance())
+			stringVal = append(stringVal, s.advance())
+			continue
+		}
+		if s.peek() == '"' && s.peekNext() != '"' {
+			// is double quote so stop collecting
+			break
+		} else {
+			// is part of the string literal so collect it
+			stringVal = append(stringVal, s.advance())
+		}
 	}
 	// handle string termination then add the token
 	if s.peek() == '"' {
