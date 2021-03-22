@@ -147,7 +147,22 @@ func (s *Scanner) getIdentifier(firstRune rune) {
 			// consume this char and add token
 			stringVal = append(stringVal, s.advance())
 		}
-		s.addToken(IdentifierLiteral, strings.Title(string(stringVal)))
+		// Enforce the Rm_Basic_Camel_Case_Thing by splitting around _, titling the words
+		// and recombining
+		newStringVal := ""
+		subwords := strings.Split(string(stringVal), "_")
+		if len(subwords) == 0 {
+			s.addToken(IdentifierLiteral, strings.Title(strings.ToLower(string(stringVal))))
+		} else {
+			for _, subword := range subwords {
+				if newStringVal == "" {
+					newStringVal = newStringVal + strings.Title(strings.ToLower(subword))
+				} else {
+					newStringVal = newStringVal + "_" + strings.Title(strings.ToLower(subword))
+				}
+			}
+			s.addToken(IdentifierLiteral, newStringVal)
+		}
 	}
 }
 

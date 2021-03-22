@@ -63,6 +63,13 @@ func TestScanner(t *testing.T) {
 			},
 		},
 		{
+			Source: "rM_baSic_HAD_thiS_Weird_camel_case_tHING_GoInG_On$",
+			ExpectedTokens: []Token{
+				{IdentifierLiteral, "Rm_Basic_Had_This_Weird_Camel_Case_Thing_Going_On$"},
+				{EndOfLine, ""},
+			},
+		},
+		{
 			Source: "this% :=that$+ meh - 5.1234",
 			ExpectedTokens: []Token{
 				{IdentifierLiteral, "This%"},
@@ -78,11 +85,11 @@ func TestScanner(t *testing.T) {
 		{
 			Source: "my_var% := yet_more_var% + foo_var",
 			ExpectedTokens: []Token{
-				{IdentifierLiteral, "My_var%"},
+				{IdentifierLiteral, "My_Var%"},
 				{Assign, ":="},
-				{IdentifierLiteral, "Yet_more_var%"},
+				{IdentifierLiteral, "Yet_More_Var%"},
 				{Plus, "+"},
-				{IdentifierLiteral, "Foo_var"},
+				{IdentifierLiteral, "Foo_Var"},
 				{EndOfLine, ""},
 			},
 		},
