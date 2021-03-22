@@ -1,7 +1,6 @@
 package main
 
 import (
-	"regexp"
 	"strings"
 	"unicode"
 )
@@ -78,24 +77,6 @@ func (s *Scanner) getString() {
 	s.addToken(StringLiteral, string(stringVal))
 }
 
-// getHexLiteral extracts a hex literal from the source code
-func (s *Scanner) getHexLiteral(firstRune rune) {
-	hexVal := []rune{}
-	hexVal = append(hexVal, firstRune)
-	for {
-		r := s.peek()
-		isHex, _ := regexp.Match("[0-9a-fA-F]", []byte(string(r)))
-		if isHex {
-			// is hex so consume and add to value
-			hexVal = append(hexVal, s.advance())
-		} else {
-			// not hex so stop collection
-			break
-		}
-	}
-	s.addToken(HexLiteral, strings.ToUpper(string(hexVal)))
-}
-
 // getNumber extracts a numerical literal from the source code
 func (s *Scanner) getNumber(firstRune rune) {
 	// collect first rune
@@ -117,6 +98,7 @@ func (s *Scanner) getNumber(firstRune rune) {
 		// not a valid rune for numerical literal so stop collecting
 		break
 	}
+	// test if parsable number then add token
 	s.addToken(NumericalLiteral, string(stringVal))
 }
 
@@ -251,14 +233,6 @@ func (s *Scanner) scanToken() {
 	case '"':
 		s.getString()
 		return
-	// hex literal
-	case '&':
-		// if next char is hex-ish then assume is hex literal and get it
-		nextChar := s.peekNext()
-		isHex, _ := regexp.Match("[0-9a-fA-F]", []byte(string(nextChar)))
-		if isHex {
-			s.getHexLiteral(r)
-		}
 	default:
 		// numerical literal
 		if unicode.IsDigit(r) {

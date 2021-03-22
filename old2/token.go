@@ -41,7 +41,6 @@ const (
 	// Literals
 	StringLiteral
 	NumericalLiteral
-	HexLiteral
 	IdentifierLiteral
 	Comment
 	Illegal
@@ -418,5 +417,5 @@ func PrintToken(thisToken Token) {
 	if err != nil {
 		panic(err)
 	}
-	println(string(out))
+	logMsg(string(out))
 }

@@ -46,16 +46,6 @@ func TestScanner(t *testing.T) {
 			},
 		},
 		{
-			Source: "let y = &5d",
-			ExpectedTokens: []Token{
-				{LET, "LET"},
-				{IdentifierLiteral, "Y"},
-				{Equal, "="},
-				{HexLiteral, "&5D"},
-				{EndOfLine, ""},
-			},
-		},
-		{
 			Source: "this% :=that$+ meh - 5.1234",
 			ExpectedTokens: []Token{
 				{IdentifierLiteral, "This%"},
