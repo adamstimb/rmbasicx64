@@ -46,6 +46,13 @@ func TestScanner(t *testing.T) {
 			},
 		},
 		{
+			Source: "&554a3d2c",
+			ExpectedTokens: []Token{
+				{HexLiteral, "&554A3D2C"},
+				{EndOfLine, ""},
+			},
+		},
+		{
 			Source: "let y = &5d",
 			ExpectedTokens: []Token{
 				{LET, "LET"},
