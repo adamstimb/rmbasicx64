@@ -303,8 +303,8 @@ func (s *Scanner) scanToken() {
 	}
 }
 
-// ScanTokens scans the source code and returns a slice of tokens
-func (s *Scanner) ScanTokens(source string) []Token {
+// Scan scans the source code and returns a slice of tokens
+func (s *Scanner) Scan(source string) []Token {
 	s.Source = source
 	s.Tokens = []Token{}
 	s.CurrentPosition = 0

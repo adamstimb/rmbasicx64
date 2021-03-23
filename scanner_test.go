@@ -106,7 +106,7 @@ func TestScanner(t *testing.T) {
 	// test that we always get expected tokens
 	s := &Scanner{}
 	for i, test := range tests {
-		tokens := s.ScanTokens(test.Source)
+		tokens := s.Scan(test.Source)
 		for j, token := range tokens {
 			if token.TokenType != test.ExpectedTokens[j].TokenType {
 				t.Fatalf("Token [%d]: TokenType [%d] expected, got [%d] from source [%q]", i, test.ExpectedTokens[j].TokenType, token.TokenType, test.Source)
