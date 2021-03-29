@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"log"
 	"math"
 	"strconv"
 )
@@ -121,6 +123,7 @@ func (i *Interpreter) Evaluate(tokens []Token) (errorCode, badTokenIndex int, me
 			i.operatorStack = append([]Token{t}, i.operatorStack...)
 			continue
 		}
+		// TODO: Unexpected {t.TokenType} in expression
 	}
 	for len(i.operatorStack) > 0 {
 		postfix = append(postfix, i.operatorStack[0])
@@ -141,14 +144,16 @@ func (i *Interpreter) Evaluate(tokens []Token) (errorCode, badTokenIndex int, me
 				if val, err := strconv.ParseFloat(t.Literal, 64); err == nil {
 					operand = val
 				} else {
-					return 1, 0, "Could not interpret this as a number", 0
+					// TODO: Could not interpret {t.Literal} as a number
+					return 2, 0, fmt.Sprintf("Could not interpret %s as a number", t.Literal), 0
 				}
 			}
 			if t.TokenType == IdentifierLiteral {
 				if _, ok := i.store[t.Literal]; ok {
 					valfloat64, ok := i.store[t.Literal].(float64)
 					if !ok {
-						return 1, 0, "Could not interpret stored value as a number", 0
+						// This should not happen therefore fatal
+						log.Fatalf("Fatal error!  Could not interpret stored value {i.store[t.Literal]} as a number.  To report this error please create an issue at https://github.com/adamstimb/rmbasicx64/issues")
 					} else {
 						operand = valfloat64
 					}
@@ -185,6 +190,7 @@ func (i *Interpreter) Evaluate(tokens []Token) (errorCode, badTokenIndex int, me
 			i.operandStack = append([]float64{result}, i.operandStack...)
 		}
 	}
+	// Evaluation successful, errorCode = 0
 	return 0, 0, "", result
 }
 
@@ -202,7 +208,7 @@ func (i *Interpreter) RunSegment(tokens []Token) (errorCode, badTokenIndex int, 
 				if val, err := strconv.ParseFloat(tokens[2].Literal, 64); err == nil {
 					i.store[tokens[0].Literal] = val
 				} else {
-					return 1, 0, "Could not interpret this as a number"
+					return 2, 2, fmt.Sprintf("Could not interpret %s as a number", tokens[2].Literal)
 				}
 			} else {
 				// evaluate result then store
@@ -211,7 +217,7 @@ func (i *Interpreter) RunSegment(tokens []Token) (errorCode, badTokenIndex int, 
 			}
 		}
 	}
-	return 0, 0, "Expected a keyword, line number, expression, variable assignment or procedure call"
+	return 1, 0, "Expected a keyword, line number, expression, variable assignment or procedure call"
 }
 
 // RunLine attempts to run a line of BASIC code and replies with an error code, the index
@@ -234,9 +240,11 @@ func (i *Interpreter) RunLine(code string) (errorCode, badTokenIndex int, messag
 		segments = append(segments, this_segment)
 	}
 	// run each segment
-	for _, tokens := range segments {
-		errorCode, badTokenIndex, message = i.RunSegment(tokens)
+	badTokenOffset := 0
+	for _, segment := range segments {
+		errorCode, badTokenIndex, message = i.RunSegment(segment)
+		badTokenOffset += len(segment)
 		// if errorCode != 0 break
 	}
-	return errorCode, badTokenIndex, message
+	return errorCode, badTokenIndex + badTokenOffset, message
 }
