@@ -219,8 +219,7 @@ func TestInterpreterVariableAssignment(t *testing.T) {
 	interp := &Interpreter{}
 	for _, test := range tests {
 		interp.Init()
-		interp.Tokenize(test.Source)
-		_, _, _ = interp.Execute()
+		interp.RunLine(test.Source)
 		// Can variable be found?
 		if _, ok := interp.store[test.ExpectedName]; ok {
 			valfloat64, ok := interp.store[test.ExpectedName].(float64)

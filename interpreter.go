@@ -188,28 +188,55 @@ func (i *Interpreter) Evaluate(tokens []Token) (errorCode, badTokenIndex int, me
 	return 0, 0, "", result
 }
 
-// Execute attempts to execute the currentTokens and replies with an error code, the index
+// RunSegment attempts to execute a segment of tokens and replies with an error code, the index
 // of the token where parsing failed, and a message, or something.
-func (i *Interpreter) Execute() (errorCode, badTokenIndex int, message string) {
+func (i *Interpreter) RunSegment(tokens []Token) (errorCode, badTokenIndex int, message string) {
 	// 1. Try variable assignment.  Must be at least 4 tokens.
-	if len(i.currentTokens) >= 4 {
+	if len(tokens) >= 4 {
 		// First 2 tokens must be identifier literal followed by = (equal) or := (assign)
-		if i.currentTokens[0].TokenType == IdentifierLiteral &&
-			(i.currentTokens[1].TokenType == Equal || i.currentTokens[1].TokenType == Assign) {
+		if tokens[0].TokenType == IdentifierLiteral &&
+			(tokens[1].TokenType == Equal || tokens[1].TokenType == Assign) {
 			// If exactly four tokens and the 3rd token is a numerical literal then we don't
 			// have anything to evaluate
-			if len(i.currentTokens) == 4 && i.currentTokens[2].TokenType == NumericalLiteral {
-				if val, err := strconv.ParseFloat(i.currentTokens[2].Literal, 64); err == nil {
-					i.store[i.currentTokens[0].Literal] = val
+			if len(tokens) == 4 && tokens[2].TokenType == NumericalLiteral {
+				if val, err := strconv.ParseFloat(tokens[2].Literal, 64); err == nil {
+					i.store[tokens[0].Literal] = val
 				} else {
 					return 1, 0, "Could not interpret this as a number"
 				}
 			} else {
 				// evaluate result then store
-				_, _, _, result := i.Evaluate(i.currentTokens[2:])
-				i.store[i.currentTokens[0].Literal] = result
+				_, _, _, result := i.Evaluate(tokens[2:])
+				i.store[tokens[0].Literal] = result
 			}
 		}
 	}
 	return 0, 0, "Expected a keyword, line number, expression, variable assignment or procedure call"
+}
+
+// RunLine attempts to run a line of BASIC code and replies with an error code, the index
+// of the token where parsing failed, and a message, or something.
+func (i *Interpreter) RunLine(code string) (errorCode, badTokenIndex int, message string) {
+	// tokenize the code
+	i.Tokenize(code)
+	// split the tokens into executable segments for each : token found
+	segments := make([][]Token, 0)
+	this_segment := make([]Token, 0)
+	for _, token := range i.currentTokens {
+		if token.TokenType != Colon {
+			this_segment = append(this_segment, token)
+		} else {
+			segments = append(segments, this_segment)
+			this_segment = make([]Token, 0)
+		}
+	}
+	if len(this_segment) > 0 {
+		segments = append(segments, this_segment)
+	}
+	// run each segment
+	for _, tokens := range segments {
+		errorCode, badTokenIndex, message = i.RunSegment(tokens)
+		// if errorCode != 0 break
+	}
+	return errorCode, badTokenIndex, message
 }
