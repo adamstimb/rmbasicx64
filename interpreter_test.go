@@ -1,6 +1,8 @@
 package main
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestInterpreterTokenize(t *testing.T) {
 
@@ -189,6 +191,75 @@ func TestInterpreterEvaluate(t *testing.T) {
 	}
 }
 
+func TestFormatCode(t *testing.T) {
+
+	// test data
+	type test struct {
+		Source              string
+		HighlightTokenIndex int
+		ExpectedCode        string
+	}
+	tests := []test{
+		{
+			Source:              "xpOs% := 542     + 3223  +    hello$",
+			HighlightTokenIndex: -1,
+			ExpectedCode:        "Xpos% := 542 + 3223 + Hello$",
+		},
+		{
+			Source:              "xpOs% := 542     + 3223  +    hello$",
+			HighlightTokenIndex: 2,
+			ExpectedCode:        "Xpos% := --> 542 + 3223 + Hello$",
+		},
+		{
+			Source:              "xpOs% := 542     + 3223  +    hello$",
+			HighlightTokenIndex: -1,
+			ExpectedCode:        "Xpos% := 542 + 3223 + Hello$",
+		},
+		{
+			Source:              "xpOs% := 542     + 3223  +    hello$",
+			HighlightTokenIndex: 0,
+			ExpectedCode:        "--> Xpos% := 542 + 3223 + Hello$",
+		},
+	}
+	// test that we always get expected result
+	interp := &Interpreter{}
+	for _, test := range tests {
+		interp.Init()
+		formattedCode := interp.FormatCode(test.Source, test.HighlightTokenIndex)
+		if formattedCode != test.ExpectedCode {
+			t.Fatalf("Expected [%s] but got [%s]", test.ExpectedCode, formattedCode)
+		}
+	}
+}
+
+func TestEvaluateErrorHandling(t *testing.T) {
+
+	// test data
+	type test struct {
+		Source            string
+		ExpectedErrorCode int
+	}
+	tests := []test{
+		{
+			Source:            "foo = bar + 2",
+			ExpectedErrorCode: HasNotBeenDefined,
+		},
+		{
+			Source:            "foo = foo + 2",
+			ExpectedErrorCode: HasNotBeenDefined,
+		},
+	}
+	// test that we always get expected result
+	interp := &Interpreter{}
+	for _, test := range tests {
+		interp.Init()
+		errorCode, _, _ := interp.RunLine(test.Source)
+		if errorCode != test.ExpectedErrorCode {
+			t.Fatalf("Expected errorCode %d (%s) but got %d (%s)", test.ExpectedErrorCode, errorMessage(test.ExpectedErrorCode), errorCode, errorMessage(errorCode))
+		}
+	}
+}
+
 func TestInterpreterVariableAssignment(t *testing.T) {
 
 	// test data
@@ -211,6 +282,21 @@ func TestInterpreterVariableAssignment(t *testing.T) {
 		{
 			Source:        "two% := 1+ 1",
 			ExpectedName:  "Two%",
+			ExpectedValue: float64(2),
+		},
+		{
+			Source:        "x := 1.2 + 0.5",
+			ExpectedName:  "X",
+			ExpectedValue: float64(1.7),
+		},
+		{
+			Source:        "x% := 1.6",
+			ExpectedName:  "X%",
+			ExpectedValue: float64(2),
+		},
+		{
+			Source:        "x% := 1.2 + 0.5",
+			ExpectedName:  "X%",
 			ExpectedValue: float64(2),
 		},
 	}

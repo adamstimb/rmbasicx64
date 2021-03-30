@@ -11,6 +11,18 @@ func TestScanner(t *testing.T) {
 	}
 	tests := []test{
 		{
+			Source: "",
+			ExpectedTokens: []Token{
+				{EndOfLine, ""},
+			},
+		},
+		{
+			Source: "\n",
+			ExpectedTokens: []Token{
+				{EndOfLine, ""},
+			},
+		},
+		{
 			Source: "print \"Hello!\"",
 			ExpectedTokens: []Token{
 				{PRINT, "PRINT"},

@@ -308,8 +308,13 @@ func (s *Scanner) Scan(source string) []Token {
 	s.Source = source
 	s.Tokens = []Token{}
 	s.CurrentPosition = 0
-	for !s.isAtEnd() {
-		s.scanToken()
+	// Handle special case of only whitespace as input
+	if strings.TrimSpace(s.Source) == "" {
+		// is just whitespace so don't scan
+	} else {
+		for !s.isAtEnd() {
+			s.scanToken()
+		}
 	}
 	// All done - add end of line token and return
 	s.addToken(EndOfLine, "")

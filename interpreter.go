@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"strconv"
+	"strings"
 )
 
 // Interpreter is the BASIC interpreter itself and behaves as a state machine that
@@ -51,6 +52,17 @@ func IsOperand(t Token) bool {
 		if op == t.TokenType {
 			return true
 		}
+	}
+	return false
+}
+
+// IsKeyword receives a token and returns trye if the token's literal is a keyword
+// otherwise false
+func IsKeyword(t Token) bool {
+	km := keywordMap()
+	if _, ok := km[t.Literal]; ok {
+		// is a keyword
+		return true
 	}
 	return false
 }
@@ -123,7 +135,6 @@ func (i *Interpreter) Evaluate(tokens []Token) (errorCode, badTokenIndex int, me
 			i.operatorStack = append([]Token{t}, i.operatorStack...)
 			continue
 		}
-		// TODO: Unexpected {t.TokenType} in expression
 	}
 	for len(i.operatorStack) > 0 {
 		postfix = append(postfix, i.operatorStack[0])
@@ -144,8 +155,7 @@ func (i *Interpreter) Evaluate(tokens []Token) (errorCode, badTokenIndex int, me
 				if val, err := strconv.ParseFloat(t.Literal, 64); err == nil {
 					operand = val
 				} else {
-					// TODO: Could not interpret {t.Literal} as a number
-					return 2, 0, fmt.Sprintf("Could not interpret %s as a number", t.Literal), 0
+					return CouldNotInterpretAsANumber, 0, fmt.Sprintf("%s%s", t.Literal, errorMessage(CouldNotInterpretAsANumber)), 0
 				}
 			}
 			if t.TokenType == IdentifierLiteral {
@@ -153,10 +163,12 @@ func (i *Interpreter) Evaluate(tokens []Token) (errorCode, badTokenIndex int, me
 					valfloat64, ok := i.store[t.Literal].(float64)
 					if !ok {
 						// This should not happen therefore fatal
-						log.Fatalf("Fatal error!  Could not interpret stored value {i.store[t.Literal]} as a number.  To report this error please create an issue at https://github.com/adamstimb/rmbasicx64/issues")
+						log.Fatalf("Fatal error!")
 					} else {
 						operand = valfloat64
 					}
+				} else {
+					return HasNotBeenDefined, 0, fmt.Sprintf("%s%s", t.Literal, errorMessage(HasNotBeenDefined)), 0
 				}
 			}
 			// push
@@ -197,8 +209,15 @@ func (i *Interpreter) Evaluate(tokens []Token) (errorCode, badTokenIndex int, me
 // RunSegment attempts to execute a segment of tokens and replies with an error code, the index
 // of the token where parsing failed, and a message, or something.
 func (i *Interpreter) RunSegment(tokens []Token) (errorCode, badTokenIndex int, message string) {
-	// 1. Try variable assignment.  Must be at least 4 tokens.
-	if len(tokens) >= 4 {
+	// 1. Pass if empty line
+	if len(tokens) == 0 {
+		return Success, 0, ""
+	}
+	if tokens[0].TokenType == EndOfLine {
+		return Success, 0, ""
+	}
+	// 2. Try variable assignment.  Must be at least 3 tokens.
+	if len(tokens) >= 3 {
 		// First 2 tokens must be identifier literal followed by = (equal) or := (assign)
 		if tokens[0].TokenType == IdentifierLiteral &&
 			(tokens[1].TokenType == Equal || tokens[1].TokenType == Assign) {
@@ -206,18 +225,64 @@ func (i *Interpreter) RunSegment(tokens []Token) (errorCode, badTokenIndex int, 
 			// have anything to evaluate
 			if len(tokens) == 4 && tokens[2].TokenType == NumericalLiteral {
 				if val, err := strconv.ParseFloat(tokens[2].Literal, 64); err == nil {
+					// round val if variable is integer type, i.e. ends with %
+					if tokens[0].Literal[len(tokens[0].Literal)-1:] == "%" {
+						val = math.Round(val)
+					}
+					// TODO: cast to string if variable ends with $
 					i.store[tokens[0].Literal] = val
+					return Success, -1, ""
 				} else {
-					return 2, 2, fmt.Sprintf("Could not interpret %s as a number", tokens[2].Literal)
+					return CouldNotInterpretAsANumber, 2, fmt.Sprintf("%s%s", tokens[2].Literal, errorMessage(CouldNotInterpretAsANumber))
 				}
 			} else {
 				// evaluate result then store
-				_, _, _, result := i.Evaluate(tokens[2:])
-				i.store[tokens[0].Literal] = result
+				errorCode, _, message, result := i.Evaluate(tokens[2:])
+				if errorCode == Success {
+					// Evaluation was successful so store result
+					// round val if variable is integer type, i.e. ends with %
+					if tokens[0].Literal[len(tokens[0].Literal)-1:] == "%" {
+						result = math.Round(result)
+					}
+					i.store[tokens[0].Literal] = result
+					return Success, -1, ""
+				} else {
+					// Something went wrong so return error info
+					return errorCode, 2, message
+				}
+			}
+		}
+		// Catch case where a keyword has been used as a variable name to assign to
+		if IsKeyword(tokens[0]) &&
+			(tokens[1].TokenType == Equal || tokens[1].TokenType == Assign) {
+			return IsAKeywordAndCannotBeUsedAsAVariableName, 0, fmt.Sprintf("%s%s", tokens[0].Literal, errorMessage(IsAKeywordAndCannotBeUsedAsAVariableName))
+		}
+	}
+	// 3. Try built-in / keywords functions.
+	if IsKeyword(tokens[0]) {
+		// Try PRINT
+		if tokens[0].TokenType == PRINT {
+			// PRINT with no args
+			if len(tokens) == 1 {
+				fmt.Println("")
+				return Success, -1, ""
+			}
+			if len(tokens) > 1 {
+				if tokens[1].TokenType == EndOfLine {
+					// Still PRINT with no args
+					fmt.Println("")
+					return Success, -1, ""
+				}
+				if tokens[1].TokenType == StringLiteral {
+					// PRINT "hello"
+					fmt.Println(tokens[1].Literal)
+					return Success, -1, ""
+				}
 			}
 		}
 	}
-	return 1, 0, "Expected a keyword, line number, expression, variable assignment or procedure call"
+
+	return ExpectedAKeywordLineNumberExpressionVariableAssignmentOrProcedureCall, 0, errorMessage(ExpectedAKeywordLineNumberExpressionVariableAssignmentOrProcedureCall)
 }
 
 // RunLine attempts to run a line of BASIC code and replies with an error code, the index
@@ -241,10 +306,44 @@ func (i *Interpreter) RunLine(code string) (errorCode, badTokenIndex int, messag
 	}
 	// run each segment
 	badTokenOffset := 0
-	for _, segment := range segments {
+	for index, segment := range segments {
+		if index > 0 {
+			badTokenOffset += len(segments[index-1])
+		}
 		errorCode, badTokenIndex, message = i.RunSegment(segment)
-		badTokenOffset += len(segment)
-		// if errorCode != 0 break
+		if errorCode != 0 {
+			break
+		}
 	}
 	return errorCode, badTokenIndex + badTokenOffset, message
+}
+
+// FormatCode receives a line of BASIC code and returns it formatted.  If a number
+// > 0 is passed for highlightTokenIndex, the corresponding token is highlighted
+// with arrows; this is used for printing error messages.
+func (i *Interpreter) FormatCode(code string, highlightTokenIndex int) string {
+	i.Tokenize(code)
+	formattedCode := ""
+	// bump highlighter if it's pointing at :
+	if highlightTokenIndex >= 0 {
+		if i.currentTokens[highlightTokenIndex].TokenType == Colon && len(i.currentTokens) > highlightTokenIndex+1 {
+			highlightTokenIndex += 1
+		}
+	}
+	// format code and insert highlighter
+	for index, t := range i.currentTokens {
+		if index == highlightTokenIndex {
+			formattedCode += "--> "
+		}
+		if t.TokenType == StringLiteral {
+			formattedCode += "\""
+			formattedCode += t.Literal
+			formattedCode += "\""
+		} else {
+			formattedCode += t.Literal
+		}
+		formattedCode += " "
+	}
+	formattedCode = strings.TrimSpace(formattedCode)
+	return formattedCode
 }

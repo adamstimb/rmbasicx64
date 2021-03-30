@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/elastic/go-sysinfo"
 )
 
-// convert bytes to Gb
+// bToGb converts bytes to Gb
 func bToGb(b uint64) uint64 {
 	return b / 1024 / 1024 / 1024
 }
@@ -40,7 +41,12 @@ func repl(i *Interpreter) {
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Print(":")
 		code, _ := reader.ReadString('\n')
-		_, _, _ = i.RunLine(code)
+		code = strings.TrimSpace(code)
+		errorCode, badTokenIndex, message := i.RunLine(code)
+		if errorCode != Success {
+			fmt.Printf("Syntax error: %s\n", message)
+			fmt.Printf("%s\n", i.FormatCode(code, badTokenIndex))
+		}
 	}
 }
 
