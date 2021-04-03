@@ -121,7 +121,37 @@ func TestInterpreterTokenize(t *testing.T) {
 	}
 }
 
-func TestInterpreterEvaluate(t *testing.T) {
+func TestInterpreterEvaluateString(t *testing.T) {
+
+	// test data
+	type test struct {
+		Source         string
+		ExpectedResult string
+	}
+	tests := []test{
+		{
+			Source:         "\"Hey\"  + \" \"+ \"You \"   +\"Guys!\"",
+			ExpectedResult: "Hey You Guys!",
+		},
+		{
+			Source:         "\"Screaming\" + \"Lord\" + \"Sutch\"",
+			ExpectedResult: "ScreamingLordSutch",
+		},
+	}
+
+	// test that we always get expected result
+	interp := &Interpreter{}
+	for _, test := range tests {
+		interp.Init()
+		interp.Tokenize(test.Source)
+		_, _, _, result := interp.EvaluateString(interp.currentTokens)
+		if result != test.ExpectedResult {
+			t.Fatalf("Expected [%q] but got [%q] from source [%q]", test.ExpectedResult, result, test.Source)
+		}
+	}
+}
+
+func TestInterpreterEvaluateNumeric(t *testing.T) {
 
 	// test data
 	type test struct {
@@ -184,7 +214,7 @@ func TestInterpreterEvaluate(t *testing.T) {
 	for _, test := range tests {
 		interp.Init()
 		interp.Tokenize(test.Source)
-		_, _, _, result := interp.Evaluate(interp.currentTokens)
+		_, _, _, result := interp.EvaluateNumeric(interp.currentTokens)
 		if result != test.ExpectedResult {
 			t.Fatalf("Expected [%f] but got [%f] from source [%q]", test.ExpectedResult, result, test.Source)
 		}
