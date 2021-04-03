@@ -212,6 +212,7 @@ func (i *Interpreter) EvaluateNumeric(tokens []Token) (errorCode, badTokenIndex 
 	operatorStack := make([]Token, 0)
 	for _, t := range tokens {
 		if IsOperand(t) {
+			// TODO: Strings are not allowed
 			postfix = append(postfix, t)
 			continue
 		}
