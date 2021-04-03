@@ -45,7 +45,7 @@ func IsOperator(t Token) bool {
 // IsOperand receives a token and returns true if the token represents an operand
 // otherwise false
 func IsOperand(t Token) bool {
-	operands := []int{NumericalLiteral, IdentifierLiteral}
+	operands := []int{NumericalLiteral, IdentifierLiteral, StringLiteral}
 	for _, op := range operands {
 		if op == t.TokenType {
 			return true
@@ -54,7 +54,7 @@ func IsOperand(t Token) bool {
 	return false
 }
 
-// IsKeyword receives a token and returns trye if the token's literal is a keyword
+// IsKeyword receives a token and returns true if the token's literal is a keyword
 // otherwise false
 func IsKeyword(t Token) bool {
 	km := keywordMap()
@@ -94,9 +94,118 @@ func Precedence(t Token) int {
 	return precedences[t.TokenType]
 }
 
-// Evaluate receives tokens that appear to represent an expression, tries to evaluate it
+// EvaluateStrings receives tokens that appear to represent a string expression, tries to evaluate it
 // and returns the result.
-func (i *Interpreter) Evaluate(tokens []Token) (errorCode, badTokenIndex int, message string, result float64) {
+func (i *Interpreter) EvaluateString(tokens []Token) (errorCode, badTokenIndex int, message string, result string) {
+	// Make the postfix then evaluate it following Carrano's pseudocode:
+	// http://www.solomonlrussell.com/spring16/cs2/ClassSource/Week6/stackcode.html
+	postfix := make([]Token, 0)
+	operatorStack := make([]Token, 0)
+	for _, t := range tokens {
+		if IsOperand(t) {
+			postfix = append(postfix, t)
+			continue
+		}
+		if t.TokenType == LeftParen {
+			// push
+			operatorStack = append([]Token{t}, operatorStack...)
+			continue
+		}
+		if t.TokenType == RightParen {
+			// pop operator stack until matching LeftParen
+			for operatorStack[0].TokenType != LeftParen {
+				postfix = append(postfix, operatorStack[0])
+				operatorStack = operatorStack[1:]
+			}
+			// pop and continue
+			operatorStack = operatorStack[1:]
+			continue
+		}
+		if IsOperator(t) {
+			for len(operatorStack) > 0 &&
+				operatorStack[0].TokenType != LeftParen &&
+				Precedence(t) <= Precedence(operatorStack[0]) {
+				postfix = append(postfix, operatorStack[0])
+				// pop
+				operatorStack = operatorStack[1:]
+			}
+			// push
+			operatorStack = append([]Token{t}, operatorStack...)
+			continue
+		}
+	}
+	for len(operatorStack) > 0 {
+		postfix = append(postfix, operatorStack[0])
+		// pop
+		operatorStack = operatorStack[1:]
+	}
+
+	// Now evaluate the postfix:
+	operandStack := make([]string, 0)
+	for _, t := range postfix {
+		if IsOperand(t) {
+			// Get the value represented by the token.  If it's a numeric literal then it's only a
+			// string so we just grab it as-is.  If it's an identifier then we have to check if it's
+			// float64 and convert to string if so.
+			operand := ""
+			if t.TokenType == NumericalLiteral || t.TokenType == StringLiteral {
+				operand = t.Literal
+			}
+			if t.TokenType == IdentifierLiteral {
+				if _, ok := i.store[t.Literal]; ok {
+					// Handle if string
+					if t.Literal[len(tokens[0].Literal)-1:] == "$" {
+						operand = t.Literal
+					}
+					// Handle if numeric integer
+					if t.Literal[len(tokens[0].Literal)-1:] == "%" {
+						valfloat64, ok := i.store[t.Literal].(float64)
+						if !ok {
+							// This should not happen therefore fatal
+							log.Fatalf("Fatal error!")
+						} else {
+							operand = strconv.Itoa(int(valfloat64))
+						}
+					}
+					// Handle if numeric float
+					if t.Literal[len(tokens[0].Literal)-1:] != "$" && t.Literal[len(tokens[0].Literal)-1:] != "%" {
+						valfloat64, ok := i.store[t.Literal].(float64)
+						if !ok {
+							// This should not happen therefore fatal
+							log.Fatalf("Fatal error!")
+						} else {
+							operand = fmt.Sprintf("%g", valfloat64)
+						}
+					}
+				} else {
+					return HasNotBeenDefined, 0, fmt.Sprintf("%s%s", t.Literal, errorMessage(HasNotBeenDefined)), ""
+				}
+			}
+			// push
+			operandStack = append([]string{operand}, operandStack...)
+		} else {
+			operand2 := operandStack[0]
+			// pop
+			operandStack = operandStack[1:]
+			operand1 := operandStack[0]
+			// pop
+			operandStack = operandStack[1:]
+			// Apply operation to operand1 and operand2
+			switch t.TokenType {
+			case Plus:
+				result = operand1 + operand2
+			}
+			// push
+			operandStack = append([]string{result}, operandStack...)
+		}
+	}
+	// Evaluation successful, errorCode = 0
+	return 0, 0, "", result
+}
+
+// EvaluateNumeric receives tokens that appear to represent a numeric expression, tries to evaluate it
+// and returns the result.
+func (i *Interpreter) EvaluateNumeric(tokens []Token) (errorCode, badTokenIndex int, message string, result float64) {
 	// Make the postfix then evaluate it following Carrano's pseudocode:
 	// http://www.solomonlrussell.com/spring16/cs2/ClassSource/Week6/stackcode.html
 	postfix := make([]Token, 0)
@@ -218,8 +327,8 @@ func (i *Interpreter) RunSegment(tokens []Token) (errorCode, badTokenIndex int, 
 
 	// 3. Try numeric variable assignment.  Must be at least 3 tokens.
 	if len(tokens) >= 3 {
-		// First 2 tokens must be identifier literal followed by = (equal) or := (assign)
-		if tokens[0].TokenType == IdentifierLiteral &&
+		// First 2 tokens must be identifier literal that is not a string type followed by = (equal) or := (assign)
+		if (tokens[0].TokenType == IdentifierLiteral && tokens[0].Literal[len(tokens[0].Literal)-1:] != "$") &&
 			(tokens[1].TokenType == Equal || tokens[1].TokenType == Assign) {
 			// If exactly four tokens and the 3rd token is a numerical literal then we don't
 			// have anything to evaluate
@@ -229,7 +338,6 @@ func (i *Interpreter) RunSegment(tokens []Token) (errorCode, badTokenIndex int, 
 					if tokens[0].Literal[len(tokens[0].Literal)-1:] == "%" {
 						val = math.Round(val)
 					}
-					// TODO: cast to string if variable ends with $
 					i.store[tokens[0].Literal] = val
 					return Success, -1, ""
 				} else {
@@ -237,7 +345,7 @@ func (i *Interpreter) RunSegment(tokens []Token) (errorCode, badTokenIndex int, 
 				}
 			} else {
 				// evaluate result then store
-				errorCode, _, message, result := i.Evaluate(tokens[2:])
+				errorCode, _, message, result := i.EvaluateNumeric(tokens[2:])
 				if errorCode == Success {
 					// Evaluation was successful so store result
 					// round val if variable is integer type, i.e. ends with %
