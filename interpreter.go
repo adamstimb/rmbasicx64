@@ -15,8 +15,6 @@ type Interpreter struct {
 	store         map[string]interface{} // A map for storing variables and array (the key is the variable name)
 	program       map[int]string         // A map for storing a program (the key is the line number)
 	currentTokens []Token                // A line of tokens for immediate execution
-	operandStack  []float64              // The operand stack for expression evaluation
-	operatorStack []Token                // The operator stack for expressin evaluation
 }
 
 // Init initializes the Interpreter.
@@ -102,7 +100,7 @@ func (i *Interpreter) Evaluate(tokens []Token) (errorCode, badTokenIndex int, me
 	// Make the postfix then evaluate it following Carrano's pseudocode:
 	// http://www.solomonlrussell.com/spring16/cs2/ClassSource/Week6/stackcode.html
 	postfix := make([]Token, 0)
-	i.operatorStack = []Token{}
+	operatorStack := make([]Token, 0)
 	for _, t := range tokens {
 		if IsOperand(t) {
 			postfix = append(postfix, t)
@@ -110,40 +108,40 @@ func (i *Interpreter) Evaluate(tokens []Token) (errorCode, badTokenIndex int, me
 		}
 		if t.TokenType == LeftParen {
 			// push
-			i.operatorStack = append([]Token{t}, i.operatorStack...)
+			operatorStack = append([]Token{t}, operatorStack...)
 			continue
 		}
 		if t.TokenType == RightParen {
 			// pop operator stack until matching LeftParen
-			for i.operatorStack[0].TokenType != LeftParen {
-				postfix = append(postfix, i.operatorStack[0])
-				i.operatorStack = i.operatorStack[1:]
+			for operatorStack[0].TokenType != LeftParen {
+				postfix = append(postfix, operatorStack[0])
+				operatorStack = operatorStack[1:]
 			}
 			// pop and continue
-			i.operatorStack = i.operatorStack[1:]
+			operatorStack = operatorStack[1:]
 			continue
 		}
 		if IsOperator(t) {
-			for len(i.operatorStack) > 0 &&
-				i.operatorStack[0].TokenType != LeftParen &&
-				Precedence(t) <= Precedence(i.operatorStack[0]) {
-				postfix = append(postfix, i.operatorStack[0])
+			for len(operatorStack) > 0 &&
+				operatorStack[0].TokenType != LeftParen &&
+				Precedence(t) <= Precedence(operatorStack[0]) {
+				postfix = append(postfix, operatorStack[0])
 				// pop
-				i.operatorStack = i.operatorStack[1:]
+				operatorStack = operatorStack[1:]
 			}
 			// push
-			i.operatorStack = append([]Token{t}, i.operatorStack...)
+			operatorStack = append([]Token{t}, operatorStack...)
 			continue
 		}
 	}
-	for len(i.operatorStack) > 0 {
-		postfix = append(postfix, i.operatorStack[0])
+	for len(operatorStack) > 0 {
+		postfix = append(postfix, operatorStack[0])
 		// pop
-		i.operatorStack = i.operatorStack[1:]
+		operatorStack = operatorStack[1:]
 	}
 
 	// Now evaluate the postfix:
-	i.operandStack = []float64{}
+	operandStack := make([]float64, 0)
 	for _, t := range postfix {
 		if IsOperand(t) {
 			// Get the value represented by the token.  If it's a numerical
@@ -172,14 +170,14 @@ func (i *Interpreter) Evaluate(tokens []Token) (errorCode, badTokenIndex int, me
 				}
 			}
 			// push
-			i.operandStack = append([]float64{operand}, i.operandStack...)
+			operandStack = append([]float64{operand}, operandStack...)
 		} else {
-			operand2 := i.operandStack[0]
+			operand2 := operandStack[0]
 			// pop
-			i.operandStack = i.operandStack[1:]
-			operand1 := i.operandStack[0]
+			operandStack = operandStack[1:]
+			operand1 := operandStack[0]
 			// pop
-			i.operandStack = i.operandStack[1:]
+			operandStack = operandStack[1:]
 			// Apply operation to operand1 and operand2
 			switch t.TokenType {
 			case Minus:
@@ -199,7 +197,7 @@ func (i *Interpreter) Evaluate(tokens []Token) (errorCode, badTokenIndex int, me
 				// TODO: Comparitors will also just cast result to float64
 			}
 			// push
-			i.operandStack = append([]float64{result}, i.operandStack...)
+			operandStack = append([]float64{result}, operandStack...)
 		}
 	}
 	// Evaluation successful, errorCode = 0
@@ -216,7 +214,9 @@ func (i *Interpreter) RunSegment(tokens []Token) (errorCode, badTokenIndex int, 
 	if tokens[0].TokenType == EndOfLine {
 		return Success, 0, ""
 	}
-	// 2. Try variable assignment.  Must be at least 3 tokens.
+	// 2. Try string variable assignment.  Must be at least 3 tokens.
+
+	// 3. Try numeric variable assignment.  Must be at least 3 tokens.
 	if len(tokens) >= 3 {
 		// First 2 tokens must be identifier literal followed by = (equal) or := (assign)
 		if tokens[0].TokenType == IdentifierLiteral &&
