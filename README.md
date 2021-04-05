@@ -1,4 +1,4 @@
-# ![RM BASICx64](rmbasicx64Banner.png)
+# ![RM BASICx64](https://github.com/adamstimb/rmbasicx64/blob/ast/docs/rmbasicx64BannerLarge.png)
 
 _RM BASICx64 is a tribute project and is in no way linked to or endorsed by RM plc._
 
