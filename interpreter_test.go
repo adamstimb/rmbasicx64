@@ -178,6 +178,50 @@ func TestInterpreterEvaluateExpression(t *testing.T) {
 			ExpectedResult: float64(3),
 		},
 		{
+			Source:         "100 = 100",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "100.00 == 100",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "100 = 10",
+			ExpectedResult: float64(0),
+		},
+		{
+			Source:         "10 < 100",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "100 > 10",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "100 > 1000",
+			ExpectedResult: float64(0),
+		},
+		{
+			Source:         "10000 < 10",
+			ExpectedResult: float64(0),
+		},
+		{
+			Source:         "100 <= 100",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "100 >= 100",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "50 <> 50",
+			ExpectedResult: float64(0),
+		},
+		{
+			Source:         "50 <> 55",
+			ExpectedResult: float64(-1),
+		},
+		{
 			Source:         "\"Hey\"  + \" \"+ \"you\"",
 			ExpectedResult: "Hey you",
 		},

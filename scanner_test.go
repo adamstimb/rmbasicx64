@@ -113,6 +113,33 @@ func TestScanner(t *testing.T) {
 				{EndOfLine, ""},
 			},
 		},
+		{
+			Source: "50 > 50",
+			ExpectedTokens: []Token{
+				{NumericalLiteral, "50"},
+				{GreaterThan, ">"},
+				{NumericalLiteral, "50"},
+				{EndOfLine, ""},
+			},
+		},
+		{
+			Source: "50 <= 50",
+			ExpectedTokens: []Token{
+				{NumericalLiteral, "50"},
+				{LessThanEqualTo1, "<="},
+				{NumericalLiteral, "50"},
+				{EndOfLine, ""},
+			},
+		},
+		{
+			Source: "50 >= 50",
+			ExpectedTokens: []Token{
+				{NumericalLiteral, "50"},
+				{GreaterThanEqualTo1, ">="},
+				{NumericalLiteral, "50"},
+				{EndOfLine, ""},
+			},
+		},
 	}
 
 	// test that we always get expected tokens

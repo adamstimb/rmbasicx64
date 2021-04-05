@@ -33,7 +33,8 @@ func (i *Interpreter) Tokenize(code string) {
 // IsOperator receives a token and returns true if the token represents an operator
 // otherwise false
 func IsOperator(t Token) bool {
-	operators := []int{Minus, Plus, ForwardSlash, Star, Exponential, BackSlash}
+	operators := []int{Minus, Plus, ForwardSlash, Star, Exponential, BackSlash, Equal, InterestinglyEqual, LessThan,
+		GreaterThan, LessThanEqualTo1, LessThanEqualTo2, GreaterThanEqualTo1, GreaterThanEqualTo2, Inequality1, Inequality2}
 	for _, op := range operators {
 		if op == t.TokenType {
 			return true
@@ -83,6 +84,7 @@ func Precedence(t Token) int {
 	precedences[GreaterThanEqualTo1] = 4
 	precedences[GreaterThanEqualTo2] = 4
 	precedences[InterestinglyEqual] = 4
+	precedences[Equal] = 4
 	precedences[Plus] = 5
 	precedences[Minus] = 5
 	precedences[Star] = 6
@@ -241,9 +243,66 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 					result = math.Pow(op1, op2)
 				case MOD:
 					result = float64(int(op1) % int(op2))
-					// TODO: Comparitors will also just cast result to float64
-				default:
-					return InvalidExpression, index, fmt.Sprintf("%s%s", t.Literal, errorMessage(InvalidExpression)), 0
+				case Equal:
+					if op1 == op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case InterestinglyEqual:
+					if op1 == op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case LessThan:
+					if op1 < op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case GreaterThan:
+					if op1 > op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case LessThanEqualTo1:
+					if op1 <= op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case LessThanEqualTo2:
+					if op1 <= op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case GreaterThanEqualTo1:
+					if op1 >= op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case GreaterThanEqualTo2:
+					if op1 >= op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case Inequality1:
+					if op1 != op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case Inequality2:
+					if op1 != op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
 				}
 			}
 			// push

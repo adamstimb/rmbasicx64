@@ -225,7 +225,8 @@ func (s *Scanner) scanToken() {
 			return
 		}
 		if s.match('=') {
-			s.addToken(GreaterThanEqualTo2, ">=")
+			s.addToken(GreaterThanEqualTo1, ">=")
+			return
 		}
 		s.addToken(GreaterThan, ">")
 		return
