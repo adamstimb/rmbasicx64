@@ -273,6 +273,16 @@ func GetType(interfaceToTest interface{}) (dataType string) {
 	return ""
 }
 
+// IsTrue receives a float value and returns true if that value can represent the boolean true
+// otherwise it returns false
+func IsTrue(val float64) (result bool) {
+	if val == math.Round(val) && math.Round(val) == -1 {
+		return true
+	} else {
+		return false
+	}
+}
+
 // RunSegment attempts to execute a segment of tokens and replies with an error code, the index
 // of the token where parsing failed, and a message, or something.
 func (i *Interpreter) RunSegment(tokens []Token) (errorCode, badTokenIndex int, message string) {
