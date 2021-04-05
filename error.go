@@ -8,6 +8,7 @@ const (
 	DidNotExpectInExpression
 	HasNotBeenDefined
 	IsAKeywordAndCannotBeUsedAsAVariableName
+	InvalidExpression
 )
 
 // errorMessage returns the template error message for a given error code
@@ -19,6 +20,7 @@ func errorMessage(errorCode int) string {
 		DidNotExpectInExpression:                 " was not expected in expression",
 		HasNotBeenDefined:                        " has not been defined",
 		IsAKeywordAndCannotBeUsedAsAVariableName: " is a keyword and cannot be used as a variable name",
+		InvalidExpression:                        " caused an invalid expression",
 	}
 	return errorMessages[errorCode]
 }

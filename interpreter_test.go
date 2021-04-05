@@ -121,42 +121,12 @@ func TestInterpreterTokenize(t *testing.T) {
 	}
 }
 
-func TestInterpreterEvaluateString(t *testing.T) {
+func TestInterpreterEvaluateExpression(t *testing.T) {
 
 	// test data
 	type test struct {
 		Source         string
-		ExpectedResult string
-	}
-	tests := []test{
-		{
-			Source:         "\"Hey\"  + \" \"+ \"You \"   +\"Guys!\"",
-			ExpectedResult: "Hey You Guys!",
-		},
-		{
-			Source:         "\"Screaming\" + \"Lord\" + \"Sutch\"",
-			ExpectedResult: "ScreamingLordSutch",
-		},
-	}
-
-	// test that we always get expected result
-	interp := &Interpreter{}
-	for _, test := range tests {
-		interp.Init()
-		interp.Tokenize(test.Source)
-		_, _, _, result := interp.EvaluateString(interp.currentTokens)
-		if result != test.ExpectedResult {
-			t.Fatalf("Expected [%q] but got [%q] from source [%q]", test.ExpectedResult, result, test.Source)
-		}
-	}
-}
-
-func TestInterpreterEvaluateNumeric(t *testing.T) {
-
-	// test data
-	type test struct {
-		Source         string
-		ExpectedResult float64
+		ExpectedResult interface{}
 	}
 	tests := []test{
 		{
@@ -207,6 +177,18 @@ func TestInterpreterEvaluateNumeric(t *testing.T) {
 			Source:         "6.3 \\ 2.2",
 			ExpectedResult: float64(3),
 		},
+		{
+			Source:         "\"Hey\"  + \" \"+ \"you\"",
+			ExpectedResult: "Hey you",
+		},
+		{
+			Source:         "\"Hey\"  + \" \"+ \"You \"   +\"Guys!\"",
+			ExpectedResult: "Hey You Guys!",
+		},
+		{
+			Source:         "\"Screaming\" + \"Lord\" + \"Sutch\"",
+			ExpectedResult: "ScreamingLordSutch",
+		},
 	}
 
 	// test that we always get expected result
@@ -214,7 +196,7 @@ func TestInterpreterEvaluateNumeric(t *testing.T) {
 	for _, test := range tests {
 		interp.Init()
 		interp.Tokenize(test.Source)
-		_, _, _, result := interp.EvaluateNumeric(interp.currentTokens)
+		_, _, _, result := interp.EvaluateExpression(interp.currentTokens)
 		if result != test.ExpectedResult {
 			t.Fatalf("Expected [%f] but got [%f] from source [%q]", test.ExpectedResult, result, test.Source)
 		}
@@ -277,6 +259,10 @@ func TestEvaluateErrorHandling(t *testing.T) {
 		{
 			Source:            "foo = foo + 2",
 			ExpectedErrorCode: HasNotBeenDefined,
+		},
+		{
+			Source:            "foo = \"foo\" * \"bar\"",
+			ExpectedErrorCode: InvalidExpression,
 		},
 	}
 	// test that we always get expected result

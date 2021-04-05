@@ -94,9 +94,9 @@ func Precedence(t Token) int {
 	return precedences[t.TokenType]
 }
 
-// EvaluateStrings receives tokens that appear to represent a string expression, tries to evaluate it
+// EvaluateExpression receives tokens that appear to represent an expression, tries to evaluate it
 // and returns the result.
-func (i *Interpreter) EvaluateString(tokens []Token) (errorCode, badTokenIndex int, message string, result string) {
+func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenIndex int, message string, result interface{}) {
 	// Make the postfix then evaluate it following Carrano's pseudocode:
 	// http://www.solomonlrussell.com/spring16/cs2/ClassSource/Week6/stackcode.html
 	postfix := make([]Token, 0)
@@ -141,177 +141,136 @@ func (i *Interpreter) EvaluateString(tokens []Token) (errorCode, badTokenIndex i
 	}
 
 	// Now evaluate the postfix:
-	operandStack := make([]string, 0)
-	for _, t := range postfix {
+	operandStack := make([]interface{}, 0)
+	for index, t := range postfix {
 		if IsOperand(t) {
-			// Get the value represented by the token.  If it's a numeric literal then it's only a
-			// string so we just grab it as-is.  If it's an identifier then we have to check if it's
-			// float64 and convert to string if so.
-			operand := ""
-			if t.TokenType == NumericalLiteral || t.TokenType == StringLiteral {
-				operand = t.Literal
+			// Get the value and data type represented by the token.
+			if t.TokenType == NumericalLiteral {
+				// Is numeric but test it can be parsed before pushing token to operand stack
+				if valfloat64, err := strconv.ParseFloat(t.Literal, 64); err == nil {
+					// push
+					operandStack = append([]interface{}{valfloat64}, operandStack...)
+				} else {
+					// Is meant to represent a numeric value but it can't be parsed (this should never actually happen...maybe remove it?)
+					return CouldNotInterpretAsANumber, index, fmt.Sprintf("%s%s", t.Literal, errorMessage(CouldNotInterpretAsANumber)), 0
+				}
+			}
+			if t.TokenType == StringLiteral {
+				// push it as-is
+				operandStack = append([]interface{}{t.Literal}, operandStack...)
 			}
 			if t.TokenType == IdentifierLiteral {
+				// Is identifier, so first test it has been defined by looking in the store
 				if _, ok := i.store[t.Literal]; ok {
-					// Handle if string
-					if t.Literal[len(tokens[0].Literal)-1:] == "$" {
-						operand = t.Literal
-					}
-					// Handle if numeric integer
-					if t.Literal[len(tokens[0].Literal)-1:] == "%" {
+					if t.Literal[len(tokens[0].Literal)-1:] != "$" {
+						// Represents a numeric value
 						valfloat64, ok := i.store[t.Literal].(float64)
 						if !ok {
 							// This should not happen therefore fatal
 							log.Fatalf("Fatal error!")
 						} else {
-							operand = strconv.Itoa(int(valfloat64))
-						}
-					}
-					// Handle if numeric float
-					if t.Literal[len(tokens[0].Literal)-1:] != "$" && t.Literal[len(tokens[0].Literal)-1:] != "%" {
-						valfloat64, ok := i.store[t.Literal].(float64)
-						if !ok {
-							// This should not happen therefore fatal
-							log.Fatalf("Fatal error!")
-						} else {
-							operand = fmt.Sprintf("%g", valfloat64)
+							// push
+							operandStack = append([]interface{}{valfloat64}, operandStack...)
 						}
 					}
 				} else {
-					return HasNotBeenDefined, 0, fmt.Sprintf("%s%s", t.Literal, errorMessage(HasNotBeenDefined)), ""
+					// Variable not defined
+					return HasNotBeenDefined, index, fmt.Sprintf("%s%s", t.Literal, errorMessage(HasNotBeenDefined)), 0
 				}
 			}
-			// push
-			operandStack = append([]string{operand}, operandStack...)
 		} else {
+			// Get operands 1 and 2, and their operator
 			operand2 := operandStack[0]
 			// pop
 			operandStack = operandStack[1:]
 			operand1 := operandStack[0]
 			// pop
 			operandStack = operandStack[1:]
-			// Apply operation to operand1 and operand2
-			switch t.TokenType {
-			case Plus:
-				result = operand1 + operand2
+			// Now decide if it's a string expression, numeric expression or invalid expression
+			// If one or both operands are string type then it's a string expression
+			// If both operands are numeric then it's a numeric expression (however this will
+			// not always be true, for example if the operator is a function that returns a string...)
+			if GetType(operand1) == "string" || GetType(operand2) == "string" {
+				// Is valid string expression
+				// If either operand is numeric, convert it to string before applying the operator
+				op1 := ""
+				op2 := ""
+				if GetType(operand1) == "string" {
+					op1 = operand1.(string)
+				}
+				if GetType(operand1) == "float64" {
+					op1 = fmt.Sprintf("%e", operand1.(float64))
+				}
+				if GetType(operand1) == "int64" {
+					op1 = fmt.Sprintf("%d", operand1.(int64))
+				}
+				if GetType(operand2) == "string" {
+					op2 = operand2.(string)
+				}
+				if GetType(operand2) == "float64" {
+					op2 = fmt.Sprintf("%e", operand2.(float64))
+				}
+				if GetType(operand2) == "int64" {
+					op2 = fmt.Sprintf("%d", operand2.(int64))
+				}
+				// Apply operation to operand1 and operand2
+				switch t.TokenType {
+				case Plus:
+					result = op1 + op2
+				default:
+					return InvalidExpression, index, fmt.Sprintf("%s%s", t.Literal, errorMessage(InvalidExpression)), 0
+				}
+			} else {
+				// Numeric expression:
+				// Can assume both operands are numeric, i.e. float64 so convert them directly
+				op1 := operand1.(float64)
+				op2 := operand2.(float64)
+				// Apply operation to operand1 and operand2
+				switch t.TokenType {
+				case Minus:
+					result = op1 - op2
+				case Plus:
+					result = op1 + op2
+				case ForwardSlash:
+					result = op1 / op2
+				case BackSlash:
+					result = float64(int(op1) / int(op2))
+				case Star:
+					result = op1 * op2
+				case Exponential:
+					result = math.Pow(op1, op2)
+				case MOD:
+					result = float64(int(op1) % int(op2))
+					// TODO: Comparitors will also just cast result to float64
+				default:
+					return InvalidExpression, index, fmt.Sprintf("%s%s", t.Literal, errorMessage(InvalidExpression)), 0
+				}
 			}
 			// push
-			operandStack = append([]string{result}, operandStack...)
+			operandStack = append([]interface{}{result}, operandStack...)
 		}
 	}
 	// Evaluation successful, errorCode = 0
 	return 0, 0, "", result
 }
 
-// EvaluateNumeric receives tokens that appear to represent a numeric expression, tries to evaluate it
-// and returns the result.
-func (i *Interpreter) EvaluateNumeric(tokens []Token) (errorCode, badTokenIndex int, message string, result float64) {
-	// Make the postfix then evaluate it following Carrano's pseudocode:
-	// http://www.solomonlrussell.com/spring16/cs2/ClassSource/Week6/stackcode.html
-	postfix := make([]Token, 0)
-	operatorStack := make([]Token, 0)
-	for _, t := range tokens {
-		if IsOperand(t) {
-			// TODO: Strings are not allowed
-			postfix = append(postfix, t)
-			continue
-		}
-		if t.TokenType == LeftParen {
-			// push
-			operatorStack = append([]Token{t}, operatorStack...)
-			continue
-		}
-		if t.TokenType == RightParen {
-			// pop operator stack until matching LeftParen
-			for operatorStack[0].TokenType != LeftParen {
-				postfix = append(postfix, operatorStack[0])
-				operatorStack = operatorStack[1:]
-			}
-			// pop and continue
-			operatorStack = operatorStack[1:]
-			continue
-		}
-		if IsOperator(t) {
-			for len(operatorStack) > 0 &&
-				operatorStack[0].TokenType != LeftParen &&
-				Precedence(t) <= Precedence(operatorStack[0]) {
-				postfix = append(postfix, operatorStack[0])
-				// pop
-				operatorStack = operatorStack[1:]
-			}
-			// push
-			operatorStack = append([]Token{t}, operatorStack...)
-			continue
-		}
+// GetType receives an arbitrary interface and returns the data type as a string if it is one of float64, int64 or string.
+// If the type is not recognized it returns ""
+func GetType(interfaceToTest interface{}) (dataType string) {
+	ok := false
+	_, ok = interfaceToTest.(float64)
+	if ok {
+		return "float64"
 	}
-	for len(operatorStack) > 0 {
-		postfix = append(postfix, operatorStack[0])
-		// pop
-		operatorStack = operatorStack[1:]
+	_, ok = interfaceToTest.(int64)
+	if ok {
+		return "int64"
 	}
-
-	// Now evaluate the postfix:
-	operandStack := make([]float64, 0)
-	for _, t := range postfix {
-		if IsOperand(t) {
-			// Get the value represented by the token.  If it's a numerical
-			// literal then we have to convert it to float64.  If it's an
-			// identifier literal then we have to retrieve the value from the
-			// store and convert to float64. Anything else returns an error.
-			operand := float64(0)
-			if t.TokenType == NumericalLiteral {
-				if val, err := strconv.ParseFloat(t.Literal, 64); err == nil {
-					operand = val
-				} else {
-					return CouldNotInterpretAsANumber, 0, fmt.Sprintf("%s%s", t.Literal, errorMessage(CouldNotInterpretAsANumber)), 0
-				}
-			}
-			if t.TokenType == IdentifierLiteral {
-				if _, ok := i.store[t.Literal]; ok {
-					valfloat64, ok := i.store[t.Literal].(float64)
-					if !ok {
-						// This should not happen therefore fatal
-						log.Fatalf("Fatal error!")
-					} else {
-						operand = valfloat64
-					}
-				} else {
-					return HasNotBeenDefined, 0, fmt.Sprintf("%s%s", t.Literal, errorMessage(HasNotBeenDefined)), 0
-				}
-			}
-			// push
-			operandStack = append([]float64{operand}, operandStack...)
-		} else {
-			operand2 := operandStack[0]
-			// pop
-			operandStack = operandStack[1:]
-			operand1 := operandStack[0]
-			// pop
-			operandStack = operandStack[1:]
-			// Apply operation to operand1 and operand2
-			switch t.TokenType {
-			case Minus:
-				result = operand1 - operand2
-			case Plus:
-				result = operand1 + operand2
-			case ForwardSlash:
-				result = operand1 / operand2
-			case BackSlash:
-				result = float64(int(operand1) / int(operand2))
-			case Star:
-				result = operand1 * operand2
-			case Exponential:
-				result = math.Pow(operand1, operand2)
-			case MOD:
-				result = float64(int(operand1) % int(operand2))
-				// TODO: Comparitors will also just cast result to float64
-			}
-			// push
-			operandStack = append([]float64{result}, operandStack...)
-		}
+	_, ok = interfaceToTest.(string)
+	if ok {
+		return "string"
 	}
-	// Evaluation successful, errorCode = 0
-	return 0, 0, "", result
+	return ""
 }
 
 // RunSegment attempts to execute a segment of tokens and replies with an error code, the index
@@ -346,14 +305,20 @@ func (i *Interpreter) RunSegment(tokens []Token) (errorCode, badTokenIndex int, 
 				}
 			} else {
 				// evaluate result then store
-				errorCode, _, message, result := i.EvaluateNumeric(tokens[2:])
+				errorCode, _, message, result := i.EvaluateExpression(tokens[2:])
 				if errorCode == Success {
-					// Evaluation was successful so store result
-					// round val if variable is integer type, i.e. ends with %
-					if tokens[0].Literal[len(tokens[0].Literal)-1:] == "%" {
-						result = math.Round(result)
+					// Evaluation was successful so check data type and store
+					if GetType(result) == "string" {
+						// Store the result
+						i.store[tokens[0].Literal] = result.(string)
+					} else {
+						// round val if variable is integer type, i.e. ends with %
+						if tokens[0].Literal[len(tokens[0].Literal)-1:] == "%" {
+							result = math.Round(result.(float64))
+						}
+						// Store the result
+						i.store[tokens[0].Literal] = result
 					}
-					i.store[tokens[0].Literal] = result
 					return Success, -1, ""
 				} else {
 					// Something went wrong so return error info
