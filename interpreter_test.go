@@ -237,6 +237,27 @@ func TestInterpreterEvaluateExpression(t *testing.T) {
 			Source:         "\"Front\" + 242",
 			ExpectedResult: "Front242",
 		},
+		// Test some real examples from the original RM Basic book why not:
+		{
+			Source:         "\"Freda\" > \"Fred\"",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "\"banana\" > \"BANANA\"",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "\"Class A\" > \"Class 1\"",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "\"banana\" == \"BANANA\"",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "\"banana\" = \"BANANA\"",
+			ExpectedResult: float64(0),
+		},
 	}
 
 	// test that we always get expected result
@@ -385,5 +406,13 @@ func TestInterpreterVariableAssignment(t *testing.T) {
 		} else {
 			t.Fatalf("Did not find [%q] in the store", test.ExpectedName)
 		}
+	}
+}
+
+func TestInterpreterWeighString(t *testing.T) {
+	w := WeighString("Ohhhh yeah")
+	expected := 79 + (4 * 104) + 32 + 121 + 101 + 97 + 104
+	if w != expected {
+		t.Fatalf("Expected [%d] but got [%d]", expected, w)
 	}
 }

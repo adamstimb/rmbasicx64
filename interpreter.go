@@ -219,6 +219,66 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 				switch t.TokenType {
 				case Plus:
 					result = op1 + op2
+				case Equal:
+					if op1 == op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case InterestinglyEqual:
+					if strings.EqualFold(op1, op2) {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case LessThan:
+					if WeighString(op1) < WeighString(op2) {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case GreaterThan:
+					if WeighString(op1) > WeighString(op2) {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case LessThanEqualTo1:
+					if WeighString(op1) <= WeighString(op2) {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case LessThanEqualTo2:
+					if WeighString(op1) <= WeighString(op2) {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case GreaterThanEqualTo1:
+					if WeighString(op1) >= WeighString(op2) {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case GreaterThanEqualTo2:
+					if WeighString(op1) >= WeighString(op2) {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case Inequality1:
+					if WeighString(op1) != WeighString(op2) {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case Inequality2:
+					if WeighString(op1) != WeighString(op2) {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
 				default:
 					return InvalidExpression, index, fmt.Sprintf("%s%s", t.Literal, errorMessage(InvalidExpression)), 0
 				}
@@ -340,6 +400,17 @@ func IsTrue(val float64) (result bool) {
 	} else {
 		return false
 	}
+}
+
+// WeighString receives a string and returns the sum of the ascii codes for each char
+func WeighString(s string) (weight int) {
+	// convert string to runs
+	r := []rune(s)
+	// add the codes and return total
+	for _, val := range r {
+		weight += int(val)
+	}
+	return weight
 }
 
 // RunSegment attempts to execute a segment of tokens and replies with an error code, the index
