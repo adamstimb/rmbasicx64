@@ -24,7 +24,7 @@ const (
 	Star
 	Exponential
 	LessThan
-	GreaterThan
+	GreaterThan //14
 
 	// Two-character tokens
 	Assign
@@ -36,7 +36,7 @@ const (
 	GreaterThanEqualTo1
 	GreaterThanEqualTo2
 	InterestinglyEqual
-	Equal
+	Equal //24
 
 	// Literals
 	StringLiteral
