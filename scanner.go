@@ -1,6 +1,7 @@
 package main
 
 import (
+	"regexp"
 	"strings"
 	"unicode"
 )
@@ -67,14 +68,45 @@ func (s *Scanner) addToken(TokenType int, literal string) {
 // getString extracts a string literal from the source code
 func (s *Scanner) getString() {
 	stringVal := []rune{}
-	for s.peek() != '"' && !s.isAtEnd() {
-		stringVal = append(stringVal, s.advance())
+	for !s.isAtEnd() {
+		// handle literal double-double quote "" or terminating double quote "
+		if s.peek() == '"' && s.peekNext() == '"' {
+			// is double-double quote so consume both and continue collecting
+			stringVal = append(stringVal, s.advance())
+			stringVal = append(stringVal, s.advance())
+			continue
+		}
+		if s.peek() == '"' && s.peekNext() != '"' {
+			// is double quote so stop collecting
+			break
+		} else {
+			// is part of the string literal so collect it
+			stringVal = append(stringVal, s.advance())
+		}
 	}
 	// handle string termination then add the token
 	if s.peek() == '"' {
 		s.advance()
 	}
 	s.addToken(StringLiteral, string(stringVal))
+}
+
+// getHexLiteral extracts a hex literal from the source code
+func (s *Scanner) getHexLiteral(firstRune rune) {
+	hexVal := []rune{}
+	hexVal = append(hexVal, firstRune)
+	for {
+		r := s.peek()
+		isHex, _ := regexp.Match("[0-9a-fA-F]", []byte(string(r)))
+		if isHex {
+			// is hex so consume and add to value
+			hexVal = append(hexVal, s.advance())
+		} else {
+			// not hex so stop collection
+			break
+		}
+	}
+	s.addToken(HexLiteral, strings.ToUpper(string(hexVal)))
 }
 
 // getNumber extracts a numerical literal from the source code
@@ -98,7 +130,6 @@ func (s *Scanner) getNumber(firstRune rune) {
 		// not a valid rune for numerical literal so stop collecting
 		break
 	}
-	// test if parsable number then add token
 	s.addToken(NumericalLiteral, string(stringVal))
 }
 
@@ -129,7 +160,22 @@ func (s *Scanner) getIdentifier(firstRune rune) {
 			// consume this char and add token
 			stringVal = append(stringVal, s.advance())
 		}
-		s.addToken(Identifier, strings.Title(string(stringVal)))
+		// Enforce the Rm_Basic_Camel_Case_Thing by splitting around _, titling the words
+		// and recombining
+		newStringVal := ""
+		subwords := strings.Split(string(stringVal), "_")
+		if len(subwords) == 0 {
+			s.addToken(IdentifierLiteral, strings.Title(strings.ToLower(string(stringVal))))
+		} else {
+			for _, subword := range subwords {
+				if newStringVal == "" {
+					newStringVal = newStringVal + strings.Title(strings.ToLower(subword))
+				} else {
+					newStringVal = newStringVal + "_" + strings.Title(strings.ToLower(subword))
+				}
+			}
+			s.addToken(IdentifierLiteral, newStringVal)
+		}
 	}
 }
 
@@ -233,6 +279,14 @@ func (s *Scanner) scanToken() {
 	case '"':
 		s.getString()
 		return
+	// hex literal
+	case '&':
+		// if next char is hex-ish then assume is hex literal and get it
+		nextChar := s.peekNext()
+		isHex, _ := regexp.Match("[0-9a-fA-F]", []byte(string(nextChar)))
+		if isHex {
+			s.getHexLiteral(r)
+		}
 	default:
 		// numerical literal
 		if unicode.IsDigit(r) {
@@ -249,14 +303,20 @@ func (s *Scanner) scanToken() {
 	}
 }
 
-// ScanTokens scans the source code and returns a slice of tokens
-func (s *Scanner) ScanTokens(source string) []Token {
+// Scan scans the source code and returns a slice of tokens
+func (s *Scanner) Scan(source string) []Token {
 	s.Source = source
 	s.Tokens = []Token{}
 	s.CurrentPosition = 0
-	for !s.isAtEnd() {
-		s.scanToken()
+	// Handle special case of only whitespace as input
+	if strings.TrimSpace(s.Source) == "" {
+		// is just whitespace so don't scan
+	} else {
+		for !s.isAtEnd() {
+			s.scanToken()
+		}
 	}
-	// All done
+	// All done - add end of line token and return
+	s.addToken(EndOfLine, "")
 	return s.Tokens
 }

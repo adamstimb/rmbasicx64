@@ -1,4 +1,4 @@
-# ![RM BASICx64](rmbasicx64Banner.png)
+# ![RM BASICx64](https://github.com/adamstimb/rmbasicx64/blob/main/docs/rmbasicx64BannerLarge.png)
 
 _RM BASICx64 is a tribute project and is in no way linked to or endorsed by RM plc._
 
@@ -8,15 +8,14 @@ The plan is to re-implement the RM Basic interpeter and code editor (originally 
 
 High-level goals:
 
-- Backwards compatibility - enable crusties like me to run their old RM Basic programs on a modern computer without emulation and the severe resource limitations of the original platform
+- Backwards compatibility - enable crusties to run their old RM Basic programs on a modern computer without emulation and the severe resource limitations of the original platform
 - Get on the internet - extend the dialect to handle http requests
 - Authentic 1980s user experience - recreate the original code editor, but also support easy-to-use modern editors such as VSCode
 
-## Functionality
+## Status
 
-Still laying the ground work.  Some features work, some don't, some aren't implemented yet.
+Implementing the fundamentals of the languages, e.g. grammar and syntax.  Everything is being developed against gotest so for the time being there is nothing to see.  When there is something to see it will look like this:
 
-### Screenshot
 # ![editor](editor.png)
 
 ## Links

@@ -41,9 +41,11 @@ const (
 	// Literals
 	StringLiteral
 	NumericalLiteral
-	Identifier
+	HexLiteral
+	IdentifierLiteral
 	Comment
 	Illegal
+	EndOfLine
 
 	// Keywords
 	ABS
@@ -416,5 +418,5 @@ func PrintToken(thisToken Token) {
 	if err != nil {
 		panic(err)
 	}
-	logMsg(string(out))
+	println(string(out))
 }
