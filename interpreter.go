@@ -99,6 +99,7 @@ func Precedence(t Token) int {
 func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenIndex int, message string, result interface{}) {
 	// Make the postfix then evaluate it following Carrano's pseudocode:
 	// http://www.solomonlrussell.com/spring16/cs2/ClassSource/Week6/stackcode.html
+	// (this has been extended quite a lot to deal with expressions that mix numeric and string values)
 	postfix := make([]Token, 0)
 	operatorStack := make([]Token, 0)
 	for _, t := range tokens {
@@ -201,19 +202,18 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 				if GetType(operand1) == "float64" {
 					op1 = fmt.Sprintf("%e", operand1.(float64))
 				}
-				if GetType(operand1) == "int64" {
-					op1 = fmt.Sprintf("%d", operand1.(int64))
-				}
 				if GetType(operand2) == "string" {
 					op2 = operand2.(string)
 				}
 				if GetType(operand2) == "float64" {
-					op2 = fmt.Sprintf("%e", operand2.(float64))
+					// Use scientific notation if...what? Check manual.
+					if operand2.(float64) == math.Round(operand2.(float64)) {
+						op2 = fmt.Sprintf("%.0f", operand2.(float64))
+					} else {
+						op2 = fmt.Sprintf("%e", operand2.(float64))
+					}
 				}
-				if GetType(operand2) == "int64" {
-					op2 = fmt.Sprintf("%d", operand2.(int64))
-				}
-				// Apply operation to operand1 and operand2
+				// Apply operation
 				switch t.TokenType {
 				case Plus:
 					result = op1 + op2
@@ -225,7 +225,7 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 				// Can assume both operands are numeric, i.e. float64 so convert them directly
 				op1 := operand1.(float64)
 				op2 := operand2.(float64)
-				// Apply operation to operand1 and operand2
+				// Apply operation
 				switch t.TokenType {
 				case Minus:
 					result = op1 - op2
@@ -287,8 +287,8 @@ func (i *Interpreter) RunSegment(tokens []Token) (errorCode, badTokenIndex int, 
 
 	// 3. Try numeric variable assignment.  Must be at least 3 tokens.
 	if len(tokens) >= 3 {
-		// First 2 tokens must be identifier literal that is not a string type followed by = (equal) or := (assign)
-		if (tokens[0].TokenType == IdentifierLiteral && tokens[0].Literal[len(tokens[0].Literal)-1:] != "$") &&
+		// First 2 tokens must be identifier literal followed by = (equal) or := (assign)
+		if tokens[0].TokenType == IdentifierLiteral &&
 			(tokens[1].TokenType == Equal || tokens[1].TokenType == Assign) {
 			// If exactly four tokens and the 3rd token is a numerical literal then we don't
 			// have anything to evaluate
@@ -355,7 +355,6 @@ func (i *Interpreter) RunSegment(tokens []Token) (errorCode, badTokenIndex int, 
 			}
 		}
 	}
-
 	return ExpectedAKeywordLineNumberExpressionVariableAssignmentOrProcedureCall, 0, errorMessage(ExpectedAKeywordLineNumberExpressionVariableAssignmentOrProcedureCall)
 }
 

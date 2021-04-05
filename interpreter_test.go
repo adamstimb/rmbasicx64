@@ -189,6 +189,10 @@ func TestInterpreterEvaluateExpression(t *testing.T) {
 			Source:         "\"Screaming\" + \"Lord\" + \"Sutch\"",
 			ExpectedResult: "ScreamingLordSutch",
 		},
+		{
+			Source:         "\"Front\" + 242",
+			ExpectedResult: "Front242",
+		},
 	}
 
 	// test that we always get expected result
