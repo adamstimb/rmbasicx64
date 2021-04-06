@@ -140,6 +140,22 @@ func TestScanner(t *testing.T) {
 				{EndOfLine, ""},
 			},
 		},
+		{
+			Source: "-1 AND 1",
+			ExpectedTokens: []Token{
+				{NumericalLiteral, "-1"},
+				{AND, "AND"},
+				{NumericalLiteral, "1"},
+				{EndOfLine, ""},
+			},
+		},
+		{
+			Source: "-1.0",
+			ExpectedTokens: []Token{
+				{NumericalLiteral, "-1.0"}, // How do we deal with this?
+				{EndOfLine, ""},
+			},
+		},
 	}
 
 	// test that we always get expected tokens

@@ -34,7 +34,8 @@ func (i *Interpreter) Tokenize(code string) {
 // otherwise false
 func IsOperator(t Token) bool {
 	operators := []int{Minus, Plus, ForwardSlash, Star, Exponential, BackSlash, Equal, InterestinglyEqual, LessThan,
-		GreaterThan, LessThanEqualTo1, LessThanEqualTo2, GreaterThanEqualTo1, GreaterThanEqualTo2, Inequality1, Inequality2}
+		GreaterThan, LessThanEqualTo1, LessThanEqualTo2, GreaterThanEqualTo1, GreaterThanEqualTo2, Inequality1, Inequality2,
+		AND}
 	for _, op := range operators {
 		if op == t.TokenType {
 			return true
@@ -363,6 +364,11 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 					} else {
 						result = float64(0)
 					}
+				case AND:
+					if op1 != math.Round(op1) || op2 != math.Round(op2) {
+						return CannotPerformBitwiseOperationsOnFloatValues, index, errorMessage(CannotPerformBitwiseOperationsOnFloatValues), 0
+					}
+					result = float64(int(op1) & int(op2))
 				}
 			}
 			// push
