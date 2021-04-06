@@ -35,7 +35,7 @@ func (i *Interpreter) Tokenize(code string) {
 func IsOperator(t Token) bool {
 	operators := []int{Minus, Plus, ForwardSlash, Star, Exponential, BackSlash, Equal, InterestinglyEqual, LessThan,
 		GreaterThan, LessThanEqualTo1, LessThanEqualTo2, GreaterThanEqualTo1, GreaterThanEqualTo2, Inequality1, Inequality2,
-		AND, OR}
+		AND, OR, XOR}
 	for _, op := range operators {
 		if op == t.TokenType {
 			return true
@@ -148,6 +148,7 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 	operandStack := make([]interface{}, 0)
 	for index, t := range postfix {
 		if IsOperand(t) {
+			// Handle operand
 			// Get the value and data type represented by the token.
 			if t.TokenType == NumericalLiteral {
 				// Is numeric but test it can be parsed before pushing token to operand stack
@@ -183,6 +184,10 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 				}
 			}
 		} else {
+			// Apply operator
+			// if unary operator then ... else assume binary ...
+
+			// Binary operator
 			// Get operands 1 and 2, and their operator
 			operand2 := operandStack[0]
 			// pop
@@ -374,6 +379,11 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 						return CannotPerformBitwiseOperationsOnFloatValues, index, errorMessage(CannotPerformBitwiseOperationsOnFloatValues), 0
 					}
 					result = float64(int(op1) | int(op2))
+				case XOR:
+					if op1 != math.Round(op1) || op2 != math.Round(op2) {
+						return CannotPerformBitwiseOperationsOnFloatValues, index, errorMessage(CannotPerformBitwiseOperationsOnFloatValues), 0
+					}
+					result = float64(int(op1) ^ int(op2))
 				}
 			}
 			// push
