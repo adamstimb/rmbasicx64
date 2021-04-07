@@ -474,6 +474,14 @@ func TestImmediateInput(t *testing.T) {
 				20: "PRINT \"Just testing\"",
 			},
 		},
+		{
+			Source: "run",
+			ExpectedProgram: map[int]string{
+				5:  "CLS",
+				10: "SET MODE 40",
+				20: "PRINT \"Just testing\"",
+			},
+		},
 	}
 
 	// This test simulates a user manually keying in a program
