@@ -33,7 +33,9 @@ func (i *Interpreter) Tokenize(code string) {
 // IsOperator receives a token and returns true if the token represents an operator
 // otherwise false
 func IsOperator(t Token) bool {
-	operators := []int{Minus, Plus, ForwardSlash, Star, Exponential, BackSlash}
+	operators := []int{Minus, Plus, ForwardSlash, Star, Exponential, BackSlash, Equal, InterestinglyEqual, LessThan,
+		GreaterThan, LessThanEqualTo1, LessThanEqualTo2, GreaterThanEqualTo1, GreaterThanEqualTo2, Inequality1, Inequality2,
+		AND, OR, XOR, NOT}
 	for _, op := range operators {
 		if op == t.TokenType {
 			return true
@@ -83,6 +85,7 @@ func Precedence(t Token) int {
 	precedences[GreaterThanEqualTo1] = 4
 	precedences[GreaterThanEqualTo2] = 4
 	precedences[InterestinglyEqual] = 4
+	precedences[Equal] = 4
 	precedences[Plus] = 5
 	precedences[Minus] = 5
 	precedences[Star] = 6
@@ -145,6 +148,7 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 	operandStack := make([]interface{}, 0)
 	for index, t := range postfix {
 		if IsOperand(t) {
+			// Handle operand
 			// Get the value and data type represented by the token.
 			if t.TokenType == NumericalLiteral {
 				// Is numeric but test it can be parsed before pushing token to operand stack
@@ -180,19 +184,39 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 				}
 			}
 		} else {
-			// Get operands 1 and 2, and their operator
+			// Apply operator
+			// First try unary operators, currently only NOT is implemented so:
+			// Get operand 2 but *** DO NOT POP THE STACK ***
 			operand2 := operandStack[0]
-			// pop
+			if t.TokenType == NOT {
+				// Is unary NOT but we can only apply this to rounded floats or ints
+				if GetType(operand2) != "string" {
+					op2 := operand2.(float64)
+					if op2 != math.Round(op2) {
+						return CannotPerformBitwiseOperationsOnFloatValues, index, errorMessage(CannotPerformBitwiseOperationsOnFloatValues), 0
+					} else {
+						result = float64(^int(op2))
+						// pop the stack, push new result and skip to next item in the postfix
+						operandStack = operandStack[1:]
+						operandStack = append([]interface{}{result}, operandStack...)
+						continue
+					}
+				} else {
+					return CannotPerformBitwiseOperationsOnStringValues, index, errorMessage(CannotPerformBitwiseOperationsOnStringValues), 0
+				}
+			}
+			// Binary operator
+			// pop the stack and get operand 1
 			operandStack = operandStack[1:]
 			operand1 := operandStack[0]
-			// pop
+			// pop the stack again
 			operandStack = operandStack[1:]
 			// Now decide if it's a string expression, numeric expression or invalid expression
 			// If one or both operands are string type then it's a string expression
 			// If both operands are numeric then it's a numeric expression (however this will
 			// not always be true, for example if the operator is a function that returns a string...)
 			if GetType(operand1) == "string" || GetType(operand2) == "string" {
-				// Is valid string expression
+				// String binary expression
 				// If either operand is numeric, convert it to string before applying the operator
 				op1 := ""
 				op2 := ""
@@ -217,11 +241,71 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 				switch t.TokenType {
 				case Plus:
 					result = op1 + op2
+				case Equal:
+					if op1 == op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case InterestinglyEqual:
+					if strings.EqualFold(op1, op2) {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case LessThan:
+					if WeighString(op1) < WeighString(op2) {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case GreaterThan:
+					if WeighString(op1) > WeighString(op2) {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case LessThanEqualTo1:
+					if WeighString(op1) <= WeighString(op2) {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case LessThanEqualTo2:
+					if WeighString(op1) <= WeighString(op2) {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case GreaterThanEqualTo1:
+					if WeighString(op1) >= WeighString(op2) {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case GreaterThanEqualTo2:
+					if WeighString(op1) >= WeighString(op2) {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case Inequality1:
+					if WeighString(op1) != WeighString(op2) {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case Inequality2:
+					if WeighString(op1) != WeighString(op2) {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
 				default:
 					return InvalidExpression, index, fmt.Sprintf("%s%s", t.Literal, errorMessage(InvalidExpression)), 0
 				}
 			} else {
-				// Numeric expression:
+				// Numeric binary expression:
 				// Can assume both operands are numeric, i.e. float64 so convert them directly
 				op1 := operand1.(float64)
 				op2 := operand2.(float64)
@@ -241,9 +325,81 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 					result = math.Pow(op1, op2)
 				case MOD:
 					result = float64(int(op1) % int(op2))
-					// TODO: Comparitors will also just cast result to float64
-				default:
-					return InvalidExpression, index, fmt.Sprintf("%s%s", t.Literal, errorMessage(InvalidExpression)), 0
+				case Equal:
+					if op1 == op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case InterestinglyEqual:
+					if op1 == op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case LessThan:
+					if op1 < op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case GreaterThan:
+					if op1 > op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case LessThanEqualTo1:
+					if op1 <= op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case LessThanEqualTo2:
+					if op1 <= op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case GreaterThanEqualTo1:
+					if op1 >= op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case GreaterThanEqualTo2:
+					if op1 >= op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case Inequality1:
+					if op1 != op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case Inequality2:
+					if op1 != op2 {
+						result = float64(-1)
+					} else {
+						result = float64(0)
+					}
+				case AND:
+					if op1 != math.Round(op1) || op2 != math.Round(op2) {
+						return CannotPerformBitwiseOperationsOnFloatValues, index, errorMessage(CannotPerformBitwiseOperationsOnFloatValues), 0
+					}
+					result = float64(int(op1) & int(op2))
+				case OR:
+					if op1 != math.Round(op1) || op2 != math.Round(op2) {
+						return CannotPerformBitwiseOperationsOnFloatValues, index, errorMessage(CannotPerformBitwiseOperationsOnFloatValues), 0
+					}
+					result = float64(int(op1) | int(op2))
+				case XOR:
+					if op1 != math.Round(op1) || op2 != math.Round(op2) {
+						return CannotPerformBitwiseOperationsOnFloatValues, index, errorMessage(CannotPerformBitwiseOperationsOnFloatValues), 0
+					}
+					result = float64(int(op1) ^ int(op2))
 				}
 			}
 			// push
@@ -271,6 +427,27 @@ func GetType(interfaceToTest interface{}) (dataType string) {
 		return "string"
 	}
 	return ""
+}
+
+// IsTrue receives a float value and returns true if that value can represent the boolean true
+// otherwise it returns false
+func IsTrue(val float64) (result bool) {
+	if val == math.Round(val) && math.Round(val) == -1 {
+		return true
+	} else {
+		return false
+	}
+}
+
+// WeighString receives a string and returns the sum of the ascii codes for each char
+func WeighString(s string) (weight int) {
+	// convert string to runs
+	r := []rune(s)
+	// add the codes and return total
+	for _, val := range r {
+		weight += int(val)
+	}
+	return weight
 }
 
 // RunSegment attempts to execute a segment of tokens and replies with an error code, the index

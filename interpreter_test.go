@@ -178,6 +178,50 @@ func TestInterpreterEvaluateExpression(t *testing.T) {
 			ExpectedResult: float64(3),
 		},
 		{
+			Source:         "100 = 100",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "100.00 == 100",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "100 = 10",
+			ExpectedResult: float64(0),
+		},
+		{
+			Source:         "10 < 100",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "100 > 10",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "100 > 1000",
+			ExpectedResult: float64(0),
+		},
+		{
+			Source:         "10000 < 10",
+			ExpectedResult: float64(0),
+		},
+		{
+			Source:         "100 <= 100",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "100 >= 100",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "50 <> 50",
+			ExpectedResult: float64(0),
+		},
+		{
+			Source:         "50 <> 55",
+			ExpectedResult: float64(-1),
+		},
+		{
 			Source:         "\"Hey\"  + \" \"+ \"you\"",
 			ExpectedResult: "Hey you",
 		},
@@ -192,6 +236,55 @@ func TestInterpreterEvaluateExpression(t *testing.T) {
 		{
 			Source:         "\"Front\" + 242",
 			ExpectedResult: "Front242",
+		},
+		// Test some real examples from the original RM Basic book why not:
+		{
+			Source:         "\"Freda\" > \"Fred\"",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "\"banana\" > \"BANANA\"",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "\"Class A\" > \"Class 1\"",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "\"banana\" == \"BANANA\"",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "\"banana\" = \"BANANA\"",
+			ExpectedResult: float64(0),
+		},
+		{
+			Source:         "4 AND 2",
+			ExpectedResult: float64(0),
+		},
+		{
+			Source:         "-1.0 AND -1.0",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "0 OR -1",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "NOT -1",
+			ExpectedResult: float64(0),
+		},
+		{
+			Source:         "NOT 0",
+			ExpectedResult: float64(-1),
+		},
+		{
+			Source:         "1 + (-1 AND -1)",
+			ExpectedResult: float64(0),
+		},
+		{
+			Source:         "not (-1 AND -1)",
+			ExpectedResult: float64(0),
 		},
 	}
 
@@ -341,5 +434,13 @@ func TestInterpreterVariableAssignment(t *testing.T) {
 		} else {
 			t.Fatalf("Did not find [%q] in the store", test.ExpectedName)
 		}
+	}
+}
+
+func TestInterpreterWeighString(t *testing.T) {
+	w := WeighString("Ohhhh yeah")
+	expected := 79 + (4 * 104) + 32 + 121 + 101 + 97 + 104
+	if w != expected {
+		t.Fatalf("Expected [%d] but got [%d]", expected, w)
 	}
 }

@@ -225,7 +225,8 @@ func (s *Scanner) scanToken() {
 			return
 		}
 		if s.match('=') {
-			s.addToken(GreaterThanEqualTo2, ">=")
+			s.addToken(GreaterThanEqualTo1, ">=")
+			return
 		}
 		s.addToken(GreaterThan, ">")
 		return
@@ -258,8 +259,22 @@ func (s *Scanner) scanToken() {
 		s.addToken(Dot, ".")
 		return
 	case '-':
-		s.addToken(Minus, "-")
-		return
+		// Check if it represents an operator or negative number
+		// If there was no previous token, or the previous token was an operator,
+		// and the next char is a number then it's a negative number that needs
+		// to be collected, otherwise it's an operator to collect.
+		if len(s.Tokens) == 0 && unicode.IsDigit(s.peek()) {
+			s.getNumber(r)
+			return
+		}
+		if len(s.Tokens) >= 1 && (IsOperator(s.Tokens[len(s.Tokens)-1]) || s.Tokens[len(s.Tokens)-1].TokenType == LeftParen) {
+			s.getNumber(r)
+			return
+		} else {
+			// Is operator so just collect it
+			s.addToken(Minus, "-")
+			return
+		}
 	case '+':
 		s.addToken(Plus, "+")
 		return
