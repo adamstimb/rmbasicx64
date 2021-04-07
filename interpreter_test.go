@@ -293,7 +293,7 @@ func TestInterpreterEvaluateExpression(t *testing.T) {
 	for _, test := range tests {
 		interp.Init()
 		interp.Tokenize(test.Source)
-		_, _, _, result := interp.EvaluateExpression(interp.currentTokens)
+		result, _ := interp.EvaluateExpression(interp.currentTokens)
 		if result != test.ExpectedResult {
 			t.Fatalf("Expected [%f] but got [%f] from source [%q]", test.ExpectedResult, result, test.Source)
 		}
@@ -334,7 +334,7 @@ func TestFormatCode(t *testing.T) {
 	interp := &Interpreter{}
 	for _, test := range tests {
 		interp.Init()
-		formattedCode := interp.FormatCode(test.Source, test.HighlightTokenIndex)
+		formattedCode := interp.FormatCode(test.Source, test.HighlightTokenIndex, false)
 		if formattedCode != test.ExpectedCode {
 			t.Fatalf("Expected [%s] but got [%s]", test.ExpectedCode, formattedCode)
 		}
@@ -366,9 +366,9 @@ func TestEvaluateErrorHandling(t *testing.T) {
 	interp := &Interpreter{}
 	for _, test := range tests {
 		interp.Init()
-		errorCode, _, _ := interp.RunLine(test.Source)
-		if errorCode != test.ExpectedErrorCode {
-			t.Fatalf("Expected errorCode %d (%s) but got %d (%s)", test.ExpectedErrorCode, errorMessage(test.ExpectedErrorCode), errorCode, errorMessage(errorCode))
+		_ = interp.RunLine(test.Source)
+		if interp.errorCode != test.ExpectedErrorCode {
+			t.Fatalf("Expected errorCode %d (%s) but got %d (%s)", test.ExpectedErrorCode, errorMessage(test.ExpectedErrorCode), interp.errorCode, errorMessage(interp.errorCode))
 		}
 	}
 }
@@ -442,5 +442,61 @@ func TestInterpreterWeighString(t *testing.T) {
 	expected := 79 + (4 * 104) + 32 + 121 + 101 + 97 + 104
 	if w != expected {
 		t.Fatalf("Expected [%d] but got [%d]", expected, w)
+	}
+}
+
+func TestImmediateInput(t *testing.T) {
+
+	// test data
+	type test struct {
+		Source          string
+		ExpectedProgram map[int]string
+	}
+	tests := []test{
+		{
+			Source: "10 set  mode  40",
+			ExpectedProgram: map[int]string{
+				10: "SET MODE 40",
+			},
+		},
+		{
+			Source: "20 print \"Just testing\"",
+			ExpectedProgram: map[int]string{
+				10: "SET MODE 40",
+				20: "PRINT \"Just testing\"",
+			},
+		},
+		{
+			Source: "5 cls",
+			ExpectedProgram: map[int]string{
+				5:  "CLS",
+				10: "SET MODE 40",
+				20: "PRINT \"Just testing\"",
+			},
+		},
+		{
+			Source: "run",
+			ExpectedProgram: map[int]string{
+				5:  "CLS",
+				10: "SET MODE 40",
+				20: "PRINT \"Just testing\"",
+			},
+		},
+	}
+
+	// This test simulates a user manually keying in a program
+	interp := &Interpreter{}
+	interp.Init()
+	for _, test := range tests {
+		interp.ImmediateInput(test.Source)
+		for lineNumber, expectedCode := range test.ExpectedProgram {
+			actualCode, ok := interp.program[lineNumber]
+			if !ok {
+				t.Fatalf("Could not find line %d in program", lineNumber)
+			}
+			if actualCode != expectedCode {
+				t.Fatalf("Expected [%s] but got [%s] in line %d", expectedCode, actualCode, lineNumber)
+			}
+		}
 	}
 }
