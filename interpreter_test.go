@@ -444,3 +444,51 @@ func TestInterpreterWeighString(t *testing.T) {
 		t.Fatalf("Expected [%d] but got [%d]", expected, w)
 	}
 }
+
+func TestImmediateInput(t *testing.T) {
+
+	// test data
+	type test struct {
+		Source          string
+		ExpectedProgram map[int]string
+	}
+	tests := []test{
+		{
+			Source: "10 set  mode  40",
+			ExpectedProgram: map[int]string{
+				10: "10 SET MODE 40",
+			},
+		},
+		{
+			Source: "20 print \"Just testing\"",
+			ExpectedProgram: map[int]string{
+				10: "10 SET MODE 40",
+				20: "20 PRINT \"Just testing\"",
+			},
+		},
+		{
+			Source: "5 cls",
+			ExpectedProgram: map[int]string{
+				5:  "5 CLS",
+				10: "10 SET MODE 40",
+				20: "20 PRINT \"Just testing\"",
+			},
+		},
+	}
+
+	// This test simulates a user manually keying in a program
+	interp := &Interpreter{}
+	interp.Init()
+	for _, test := range tests {
+		interp.ImmediateInput(test.Source)
+		for lineNumber, expectedCode := range test.ExpectedProgram {
+			actualCode, ok := interp.program[lineNumber]
+			if !ok {
+				t.Fatalf("Could not find line %d in program", lineNumber)
+			}
+			if actualCode != expectedCode {
+				t.Fatalf("Expected [%s] but got [%s] in line %d", expectedCode, actualCode, lineNumber)
+			}
+		}
+	}
+}

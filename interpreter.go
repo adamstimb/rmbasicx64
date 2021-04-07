@@ -9,7 +9,7 @@ import (
 )
 
 // Interpreter is the BASIC interpreter itself and behaves as a state machine that
-// can receieve, store and interpret BASIC code and execute the code to update its
+// can receive, store and interpret BASIC code and execute the code to update its
 // own state.
 type Interpreter struct {
 	store         map[string]interface{} // A map for storing variables and array (the key is the variable name)
@@ -566,6 +566,30 @@ func (i *Interpreter) RunLine(code string) (errorCode, badTokenIndex int, messag
 		}
 	}
 	return errorCode, badTokenIndex + badTokenOffset, message
+}
+
+// ImmediateInput receives a string inputted by the REPL user, processes it and responds
+// with a message, if any
+func (i *Interpreter) ImmediateInput(code string) (response string) {
+	i.Tokenize(code)
+	// If the code begins with a line number then add it to the program otherwise try to execute it.
+	if i.currentTokens[0].TokenType == NumericalLiteral {
+		// It starts with some kind of number so check if it's an integer, i.e. line number
+		lineNumber, err := strconv.ParseFloat(i.currentTokens[0].Literal, 64)
+		if err == nil {
+			if lineNumber == math.Round(lineNumber) {
+				// is a line number so format line and add to program
+				i.program[int(lineNumber)] = i.FormatCode(code, -1)
+			}
+		}
+	}
+	// Does not begin with line number so try to execute
+	errorCode, badTokenIndex, message := i.RunLine(code)
+	if errorCode > 0 {
+		// There was an error so the response should include the error message
+		response = fmt.Sprintf("Syntax error: %s\n%s", message, i.FormatCode(code, badTokenIndex))
+	}
+	return response
 }
 
 // FormatCode receives a line of BASIC code and returns it formatted.  If a number
