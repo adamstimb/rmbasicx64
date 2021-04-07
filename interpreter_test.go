@@ -293,7 +293,7 @@ func TestInterpreterEvaluateExpression(t *testing.T) {
 	for _, test := range tests {
 		interp.Init()
 		interp.Tokenize(test.Source)
-		_, _, _, result := interp.EvaluateExpression(interp.currentTokens)
+		result, _ := interp.EvaluateExpression(interp.currentTokens)
 		if result != test.ExpectedResult {
 			t.Fatalf("Expected [%f] but got [%f] from source [%q]", test.ExpectedResult, result, test.Source)
 		}
@@ -334,7 +334,7 @@ func TestFormatCode(t *testing.T) {
 	interp := &Interpreter{}
 	for _, test := range tests {
 		interp.Init()
-		formattedCode := interp.FormatCode(test.Source, test.HighlightTokenIndex)
+		formattedCode := interp.FormatCode(test.Source, test.HighlightTokenIndex, false)
 		if formattedCode != test.ExpectedCode {
 			t.Fatalf("Expected [%s] but got [%s]", test.ExpectedCode, formattedCode)
 		}
@@ -366,9 +366,9 @@ func TestEvaluateErrorHandling(t *testing.T) {
 	interp := &Interpreter{}
 	for _, test := range tests {
 		interp.Init()
-		errorCode, _, _ := interp.RunLine(test.Source)
-		if errorCode != test.ExpectedErrorCode {
-			t.Fatalf("Expected errorCode %d (%s) but got %d (%s)", test.ExpectedErrorCode, errorMessage(test.ExpectedErrorCode), errorCode, errorMessage(errorCode))
+		_ = interp.RunLine(test.Source)
+		if interp.errorCode != test.ExpectedErrorCode {
+			t.Fatalf("Expected errorCode %d (%s) but got %d (%s)", test.ExpectedErrorCode, errorMessage(test.ExpectedErrorCode), interp.errorCode, errorMessage(interp.errorCode))
 		}
 	}
 }
@@ -456,22 +456,22 @@ func TestImmediateInput(t *testing.T) {
 		{
 			Source: "10 set  mode  40",
 			ExpectedProgram: map[int]string{
-				10: "10 SET MODE 40",
+				10: "SET MODE 40",
 			},
 		},
 		{
 			Source: "20 print \"Just testing\"",
 			ExpectedProgram: map[int]string{
-				10: "10 SET MODE 40",
-				20: "20 PRINT \"Just testing\"",
+				10: "SET MODE 40",
+				20: "PRINT \"Just testing\"",
 			},
 		},
 		{
 			Source: "5 cls",
 			ExpectedProgram: map[int]string{
-				5:  "5 CLS",
-				10: "10 SET MODE 40",
-				20: "20 PRINT \"Just testing\"",
+				5:  "CLS",
+				10: "SET MODE 40",
+				20: "PRINT \"Just testing\"",
 			},
 		},
 	}

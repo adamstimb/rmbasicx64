@@ -15,6 +15,10 @@ type Interpreter struct {
 	store         map[string]interface{} // A map for storing variables and array (the key is the variable name)
 	program       map[int]string         // A map for storing a program (the key is the line number)
 	currentTokens []Token                // A line of tokens for immediate execution
+	errorCode     int                    // The current errorCode
+	lineNumber    int                    // The current line number being executed (-1 indicates immediate-mode, therefore no line number)
+	badTokenIndex int                    // If there was an error, the index of the token that raised the error is stored here
+	message       string                 // The current error message, if any
 }
 
 // Init initializes the Interpreter.
@@ -22,6 +26,10 @@ func (i *Interpreter) Init() {
 	i.store = make(map[string]interface{})
 	i.program = make(map[int]string)
 	i.currentTokens = []Token{}
+	i.errorCode = Success
+	i.lineNumber = -1
+	i.badTokenIndex = -1
+	i.message = ""
 }
 
 // Tokenize receives a line of code, generates tokens and stores them in currentTokens.
@@ -99,7 +107,7 @@ func Precedence(t Token) int {
 
 // EvaluateExpression receives tokens that appear to represent an expression, tries to evaluate it
 // and returns the result.
-func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenIndex int, message string, result interface{}) {
+func (i *Interpreter) EvaluateExpression(tokens []Token) (result interface{}, ok bool) {
 	// Make the postfix then evaluate it following Carrano's pseudocode:
 	// http://www.solomonlrussell.com/spring16/cs2/ClassSource/Week6/stackcode.html
 	// (this has been extended quite a lot to deal with expressions that mix numeric and string values)
@@ -146,7 +154,7 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 
 	// Now evaluate the postfix:
 	operandStack := make([]interface{}, 0)
-	for index, t := range postfix {
+	for _, t := range postfix {
 		if IsOperand(t) {
 			// Handle operand
 			// Get the value and data type represented by the token.
@@ -157,7 +165,10 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 					operandStack = append([]interface{}{valfloat64}, operandStack...)
 				} else {
 					// Is meant to represent a numeric value but it can't be parsed (this should never actually happen...maybe remove it?)
-					return CouldNotInterpretAsANumber, index, fmt.Sprintf("%s%s", t.Literal, errorMessage(CouldNotInterpretAsANumber)), 0
+					i.errorCode = CouldNotInterpretAsANumber
+					i.badTokenIndex = 0
+					i.message = fmt.Sprintf("%s%s", t.Literal, errorMessage(CouldNotInterpretAsANumber))
+					return 0, false
 				}
 			}
 			if t.TokenType == StringLiteral {
@@ -180,7 +191,10 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 					}
 				} else {
 					// Variable not defined
-					return HasNotBeenDefined, index, fmt.Sprintf("%s%s", t.Literal, errorMessage(HasNotBeenDefined)), 0
+					i.errorCode = HasNotBeenDefined
+					i.badTokenIndex = 0
+					i.message = fmt.Sprintf("%s%s", t.Literal, errorMessage(HasNotBeenDefined))
+					return 0, false
 				}
 			}
 		} else {
@@ -193,7 +207,10 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 				if GetType(operand2) != "string" {
 					op2 := operand2.(float64)
 					if op2 != math.Round(op2) {
-						return CannotPerformBitwiseOperationsOnFloatValues, index, errorMessage(CannotPerformBitwiseOperationsOnFloatValues), 0
+						i.errorCode = CannotPerformBitwiseOperationsOnFloatValues
+						i.badTokenIndex = -1
+						i.message = fmt.Sprintf("%s%s", t.Literal, errorMessage(HasNotBeenDefined))
+						return 0, false
 					} else {
 						result = float64(^int(op2))
 						// pop the stack, push new result and skip to next item in the postfix
@@ -202,7 +219,10 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 						continue
 					}
 				} else {
-					return CannotPerformBitwiseOperationsOnStringValues, index, errorMessage(CannotPerformBitwiseOperationsOnStringValues), 0
+					i.errorCode = CannotPerformBitwiseOperationsOnStringValues
+					i.badTokenIndex = -1
+					i.message = errorMessage(CannotPerformBitwiseOperationsOnStringValues)
+					return 0, false
 				}
 			}
 			// Binary operator
@@ -302,7 +322,10 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 						result = float64(0)
 					}
 				default:
-					return InvalidExpression, index, fmt.Sprintf("%s%s", t.Literal, errorMessage(InvalidExpression)), 0
+					i.errorCode = InvalidExpression
+					i.badTokenIndex = 0
+					i.message = fmt.Sprintf("%s%s", t.Literal, errorMessage(InvalidExpression))
+					return 0, false
 				}
 			} else {
 				// Numeric binary expression:
@@ -387,17 +410,26 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 					}
 				case AND:
 					if op1 != math.Round(op1) || op2 != math.Round(op2) {
-						return CannotPerformBitwiseOperationsOnFloatValues, index, errorMessage(CannotPerformBitwiseOperationsOnFloatValues), 0
+						i.errorCode = CannotPerformBitwiseOperationsOnFloatValues
+						i.badTokenIndex = 0
+						i.message = errorMessage(CannotPerformBitwiseOperationsOnFloatValues)
+						return 0, false
 					}
 					result = float64(int(op1) & int(op2))
 				case OR:
 					if op1 != math.Round(op1) || op2 != math.Round(op2) {
-						return CannotPerformBitwiseOperationsOnFloatValues, index, errorMessage(CannotPerformBitwiseOperationsOnFloatValues), 0
+						i.errorCode = CannotPerformBitwiseOperationsOnFloatValues
+						i.badTokenIndex = 0
+						i.message = errorMessage(CannotPerformBitwiseOperationsOnFloatValues)
+						return 0, false
 					}
 					result = float64(int(op1) | int(op2))
 				case XOR:
 					if op1 != math.Round(op1) || op2 != math.Round(op2) {
-						return CannotPerformBitwiseOperationsOnFloatValues, index, errorMessage(CannotPerformBitwiseOperationsOnFloatValues), 0
+						i.errorCode = CannotPerformBitwiseOperationsOnFloatValues
+						i.badTokenIndex = 0
+						i.message = errorMessage(CannotPerformBitwiseOperationsOnFloatValues)
+						return 0, false
 					}
 					result = float64(int(op1) ^ int(op2))
 				}
@@ -406,8 +438,8 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 			operandStack = append([]interface{}{result}, operandStack...)
 		}
 	}
-	// Evaluation successful, errorCode = 0
-	return 0, 0, "", result
+	// Evaluation complete
+	return result, true
 }
 
 // GetType receives an arbitrary interface and returns the data type as a string if it is one of float64, int64 or string.
@@ -452,13 +484,13 @@ func WeighString(s string) (weight int) {
 
 // RunSegment attempts to execute a segment of tokens and replies with an error code, the index
 // of the token where parsing failed, and a message, or something.
-func (i *Interpreter) RunSegment(tokens []Token) (errorCode, badTokenIndex int, message string) {
+func (i *Interpreter) RunSegment(tokens []Token) (ok bool) {
 	// 1. Pass if empty line
 	if len(tokens) == 0 {
-		return Success, 0, ""
+		return true
 	}
 	if tokens[0].TokenType == EndOfLine {
-		return Success, 0, ""
+		return true
 	}
 	// 2. Try string variable assignment.  Must be at least 3 tokens.
 
@@ -476,14 +508,17 @@ func (i *Interpreter) RunSegment(tokens []Token) (errorCode, badTokenIndex int, 
 						val = math.Round(val)
 					}
 					i.store[tokens[0].Literal] = val
-					return Success, -1, ""
+					return true
 				} else {
-					return CouldNotInterpretAsANumber, 2, fmt.Sprintf("%s%s", tokens[2].Literal, errorMessage(CouldNotInterpretAsANumber))
+					i.errorCode = CouldNotInterpretAsANumber
+					i.badTokenIndex = 2
+					i.message = fmt.Sprintf("%s%s", tokens[2].Literal, errorMessage(CouldNotInterpretAsANumber))
+					return false
 				}
 			} else {
 				// evaluate result then store
-				errorCode, _, message, result := i.EvaluateExpression(tokens[2:])
-				if errorCode == Success {
+				result, ok := i.EvaluateExpression(tokens[2:])
+				if ok {
 					// Evaluation was successful so check data type and store
 					if GetType(result) == "string" {
 						// Store the result
@@ -496,48 +531,38 @@ func (i *Interpreter) RunSegment(tokens []Token) (errorCode, badTokenIndex int, 
 						// Store the result
 						i.store[tokens[0].Literal] = result
 					}
-					return Success, -1, ""
+					return true
 				} else {
-					// Something went wrong so return error info
-					return errorCode, 2, message
+					// Something went wrong
+					return false
 				}
 			}
 		}
 		// Catch case where a keyword has been used as a variable name to assign to
 		if IsKeyword(tokens[0]) &&
 			(tokens[1].TokenType == Equal || tokens[1].TokenType == Assign) {
-			return IsAKeywordAndCannotBeUsedAsAVariableName, 0, fmt.Sprintf("%s%s", tokens[0].Literal, errorMessage(IsAKeywordAndCannotBeUsedAsAVariableName))
+			i.errorCode = IsAKeywordAndCannotBeUsedAsAVariableName
+			i.badTokenIndex = 0
+			i.message = fmt.Sprintf("%s%s", tokens[0].Literal, errorMessage(IsAKeywordAndCannotBeUsedAsAVariableName))
+			return false
 		}
 	}
 	// 3. Try built-in / keywords functions.
 	if IsKeyword(tokens[0]) {
 		// Try PRINT
 		if tokens[0].TokenType == PRINT {
-			// PRINT with no args
-			if len(tokens) == 1 {
-				fmt.Println("")
-				return Success, -1, ""
-			}
-			if len(tokens) > 1 {
-				if tokens[1].TokenType == EndOfLine {
-					// Still PRINT with no args
-					fmt.Println("")
-					return Success, -1, ""
-				}
-				if tokens[1].TokenType == StringLiteral {
-					// PRINT "hello"
-					fmt.Println(tokens[1].Literal)
-					return Success, -1, ""
-				}
-			}
+			return i.rmPrint(tokens)
 		}
 	}
-	return ExpectedAKeywordLineNumberExpressionVariableAssignmentOrProcedureCall, 0, errorMessage(ExpectedAKeywordLineNumberExpressionVariableAssignmentOrProcedureCall)
+	i.errorCode = ExpectedAKeywordLineNumberExpressionVariableAssignmentOrProcedureCall
+	i.badTokenIndex = 0
+	i.message = errorMessage(ExpectedAKeywordLineNumberExpressionVariableAssignmentOrProcedureCall)
+	return false
 }
 
 // RunLine attempts to run a line of BASIC code and replies with an error code, the index
 // of the token where parsing failed, and a message, or something.
-func (i *Interpreter) RunLine(code string) (errorCode, badTokenIndex int, message string) {
+func (i *Interpreter) RunLine(code string) (ok bool) {
 	// tokenize the code
 	i.Tokenize(code)
 	// split the tokens into executable segments for each : token found
@@ -560,17 +585,22 @@ func (i *Interpreter) RunLine(code string) (errorCode, badTokenIndex int, messag
 		if index > 0 {
 			badTokenOffset += len(segments[index-1])
 		}
-		errorCode, badTokenIndex, message = i.RunSegment(segment)
-		if errorCode != 0 {
-			break
+		ok := i.RunSegment(segment)
+		if !ok {
+			return false
 		}
 	}
-	return errorCode, badTokenIndex + badTokenOffset, message
+	return true
 }
 
 // ImmediateInput receives a string inputted by the REPL user, processes it and responds
 // with a message, if any
 func (i *Interpreter) ImmediateInput(code string) (response string) {
+	// reset error status and tokenize code
+	i.errorCode = Success
+	i.message = ""
+	i.badTokenIndex = 0
+	i.lineNumber = -1
 	i.Tokenize(code)
 	// If the code begins with a line number then add it to the program otherwise try to execute it.
 	if i.currentTokens[0].TokenType == NumericalLiteral {
@@ -579,15 +609,21 @@ func (i *Interpreter) ImmediateInput(code string) (response string) {
 		if err == nil {
 			if lineNumber == math.Round(lineNumber) {
 				// is a line number so format line and add to program
-				i.program[int(lineNumber)] = i.FormatCode(code, -1)
+				i.program[int(lineNumber)] = i.FormatCode(code, -1, true)
 			}
 		}
 	}
 	// Does not begin with line number so try to execute
-	errorCode, badTokenIndex, message := i.RunLine(code)
-	if errorCode > 0 {
+	ok := i.RunLine(code)
+	if !ok {
 		// There was an error so the response should include the error message
-		response = fmt.Sprintf("Syntax error: %s\n%s", message, i.FormatCode(code, badTokenIndex))
+		if i.lineNumber == -1 {
+			// immediate-mode syntax error without line number
+			response = fmt.Sprintf("Syntax error: %s\n%s", i.message, i.FormatCode(code, i.badTokenIndex, false))
+		} else {
+			// syntax error with line number
+			response = fmt.Sprintf("Syntax error in line %d: %s\n%s", i.lineNumber, i.message, i.FormatCode(code, i.badTokenIndex, false))
+		}
 	}
 	return response
 }
@@ -595,9 +631,13 @@ func (i *Interpreter) ImmediateInput(code string) (response string) {
 // FormatCode receives a line of BASIC code and returns it formatted.  If a number
 // > 0 is passed for highlightTokenIndex, the corresponding token is highlighted
 // with arrows; this is used for printing error messages.
-func (i *Interpreter) FormatCode(code string, highlightTokenIndex int) string {
+func (i *Interpreter) FormatCode(code string, highlightTokenIndex int, skipFirstToken bool) string {
 	i.Tokenize(code)
 	formattedCode := ""
+	// handle skipFirstToken
+	if skipFirstToken {
+		i.currentTokens = i.currentTokens[1:]
+	}
 	// bump highlighter if it's pointing at :
 	if highlightTokenIndex >= 0 {
 		if i.currentTokens[highlightTokenIndex].TokenType == Colon && len(i.currentTokens) > highlightTokenIndex+1 {
