@@ -164,6 +164,15 @@ func TestScanner(t *testing.T) {
 				{EndOfLine, ""},
 			},
 		},
+		{
+			Source: "(-1)",
+			ExpectedTokens: []Token{
+				{LeftParen, "("},
+				{NumericalLiteral, "-1"},
+				{RightParen, ")"},
+				{EndOfLine, ""},
+			},
+		},
 	}
 
 	// test that we always get expected tokens

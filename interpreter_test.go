@@ -278,6 +278,14 @@ func TestInterpreterEvaluateExpression(t *testing.T) {
 			Source:         "NOT 0",
 			ExpectedResult: float64(-1),
 		},
+		{
+			Source:         "1 + (-1 AND -1)",
+			ExpectedResult: float64(0),
+		},
+		{
+			Source:         "not (-1 AND -1)",
+			ExpectedResult: float64(0),
+		},
 	}
 
 	// test that we always get expected result
