@@ -185,10 +185,10 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 			}
 		} else {
 			// Apply operator
-			// if unary operator then ... else assume binary ...
+			// First try unary operators, currently only NOT is implemented so:
+			// Get operand 2 but *** DO NOT POP THE STACK ***
 			operand2 := operandStack[0]
 			if t.TokenType == NOT {
-				fmt.Println("found NOT")
 				// Is unary NOT but we can only apply this to rounded floats or ints
 				if GetType(operand2) != "string" {
 					op2 := operand2.(float64)
@@ -196,10 +196,9 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 						return CannotPerformBitwiseOperationsOnFloatValues, index, errorMessage(CannotPerformBitwiseOperationsOnFloatValues), 0
 					} else {
 						result = float64(^int(op2))
-						// pop the stack, push new result and skip to next item
+						// pop the stack, push new result and skip to next item in the postfix
 						operandStack = operandStack[1:]
 						operandStack = append([]interface{}{result}, operandStack...)
-						fmt.Println("push and continue")
 						continue
 					}
 				} else {
@@ -207,12 +206,10 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 				}
 			}
 			// Binary operator
-			// Get operands 1 and 2, and their operator
-			//operand2 := operandStack[0]
-			// pop
+			// pop the stack and get operand 1
 			operandStack = operandStack[1:]
 			operand1 := operandStack[0]
-			// pop
+			// pop the stack again
 			operandStack = operandStack[1:]
 			// Now decide if it's a string expression, numeric expression or invalid expression
 			// If one or both operands are string type then it's a string expression
