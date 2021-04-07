@@ -270,6 +270,14 @@ func TestInterpreterEvaluateExpression(t *testing.T) {
 			Source:         "0 OR -1",
 			ExpectedResult: float64(-1),
 		},
+		{
+			Source:         "NOT -1",
+			ExpectedResult: float64(0),
+		},
+		{
+			Source:         "NOT 0",
+			ExpectedResult: float64(-1),
+		},
 	}
 
 	// test that we always get expected result

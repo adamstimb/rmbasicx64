@@ -152,7 +152,15 @@ func TestScanner(t *testing.T) {
 		{
 			Source: "-1.0",
 			ExpectedTokens: []Token{
-				{NumericalLiteral, "-1.0"}, // How do we deal with this?
+				{NumericalLiteral, "-1.0"},
+				{EndOfLine, ""},
+			},
+		},
+		{
+			Source: "NOT -1",
+			ExpectedTokens: []Token{
+				{NOT, "NOT"},
+				{NumericalLiteral, "-1"},
 				{EndOfLine, ""},
 			},
 		},
@@ -164,9 +172,11 @@ func TestScanner(t *testing.T) {
 		tokens := s.Scan(test.Source)
 		for j, token := range tokens {
 			if token.TokenType != test.ExpectedTokens[j].TokenType {
+				PrintToken(token)
 				t.Fatalf("Token [%d]: TokenType [%d] expected, got [%d] from source [%q]", i, test.ExpectedTokens[j].TokenType, token.TokenType, test.Source)
 			}
 			if token.Literal != test.ExpectedTokens[j].Literal {
+				PrintToken(token)
 				t.Fatalf("Token [%d]: Literal [%q] expected, got [%q] from source [%q]", i, test.ExpectedTokens[j].Literal, token.Literal, test.Source)
 			}
 		}

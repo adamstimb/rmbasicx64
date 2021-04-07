@@ -35,7 +35,7 @@ func (i *Interpreter) Tokenize(code string) {
 func IsOperator(t Token) bool {
 	operators := []int{Minus, Plus, ForwardSlash, Star, Exponential, BackSlash, Equal, InterestinglyEqual, LessThan,
 		GreaterThan, LessThanEqualTo1, LessThanEqualTo2, GreaterThanEqualTo1, GreaterThanEqualTo2, Inequality1, Inequality2,
-		AND, OR, XOR}
+		AND, OR, XOR, NOT}
 	for _, op := range operators {
 		if op == t.TokenType {
 			return true
@@ -186,10 +186,29 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 		} else {
 			// Apply operator
 			// if unary operator then ... else assume binary ...
-
+			operand2 := operandStack[0]
+			if t.TokenType == NOT {
+				fmt.Println("found NOT")
+				// Is unary NOT but we can only apply this to rounded floats or ints
+				if GetType(operand2) != "string" {
+					op2 := operand2.(float64)
+					if op2 != math.Round(op2) {
+						return CannotPerformBitwiseOperationsOnFloatValues, index, errorMessage(CannotPerformBitwiseOperationsOnFloatValues), 0
+					} else {
+						result = float64(^int(op2))
+						// pop the stack, push new result and skip to next item
+						operandStack = operandStack[1:]
+						operandStack = append([]interface{}{result}, operandStack...)
+						fmt.Println("push and continue")
+						continue
+					}
+				} else {
+					return CannotPerformBitwiseOperationsOnStringValues, index, errorMessage(CannotPerformBitwiseOperationsOnStringValues), 0
+				}
+			}
 			// Binary operator
 			// Get operands 1 and 2, and their operator
-			operand2 := operandStack[0]
+			//operand2 := operandStack[0]
 			// pop
 			operandStack = operandStack[1:]
 			operand1 := operandStack[0]
@@ -200,7 +219,7 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 			// If both operands are numeric then it's a numeric expression (however this will
 			// not always be true, for example if the operator is a function that returns a string...)
 			if GetType(operand1) == "string" || GetType(operand2) == "string" {
-				// Is valid string expression
+				// String binary expression
 				// If either operand is numeric, convert it to string before applying the operator
 				op1 := ""
 				op2 := ""
@@ -289,7 +308,7 @@ func (i *Interpreter) EvaluateExpression(tokens []Token) (errorCode, badTokenInd
 					return InvalidExpression, index, fmt.Sprintf("%s%s", t.Literal, errorMessage(InvalidExpression)), 0
 				}
 			} else {
-				// Numeric expression:
+				// Numeric binary expression:
 				// Can assume both operands are numeric, i.e. float64 so convert them directly
 				op1 := operand1.(float64)
 				op2 := operand2.(float64)

@@ -267,7 +267,7 @@ func (s *Scanner) scanToken() {
 			s.getNumber(r)
 			return
 		}
-		if len(s.Tokens) > 1 && IsOperator(s.Tokens[len(s.Tokens)-1]) {
+		if len(s.Tokens) >= 1 && IsOperator(s.Tokens[len(s.Tokens)-1]) {
 			s.getNumber(r)
 			return
 		} else {
