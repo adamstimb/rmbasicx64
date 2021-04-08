@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -12,13 +13,14 @@ import (
 // can receive, store and interpret BASIC code and execute the code to update its
 // own state.
 type Interpreter struct {
-	store         map[string]interface{} // A map for storing variables and array (the key is the variable name)
-	program       map[int]string         // A map for storing a program (the key is the line number)
-	currentTokens []Token                // A line of tokens for immediate execution
-	errorCode     int                    // The current errorCode
-	lineNumber    int                    // The current line number being executed (-1 indicates immediate-mode, therefore no line number)
-	badTokenIndex int                    // If there was an error, the index of the token that raised the error is stored here
-	message       string                 // The current error message, if any
+	store          map[string]interface{} // A map for storing variables and array (the key is the variable name)
+	program        map[int]string         // A map for storing a program (the key is the line number)
+	currentTokens  []Token                // A line of tokens for immediate execution
+	errorCode      int                    // The current errorCode
+	lineNumber     int                    // The current line number being executed (-1 indicates immediate-mode, therefore no line number)
+	badTokenIndex  int                    // If there was an error, the index of the token that raised the error is stored here
+	message        string                 // The current error message, if any
+	programPointer int
 }
 
 // Init initializes the Interpreter.
@@ -30,6 +32,7 @@ func (i *Interpreter) Init() {
 	i.lineNumber = -1
 	i.badTokenIndex = -1
 	i.message = ""
+	i.programPointer = 0
 }
 
 // Tokenize receives a line of code, generates tokens and stores them in currentTokens.
@@ -77,7 +80,6 @@ func IsKeyword(t Token) bool {
 
 // Precedence returns the precedence of a token representing an operator
 func Precedence(t Token) int {
-
 	// As defined in the BASIC book p57
 	precedences := map[int]int{}
 	precedences[XOR] = 0
@@ -101,7 +103,6 @@ func Precedence(t Token) int {
 	precedences[BackSlash] = 6
 	precedences[MOD] = 6
 	precedences[Exponential] = 7
-
 	return precedences[t.TokenType]
 }
 
@@ -492,27 +493,25 @@ func (i *Interpreter) RunSegment(tokens []Token) (ok bool) {
 	if tokens[0].TokenType == EndOfLine {
 		return true
 	}
-	// 2. Try string variable assignment.  Must be at least 3 tokens.
-
-	// 3. Try numeric variable assignment.  Must be at least 3 tokens.
+	// 2. Try numeric variable assignment.  Must be at least 3 tokens.
 	if len(tokens) >= 3 {
 		// First 2 tokens must be identifier literal followed by = (equal) or := (assign)
 		if tokens[0].TokenType == IdentifierLiteral &&
 			(tokens[1].TokenType == Equal || tokens[1].TokenType == Assign) {
+			// Catch case where a keyword has been used as a variable name to assign to
+			if IsKeyword(tokens[0]) &&
+				(tokens[1].TokenType == Equal || tokens[1].TokenType == Assign) {
+				i.errorCode = IsAKeywordAndCannotBeUsedAsAVariableName
+				i.badTokenIndex = 0
+				i.message = fmt.Sprintf("%s%s", tokens[0].Literal, errorMessage(IsAKeywordAndCannotBeUsedAsAVariableName))
+				return false
+			}
 			// If exactly four tokens and the 3rd token is a numerical literal then we don't
 			// have anything to evaluate
 			if len(tokens) == 4 && tokens[2].TokenType == NumericalLiteral {
-				if val, err := strconv.ParseFloat(tokens[2].Literal, 64); err == nil {
-					// round val if variable is integer type, i.e. ends with %
-					if tokens[0].Literal[len(tokens[0].Literal)-1:] == "%" {
-						val = math.Round(val)
-					}
-					i.store[tokens[0].Literal] = val
+				if i.SetVar(tokens[0].Literal, tokens[2].Literal) {
 					return true
 				} else {
-					i.errorCode = CouldNotInterpretAsANumber
-					i.badTokenIndex = 2
-					i.message = fmt.Sprintf("%s%s", tokens[2].Literal, errorMessage(CouldNotInterpretAsANumber))
 					return false
 				}
 			} else {
@@ -520,38 +519,28 @@ func (i *Interpreter) RunSegment(tokens []Token) (ok bool) {
 				result, ok := i.EvaluateExpression(tokens[2:])
 				if ok {
 					// Evaluation was successful so check data type and store
-					if GetType(result) == "string" {
-						// Store the result
-						i.store[tokens[0].Literal] = result.(string)
+					if i.SetVar(tokens[0].Literal, result) {
+						return true
 					} else {
-						// round val if variable is integer type, i.e. ends with %
-						if tokens[0].Literal[len(tokens[0].Literal)-1:] == "%" {
-							result = math.Round(result.(float64))
-						}
-						// Store the result
-						i.store[tokens[0].Literal] = result
+						return false
 					}
-					return true
 				} else {
-					// Something went wrong
+					// Something went wrong in the evaluation
 					return false
 				}
 			}
 		}
-		// Catch case where a keyword has been used as a variable name to assign to
-		if IsKeyword(tokens[0]) &&
-			(tokens[1].TokenType == Equal || tokens[1].TokenType == Assign) {
-			i.errorCode = IsAKeywordAndCannotBeUsedAsAVariableName
-			i.badTokenIndex = 0
-			i.message = fmt.Sprintf("%s%s", tokens[0].Literal, errorMessage(IsAKeywordAndCannotBeUsedAsAVariableName))
-			return false
-		}
+
 	}
 	// 3. Try built-in / keywords functions.
 	if IsKeyword(tokens[0]) {
-		// Try PRINT
-		if tokens[0].TokenType == PRINT {
+		switch tokens[0].TokenType {
+		case PRINT:
 			return i.rmPrint(tokens)
+		case GOTO:
+			return i.rmGoto(tokens)
+		case RUN:
+			return i.rmRun()
 		}
 	}
 	i.errorCode = ExpectedAKeywordLineNumberExpressionVariableAssignmentOrProcedureCall
@@ -590,6 +579,7 @@ func (i *Interpreter) RunLine(code string) (ok bool) {
 			return false
 		}
 	}
+	i.programPointer += 1
 	return true
 }
 
@@ -610,6 +600,7 @@ func (i *Interpreter) ImmediateInput(code string) (response string) {
 			if lineNumber == math.Round(lineNumber) {
 				// is a line number so format line and add to program
 				i.program[int(lineNumber)] = i.FormatCode(code, -1, true)
+				return response
 			}
 		}
 	}
@@ -661,3 +652,71 @@ func (i *Interpreter) FormatCode(code string, highlightTokenIndex int, skipFirst
 	formattedCode = strings.TrimSpace(formattedCode)
 	return formattedCode
 }
+
+// GetLineOrder returns a list of program line numbers ordered from smallest to greatest
+func (i *Interpreter) GetLineOrder() (ordered []int) {
+	for lineNumber, _ := range i.program {
+		ordered = append(ordered, lineNumber)
+	}
+	sort.Ints(ordered)
+	return ordered
+}
+
+// SetVar stores a variable
+func (i *Interpreter) SetVar(variableName string, value interface{}) bool {
+	switch variableName[len(variableName)-1:] {
+	case "$":
+		// set string variable
+		if GetType(value) == "float64" {
+			// cast float value to string and store
+			i.store[variableName] = fmt.Sprintf("%e", value.(float64))
+		} else {
+			// store float value directly
+			i.store[variableName] = value.(string)
+			return true
+		}
+	case "%":
+		// set integer variable
+		if GetType(value) == "float64" {
+			// round float and store
+			i.store[variableName] = math.Round(value.(float64))
+			return true
+		} else {
+			// try to parse float from string then round to int
+			if valfloat64, err := strconv.ParseFloat(value.(string), 64); err == nil {
+				i.store[variableName] = math.Round(valfloat64)
+				return true
+			} else {
+				i.errorCode = CouldNotInterpretAsANumber
+				i.message = fmt.Sprintf("%s%s", value.(string), errorMessage(CouldNotInterpretAsANumber))
+				return false
+			}
+		}
+	default:
+		// set float variable
+		if GetType(value) == "float64" {
+			// store
+			i.store[variableName] = value.(float64)
+			return true
+		} else {
+			// try to parse float from string
+			if valfloat64, err := strconv.ParseFloat(value.(string), 64); err == nil {
+				i.store[variableName] = valfloat64
+				return true
+			} else {
+				i.errorCode = CouldNotInterpretAsANumber
+				i.message = fmt.Sprintf("%s%s", value.(string), errorMessage(CouldNotInterpretAsANumber))
+				return false
+			}
+		}
+	}
+	// This should not happen therefore fatal
+	log.Fatalf("Fatal error!")
+	return false
+}
+
+// GetIntVar retrieves the value of an integer variable from the store
+
+// GetFloatVar retrieves the value of a float variable from the store
+
+// GetStringVar retrieves the value of a string variable from the store

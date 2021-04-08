@@ -42,10 +42,9 @@ func repl(i *Interpreter) {
 		fmt.Print(":")
 		code, _ := reader.ReadString('\n')
 		code = strings.TrimSpace(code)
-		ok := i.RunLine(code)
-		if !ok {
-			fmt.Printf("Syntax error: %s\n", i.message)
-			fmt.Printf("%s\n", i.FormatCode(code, i.badTokenIndex, false))
+		response := i.ImmediateInput(code)
+		if response != "" {
+			fmt.Println(response)
 		}
 	}
 }
