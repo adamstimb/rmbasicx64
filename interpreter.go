@@ -21,6 +21,8 @@ type Interpreter struct {
 	badTokenIndex  int                    // If there was an error, the index of the token that raised the error is stored here
 	message        string                 // The current error message, if any
 	programPointer int
+	tokenStack     []Token
+	tokenPointer   int
 }
 
 // Init initializes the Interpreter.
@@ -33,6 +35,7 @@ func (i *Interpreter) Init() {
 	i.badTokenIndex = -1
 	i.message = ""
 	i.programPointer = 0
+	i.tokenStack = []Token{}
 }
 
 // Tokenize receives a line of code, generates tokens and stores them in currentTokens.
@@ -109,6 +112,31 @@ func Precedence(t Token) int {
 // EvaluateExpression receives tokens that appear to represent an expression, tries to evaluate it
 // and returns the result.
 func (i *Interpreter) EvaluateExpression(tokens []Token) (result interface{}, ok bool) {
+	// If exactly one token representing a literal or variable we don't need to evaluate it
+	if len(tokens) == 1 {
+		switch tokens[0].TokenType {
+		case StringLiteral:
+			return tokens[0].Literal, true
+		case NumericalLiteral:
+			if valfloat64, err := strconv.ParseFloat(tokens[0].Literal, 64); err == nil {
+				return valfloat64, true
+			} else {
+				i.errorCode = CouldNotInterpretAsANumber
+				i.message = fmt.Sprintf("%s%s", tokens[0].Literal, errorMessage(CouldNotInterpretAsANumber))
+				i.badTokenIndex = 0 + i.tokenPointer
+				return 0, false
+			}
+		case IdentifierLiteral:
+			var val interface{}
+			val, ok = i.GetVar(tokens[0].Literal)
+			if !ok {
+				i.badTokenIndex = 0 + i.tokenPointer
+				return 0, false
+			} else {
+				return val, true
+			}
+		}
+	}
 	// Make the postfix then evaluate it following Carrano's pseudocode:
 	// http://www.solomonlrussell.com/spring16/cs2/ClassSource/Week6/stackcode.html
 	// (this has been extended quite a lot to deal with expressions that mix numeric and string values)
@@ -486,6 +514,8 @@ func WeighString(s string) (weight int) {
 // RunSegment attempts to execute a segment of tokens and replies with an error code, the index
 // of the token where parsing failed, and a message, or something.
 func (i *Interpreter) RunSegment(tokens []Token) (ok bool) {
+	// Load tokens onto the stack
+	i.tokenStack = tokens
 	// 1. Pass if empty line
 	if len(tokens) == 0 {
 		return true
@@ -498,39 +528,10 @@ func (i *Interpreter) RunSegment(tokens []Token) (ok bool) {
 		// First 2 tokens must be identifier literal followed by = (equal) or := (assign)
 		if tokens[0].TokenType == IdentifierLiteral &&
 			(tokens[1].TokenType == Equal || tokens[1].TokenType == Assign) {
-			// Catch case where a keyword has been used as a variable name to assign to
-			if IsKeyword(tokens[0]) &&
-				(tokens[1].TokenType == Equal || tokens[1].TokenType == Assign) {
-				i.errorCode = IsAKeywordAndCannotBeUsedAsAVariableName
-				i.badTokenIndex = 0
-				i.message = fmt.Sprintf("%s%s", tokens[0].Literal, errorMessage(IsAKeywordAndCannotBeUsedAsAVariableName))
-				return false
-			}
-			// If exactly four tokens and the 3rd token is a numerical literal then we don't
-			// have anything to evaluate
-			if len(tokens) == 4 && tokens[2].TokenType == NumericalLiteral {
-				if i.SetVar(tokens[0].Literal, tokens[2].Literal) {
-					return true
-				} else {
-					return false
-				}
-			} else {
-				// evaluate result then store
-				result, ok := i.EvaluateExpression(tokens[2:])
-				if ok {
-					// Evaluation was successful so check data type and store
-					if i.SetVar(tokens[0].Literal, result) {
-						return true
-					} else {
-						return false
-					}
-				} else {
-					// Something went wrong in the evaluation
-					return false
-				}
-			}
+			// advance the pointer and hand over to rmAssign
+			i.tokenPointer += 2
+			return i.rmAssign()
 		}
-
 	}
 	// 3. Try built-in / keywords functions.
 	if IsKeyword(tokens[0]) {
@@ -715,8 +716,75 @@ func (i *Interpreter) SetVar(variableName string, value interface{}) bool {
 	return false
 }
 
-// GetIntVar retrieves the value of an integer variable from the store
+// GetVar retrieves the value of a variable from the store
+func (i *Interpreter) GetVar(variableName string) (value interface{}, ok bool) {
+	val, ok := i.store[variableName]
+	if !ok {
+		i.errorCode = HasNotBeenDefined
+		i.message = fmt.Sprintf("%s%s", variableName, errorMessage(HasNotBeenDefined))
+		return 0, false
+	} else {
+		return val, true
+	}
+}
 
-// GetFloatVar retrieves the value of a float variable from the store
+// GetValueFromToken receives a token representing either a variable or a literal, gets
+// the value, and ~casts~ it to the required type
+func (i *Interpreter) GetValueFromToken(t Token, castTo string) (value interface{}, ok bool) {
+	if t.TokenType == IdentifierLiteral {
+		value, ok = i.GetVar(t.Literal)
+		if !ok {
+			return 0, false
+		}
+	} else {
+		value = t.Literal
+	}
+	switch GetType(value) {
+	case "string":
+		switch castTo {
+		case "string":
+			return value, true
+		case "float64":
+			// try to parse float from string
+			if valfloat64, err := strconv.ParseFloat(value.(string), 64); err == nil {
+				return valfloat64, true
+			} else {
+				i.errorCode = CouldNotInterpretAsANumber
+				i.message = fmt.Sprintf("%s%s", value.(string), errorMessage(CouldNotInterpretAsANumber))
+				return 0, false
+			}
+		case "int64":
+			// try to parse float from string
+			if valfloat64, err := strconv.ParseFloat(value.(string), 64); err == nil {
+				return math.Round(valfloat64), true
+			} else {
+				i.errorCode = CouldNotInterpretAsANumber
+				i.message = fmt.Sprintf("%s%s", value.(string), errorMessage(CouldNotInterpretAsANumber))
+				return 0, false
+			}
+		}
+	case "float64":
+		switch castTo {
+		case "string":
+			return fmt.Sprintf("%e", value.(float64)), true
+		case "float64":
+			return value, true
+		case "int64":
+			return math.Round(value.(float64)), true
+		}
+	}
+	log.Fatalf("Fatal error!")
+	return 0, false
+}
 
-// GetStringVar retrieves the value of a string variable from the store
+// ExtractExpression receives a slice of tokens that represent an expression and returns
+// all those tokens up to where the expression ends.
+func ExtractExpression(tokens []Token) (expressionTokens []Token) {
+	for _, t := range tokens {
+		if t.TokenType == Comma || t.TokenType == Semicolon || t.TokenType == EndOfLine || IsKeyword(t) {
+			break
+		}
+		expressionTokens = append(expressionTokens, t)
+	}
+	return expressionTokens
+}

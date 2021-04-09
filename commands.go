@@ -6,6 +6,31 @@ import (
 	"strconv"
 )
 
+// rmAssign represents a variable assignment (var = expr or var := expr)
+func (i *Interpreter) rmAssign() (ok bool) {
+	// Catch case where a keyword has been used as a variable name to assign to
+	if IsKeyword(i.tokenStack[0]) &&
+		(i.tokenStack[1].TokenType == Equal || i.tokenStack[1].TokenType == Assign) {
+		i.errorCode = IsAKeywordAndCannotBeUsedAsAVariableName
+		i.badTokenIndex = 0
+		i.message = fmt.Sprintf("%s%s", i.tokenStack[0].Literal, errorMessage(IsAKeywordAndCannotBeUsedAsAVariableName))
+		return false
+	}
+	// extract expression, evaluate result then store
+	result, ok := i.EvaluateExpression(ExtractExpression(i.tokenStack[2:]))
+	if ok {
+		// Evaluation was successful so check data type and store
+		if i.SetVar(i.tokenStack[0].Literal, result) {
+			return true
+		} else {
+			return false
+		}
+	} else {
+		// Something went wrong in the evaluation
+		return false
+	}
+}
+
 // rmRun represents the RUN command
 // TODO: Run can accept one optional parameter for start-from line number
 func (i *Interpreter) rmRun() (ok bool) {
@@ -75,14 +100,25 @@ func (i *Interpreter) rmPrint(tokens []Token) (ok bool) {
 	}
 	if len(tokens) > 1 {
 		if tokens[1].TokenType == EndOfLine {
-			// Still PRINT with no args
+			// Also PRINT with no args
 			fmt.Println("")
 			return true
 		}
-		if tokens[1].TokenType == StringLiteral {
-			// PRINT "hello"
-			fmt.Println(tokens[1].Literal)
-			return true
+		if tokens[1].TokenType == StringLiteral || tokens[1].TokenType == IdentifierLiteral || tokens[1].TokenType == NumericalLiteral {
+			toPrint, ok := i.EvaluateExpression(ExtractExpression(tokens[1:]))
+			if !ok {
+				i.badTokenIndex = 1
+				return false
+			} else {
+				switch GetType(toPrint) {
+				case "string":
+					fmt.Println(toPrint.(string))
+					return true
+				case "float64":
+					fmt.Println(toPrint.(float64))
+					return true
+				}
+			}
 		}
 	}
 	// set error status here
