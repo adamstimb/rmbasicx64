@@ -816,3 +816,14 @@ func (i *Interpreter) ExtractExpression() (expressionTokens []Token) {
 	}
 	return expressionTokens
 }
+
+// EndOfTokens returns true if no more tokens are to be evaluated in the token stack
+func (i *Interpreter) EndOfTokens() bool {
+	if i.tokenPointer > len(i.tokenStack) {
+		return true
+	}
+	if i.tokenStack[i.tokenPointer].TokenType == EndOfLine {
+		return true
+	}
+	return false
+}

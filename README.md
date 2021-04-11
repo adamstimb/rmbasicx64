@@ -4,7 +4,7 @@ _RM BASICx64 is a tribute project and is in no way linked to or endorsed by RM p
 
 ## About
 
-The plan is to re-implement the RM Basic interpeter and code editor (originally implemented on the [RM Nimbus PC186](https://en.wikipedia.org/wiki/RM_Nimbus) in the 1980s) for modern 64-bit machines.  RM BASICx64 is written in Go and uses the [Nimbgobus](https://github.com/adamstimb/nimgobus) extension for [ebiten game engine](https://ebiten.org) to simulate the inputs and outputs of the RM Nimbus.
+The plan is to re-implement RM Basic (developed in 1985 for the [RM Nimbus PC186](https://en.wikipedia.org/wiki/RM_Nimbus)) for modern 64-bit machines.  RM BASICx64 is written in Go and uses the [Nimbgobus](https://github.com/adamstimb/nimgobus) extension for [ebiten game engine](https://ebiten.org) to simulate the inputs and outputs of the RM Nimbus.
 
 High-level goals:
 

@@ -7,21 +7,13 @@ import (
 
 // rmGoto represents the GOTO command
 func (i *Interpreter) rmGoto() (ok bool) {
-	// GOTO must be followed by one integer literal that represents a stored line number.
-	// Validate only 1 parameter
-	if len(i.tokenStack) > 3 {
-		i.errorCode = TooManyParametersFor
-		i.badTokenIndex = 2
-		i.message = fmt.Sprintf("%s%s", errorMessage(TooManyParametersFor), "GOTO")
-		return false
-	}
+	// Check that a parameter is passed
 	if len(i.tokenStack) < 3 {
 		i.errorCode = NotEnoughParametersFor
 		i.badTokenIndex = 0
 		i.message = fmt.Sprintf("%s%s", errorMessage(NotEnoughParametersFor), "GOTO")
 		return false
 	}
-	// Validate is integer or variable representing an integer
 	// Don't accept string vars
 	if IsStringVar(i.tokenStack[1]) {
 		i.errorCode = LineNumberExpected
@@ -31,8 +23,22 @@ func (i *Interpreter) rmGoto() (ok bool) {
 	}
 	// Get gotoLine
 	if i.tokenStack[1].TokenType == NumericalLiteral || i.tokenStack[1].TokenType == IdentifierLiteral {
-		val, ok := i.GetValueFromToken(i.tokenStack[1], "float64")
+		i.tokenPointer++
+		gotoLineExpression := i.ExtractExpression()
+		// Validate no more tokens to evaluate
+		if !i.EndOfTokens() {
+			i.errorCode = TooManyParametersFor
+			i.badTokenIndex = 2
+			i.message = fmt.Sprintf("%s%s", errorMessage(TooManyParametersFor), "GOTO")
+			return false
+		}
+		val, ok := i.EvaluateExpression(gotoLineExpression)
 		if !ok {
+			// broken expression
+			return false
+		}
+		if GetType(val) == "string" {
+			// string expressions not allowed
 			i.errorCode = LineNumberExpected
 			i.message = errorMessage(LineNumberExpected)
 			i.badTokenIndex = 1
@@ -40,6 +46,7 @@ func (i *Interpreter) rmGoto() (ok bool) {
 		}
 		valfloat64 := val.(float64)
 		if valfloat64 != math.Round(valfloat64) {
+			// only whole numbers allowed
 			i.errorCode = LineNumberExpected
 			i.message = errorMessage(LineNumberExpected)
 			i.badTokenIndex = 1

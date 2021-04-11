@@ -95,6 +95,16 @@ func TestGoto(t *testing.T) {
 			},
 			ExpectedTestVal: float64(50),
 		},
+		{
+			Program: map[int]string{
+				10: "Test := 40",
+				20: "GOTO Test + 10",
+				30: "PRINT \"Hello\"",
+				40: "Test := 100",
+				50: "PRINT \"world\"",
+			},
+			ExpectedTestVal: float64(40),
+		},
 	}
 
 	interp := &Interpreter{}
