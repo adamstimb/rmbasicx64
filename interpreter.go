@@ -663,6 +663,33 @@ func (i *Interpreter) GetLineOrder() (ordered []int) {
 	return ordered
 }
 
+// IsStringVar returns true if a token represents a string variable
+func IsStringVar(t Token) bool {
+	if t.TokenType == IdentifierLiteral && t.Literal[len(t.Literal)-1:] == "$" {
+		return true
+	} else {
+		return false
+	}
+}
+
+// IsIntVar returns true if a token represents a integer variable
+func IsIntVar(t Token) bool {
+	if t.TokenType == IdentifierLiteral && t.Literal[len(t.Literal)-1:] == "%" {
+		return true
+	} else {
+		return false
+	}
+}
+
+// IsFloatVar returns true if a token represents a float variable
+func IsFloatVar(t Token) bool {
+	if t.TokenType == IdentifierLiteral && (t.Literal[len(t.Literal)-1:] != "%" && t.Literal[len(t.Literal)-1:] != "$") {
+		return true
+	} else {
+		return false
+	}
+}
+
 // SetVar stores a variable
 func (i *Interpreter) SetVar(variableName string, value interface{}) bool {
 	switch variableName[len(variableName)-1:] {
