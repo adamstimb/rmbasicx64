@@ -16,7 +16,7 @@ func (i *Interpreter) rmAssign() (ok bool) {
 	}
 	// advance token point, extract expression, evaluate result then store
 	i.tokenPointer += 2
-	result, ok := i.EvaluateExpression(i.ExtractExpression())
+	result, ok := i.EvaluateExpression()
 	if ok {
 		// Evaluation was successful so check data type and store
 		if i.SetVar(i.tokenStack[0].Literal, result) {

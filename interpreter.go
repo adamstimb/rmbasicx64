@@ -111,7 +111,8 @@ func Precedence(t Token) int {
 
 // EvaluateExpression receives tokens that appear to represent an expression, tries to evaluate it
 // and returns the result.
-func (i *Interpreter) EvaluateExpression(tokens []Token) (result interface{}, ok bool) {
+func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
+	tokens := i.ExtractExpression()
 	// If exactly one token representing a literal or variable we don't need to evaluate it
 	if len(tokens) == 1 {
 		switch tokens[0].TokenType {
@@ -808,7 +809,7 @@ func (i *Interpreter) GetValueFromToken(t Token, castTo string) (value interface
 // all those tokens up to where the expression ends.
 func (i *Interpreter) ExtractExpression() (expressionTokens []Token) {
 	for _, t := range i.tokenStack[i.tokenPointer:] {
-		if t.TokenType == Comma || t.TokenType == Semicolon || t.TokenType == EndOfLine || IsKeyword(t) {
+		if t.TokenType == Comma || t.TokenType == Semicolon || t.TokenType == EndOfLine { // t.tokenType == Exclamation
 			break
 		}
 		expressionTokens = append(expressionTokens, t)

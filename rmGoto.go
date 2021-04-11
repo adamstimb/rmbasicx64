@@ -24,17 +24,16 @@ func (i *Interpreter) rmGoto() (ok bool) {
 	// Get gotoLine
 	if i.tokenStack[1].TokenType == NumericalLiteral || i.tokenStack[1].TokenType == IdentifierLiteral {
 		i.tokenPointer++
-		gotoLineExpression := i.ExtractExpression()
+		val, ok := i.EvaluateExpression()
+		if !ok {
+			// broken expression
+			return false
+		}
 		// Validate no more tokens to evaluate
 		if !i.EndOfTokens() {
 			i.errorCode = TooManyParametersFor
 			i.badTokenIndex = 2
 			i.message = fmt.Sprintf("%s%s", errorMessage(TooManyParametersFor), "GOTO")
-			return false
-		}
-		val, ok := i.EvaluateExpression(gotoLineExpression)
-		if !ok {
-			// broken expression
 			return false
 		}
 		if GetType(val) == "string" {

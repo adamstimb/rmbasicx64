@@ -40,7 +40,7 @@ func (i *Interpreter) rmPrint() (ok bool) {
 		}
 		if i.tokenStack[1].TokenType == StringLiteral || i.tokenStack[1].TokenType == IdentifierLiteral || i.tokenStack[1].TokenType == NumericalLiteral {
 			i.tokenPointer++
-			toPrint, ok := i.EvaluateExpression(i.ExtractExpression())
+			toPrint, ok := i.EvaluateExpression()
 			if !ok {
 				i.badTokenIndex = 1
 				return false

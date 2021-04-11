@@ -293,7 +293,9 @@ func TestInterpreterEvaluateExpression(t *testing.T) {
 	for _, test := range tests {
 		interp.Init()
 		interp.Tokenize(test.Source)
-		result, _ := interp.EvaluateExpression(interp.currentTokens)
+		interp.tokenStack = interp.currentTokens
+		interp.tokenPointer = 0
+		result, _ := interp.EvaluateExpression()
 		if result != test.ExpectedResult {
 			t.Fatalf("Expected [%f] but got [%f] from source [%q]", test.ExpectedResult, result, test.Source)
 		}
