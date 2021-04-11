@@ -2,15 +2,19 @@ package main
 
 // Error codes define here
 const (
-	Success                                                               = iota //= 1001
-	ExpectedAKeywordLineNumberExpressionVariableAssignmentOrProcedureCall        //= 1002
-	CouldNotInterpretAsANumber                                                   //= 1003
-	DidNotExpectInExpression                                                     //= 1004
-	HasNotBeenDefined                                                            //= 1005
-	IsAKeywordAndCannotBeUsedAsAVariableName                                     //= 1006
-	InvalidExpression                                                            //= 1007
-	CannotPerformBitwiseOperationsOnFloatValues                                  //= 1008
-	CannotPerformBitwiseOperationsOnStringValues                                 //= 1009
+	Success = iota
+	ExpectedAKeywordLineNumberExpressionVariableAssignmentOrProcedureCall
+	CouldNotInterpretAsANumber
+	DidNotExpectInExpression
+	HasNotBeenDefined
+	IsAKeywordAndCannotBeUsedAsAVariableName
+	InvalidExpression
+	CannotPerformBitwiseOperationsOnFloatValues
+	CannotPerformBitwiseOperationsOnStringValues
+	TooManyParametersFor
+	NotEnoughParametersFor
+	LineNumberExpected
+	LineNumberDoesNotExist
 )
 
 // errorMessage returns the template error message for a given error code
@@ -25,6 +29,10 @@ func errorMessage(errorCode int) string {
 		InvalidExpression:                            " caused an invalid expression",
 		CannotPerformBitwiseOperationsOnFloatValues:  "Cannot perform bitwise operations on float values",
 		CannotPerformBitwiseOperationsOnStringValues: "Cannot perform bitwise operations on string values",
+		TooManyParametersFor:                         "Too many parameters for ",
+		NotEnoughParametersFor:                       "Not enough parameters for ",
+		LineNumberExpected:                           "Line number expected",
+		LineNumberDoesNotExist:                       "Line number does not exist",
 	}
 	return errorMessages[errorCode]
 }
