@@ -537,9 +537,9 @@ func (i *Interpreter) RunSegment(tokens []Token) (ok bool) {
 	if IsKeyword(tokens[0]) {
 		switch tokens[0].TokenType {
 		case PRINT:
-			return i.rmPrint(tokens)
+			return i.rmPrint()
 		case GOTO:
-			return i.rmGoto(tokens)
+			return i.rmGoto()
 		case RUN:
 			return i.rmRun()
 		}

@@ -26,19 +26,19 @@ import "fmt"
 // If ; or , terminates [print list] then PRINT does not line feed
 // and applies the above spacing rules
 // See also WIDTH command.....
-func (i *Interpreter) rmPrint(tokens []Token) (ok bool) {
+func (i *Interpreter) rmPrint() (ok bool) {
 	// PRINT with no args
-	if len(tokens) == 1 {
+	if len(i.tokenStack) == 1 {
 		fmt.Println("")
 		return true
 	}
-	if len(tokens) > 1 {
-		if tokens[1].TokenType == EndOfLine {
+	if len(i.tokenStack) > 1 {
+		if i.tokenStack[1].TokenType == EndOfLine {
 			// Also PRINT with no args
 			fmt.Println("")
 			return true
 		}
-		if tokens[1].TokenType == StringLiteral || tokens[1].TokenType == IdentifierLiteral || tokens[1].TokenType == NumericalLiteral {
+		if i.tokenStack[1].TokenType == StringLiteral || i.tokenStack[1].TokenType == IdentifierLiteral || i.tokenStack[1].TokenType == NumericalLiteral {
 			i.tokenPointer++
 			toPrint, ok := i.EvaluateExpression(i.ExtractExpression())
 			if !ok {
