@@ -16,8 +16,9 @@ func (i *Interpreter) rmAssign() (ok bool) {
 		i.message = fmt.Sprintf("%s%s", i.tokenStack[0].Literal, errorMessage(IsAKeywordAndCannotBeUsedAsAVariableName))
 		return false
 	}
-	// extract expression, evaluate result then store
-	result, ok := i.EvaluateExpression(ExtractExpression(i.tokenStack[2:]))
+	// advance token point, extract expression, evaluate result then store
+	i.tokenPointer += 2
+	result, ok := i.EvaluateExpression(i.ExtractExpression())
 	if ok {
 		// Evaluation was successful so check data type and store
 		if i.SetVar(i.tokenStack[0].Literal, result) {
@@ -105,7 +106,8 @@ func (i *Interpreter) rmPrint(tokens []Token) (ok bool) {
 			return true
 		}
 		if tokens[1].TokenType == StringLiteral || tokens[1].TokenType == IdentifierLiteral || tokens[1].TokenType == NumericalLiteral {
-			toPrint, ok := i.EvaluateExpression(ExtractExpression(tokens[1:]))
+			i.tokenPointer++
+			toPrint, ok := i.EvaluateExpression(i.ExtractExpression())
 			if !ok {
 				i.badTokenIndex = 1
 				return false

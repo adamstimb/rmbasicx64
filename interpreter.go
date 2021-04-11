@@ -516,6 +516,7 @@ func WeighString(s string) (weight int) {
 func (i *Interpreter) RunSegment(tokens []Token) (ok bool) {
 	// Load tokens onto the stack
 	i.tokenStack = tokens
+	i.tokenPointer = 0
 	// 1. Pass if empty line
 	if len(tokens) == 0 {
 		return true
@@ -528,8 +529,7 @@ func (i *Interpreter) RunSegment(tokens []Token) (ok bool) {
 		// First 2 tokens must be identifier literal followed by = (equal) or := (assign)
 		if tokens[0].TokenType == IdentifierLiteral &&
 			(tokens[1].TokenType == Equal || tokens[1].TokenType == Assign) {
-			// advance the pointer and hand over to rmAssign
-			i.tokenPointer += 2
+			// Hand over to rmAssign
 			return i.rmAssign()
 		}
 	}
@@ -779,12 +779,13 @@ func (i *Interpreter) GetValueFromToken(t Token, castTo string) (value interface
 
 // ExtractExpression receives a slice of tokens that represent an expression and returns
 // all those tokens up to where the expression ends.
-func ExtractExpression(tokens []Token) (expressionTokens []Token) {
-	for _, t := range tokens {
+func (i *Interpreter) ExtractExpression() (expressionTokens []Token) {
+	for _, t := range i.tokenStack[i.tokenPointer:] {
 		if t.TokenType == Comma || t.TokenType == Semicolon || t.TokenType == EndOfLine || IsKeyword(t) {
 			break
 		}
 		expressionTokens = append(expressionTokens, t)
+		i.tokenPointer++
 	}
 	return expressionTokens
 }
