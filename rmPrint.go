@@ -1,6 +1,10 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+	"strings"
+)
 
 // rmPrint represents the Print command
 // From the manual:
@@ -33,29 +37,100 @@ func (i *Interpreter) rmPrint() (ok bool) {
 		return true
 	}
 	if len(i.tokenStack) > 1 {
-		if i.tokenStack[1].TokenType == EndOfLine {
+		i.tokenPointer++
+		if i.tokenStack[i.tokenPointer].TokenType == EndOfLine {
 			// Also PRINT with no args
 			fmt.Println("")
 			return true
 		}
-		if i.tokenStack[1].TokenType == StringLiteral || i.tokenStack[1].TokenType == IdentifierLiteral || i.tokenStack[1].TokenType == NumericalLiteral {
-			i.tokenPointer++
-			toPrint, ok := i.EvaluateExpression()
+		// Handle channel number or writing area option
+		tildeOrHash, ok := i.AcceptAnyOfTheseTokens([]int{Tilde, Hash})
+		writingArea := 0
+		printChannel := 0
+		if ok {
+			var optionVal float64
+			optionVal, ok = i.AcceptAnyNumber()
 			if !ok {
-				i.badTokenIndex = 1
+				// excepted a number
 				return false
 			} else {
-				switch GetType(toPrint) {
-				case "string":
-					fmt.Println(toPrint.(string))
-					return true
-				case "float64":
-					fmt.Println(toPrint.(float64))
-					return true
+				switch tildeOrHash.TokenType {
+				case Tilde:
+					// select writing area
+					writingArea = int(math.Round(optionVal))
+				case Hash:
+					// select print channel
+					printChannel = int(math.Round(optionVal))
 				}
 			}
+			// Handle no further args
+			if i.EndOfTokens() {
+				fmt.Println("")
+				return true
+			}
+		}
+		_ = writingArea // TODO: implement
+		_ = printChannel
+		// Handle expression list
+		if i.IsAnyOfTheseTokens([]int{StringLiteral, IdentifierLiteral, NumericalLiteral, Exclamation}) {
+			// Evaluate all expressions in list, concatenate their results and send to print
+			printString := ""
+			for !i.EndOfTokens() {
+				// Handle list punctuation
+				switch i.tokenStack[i.tokenPointer].TokenType {
+				case Semicolon:
+					// no space, go to next token
+					i.tokenPointer++
+				case Comma:
+					// should jump to next print zone but for now add a tab
+					printString += "\t"
+					i.tokenPointer++
+				case Exclamation:
+					// add new line
+					printString += "\n"
+					i.tokenPointer++
+				default:
+					toPrint, ok := i.EvaluateExpression()
+					if !ok {
+						i.badTokenIndex++
+						return false
+					} else {
+						switch GetType(toPrint) {
+						case "string":
+							printString += toPrint.(string)
+							continue
+						case "float64":
+							printString += RenderNumberAsString(toPrint.(float64))
+							continue
+						}
+					}
+				}
+			}
+			// Got all expressions so print the final string
+			fmt.Println(printString)
+			return true
+		} else {
+			i.errorCode = EndOfInstructionExpected
+			i.message = errorMessage(EndOfInstructionExpected)
+			i.badTokenIndex = i.tokenPointer
+			return false
 		}
 	}
-	// set error status here
+	i.errorCode = EndOfInstructionExpected
+	i.message = errorMessage(EndOfInstructionExpected)
+	i.badTokenIndex = i.tokenPointer
 	return false
+}
+
+// RenderNumberAsString receives a float64 type ad applies RM Basic's print rules for numbers
+// returning a string representing the number that was passed.
+func RenderNumberAsString(value float64) (result string) {
+	if math.Abs(value) > 9999999 || math.Abs(value) < 0.001 {
+		// use scientific notation to 5 decimal places
+		result = fmt.Sprintf("%.5e", value)
+	} else {
+		result = fmt.Sprintf("%f", value)
+	}
+	// remove trailing zeros
+	return strings.TrimRight(strings.TrimRight(result, "0"), ".")
 }

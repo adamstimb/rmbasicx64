@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"math"
 )
 
@@ -9,50 +8,20 @@ import (
 func (i *Interpreter) rmGoto() (ok bool) {
 	// Check that a parameter is passed
 	if len(i.tokenStack) < 3 {
-		i.errorCode = NotEnoughParametersFor
-		i.badTokenIndex = 0
-		i.message = fmt.Sprintf("%s%s", errorMessage(NotEnoughParametersFor), "GOTO")
-		return false
-	}
-	// Don't accept string vars
-	if IsStringVar(i.tokenStack[1]) {
-		i.errorCode = LineNumberExpected
-		i.message = errorMessage(LineNumberExpected)
+		i.errorCode = NumericExpressionNeeded
 		i.badTokenIndex = 1
+		i.message = errorMessage(NumericExpressionNeeded)
 		return false
 	}
 	// Get gotoLine
 	if i.tokenStack[1].TokenType == NumericalLiteral || i.tokenStack[1].TokenType == IdentifierLiteral {
 		i.tokenPointer++
-		val, ok := i.EvaluateExpression()
+		val, ok := i.AcceptAnyNumber()
 		if !ok {
-			// broken expression
 			return false
 		}
-		// Validate no more tokens to evaluate
-		if !i.EndOfTokens() {
-			i.errorCode = TooManyParametersFor
-			i.badTokenIndex = 2
-			i.message = fmt.Sprintf("%s%s", errorMessage(TooManyParametersFor), "GOTO")
-			return false
-		}
-		if GetType(val) == "string" {
-			// string expressions not allowed
-			i.errorCode = LineNumberExpected
-			i.message = errorMessage(LineNumberExpected)
-			i.badTokenIndex = 1
-			return false
-		}
-		valfloat64 := val.(float64)
-		if valfloat64 != math.Round(valfloat64) {
-			// only whole numbers allowed
-			i.errorCode = LineNumberExpected
-			i.message = errorMessage(LineNumberExpected)
-			i.badTokenIndex = 1
-			return false
-		}
+		gotoLine := int(math.Round(val))
 		// scan for line number to goto
-		gotoLine := int(valfloat64)
 		lineOrder := i.GetLineOrder()
 		for l := 0; l < len(lineOrder); l++ {
 			if lineOrder[l] == gotoLine {
@@ -62,13 +31,13 @@ func (i *Interpreter) rmGoto() (ok bool) {
 			}
 		}
 		// line does not exist
-		i.errorCode = LineNumberDoesNotExist
+		i.errorCode = SpecifiedLineNotFound
 		i.badTokenIndex = 2
-		i.message = errorMessage(LineNumberDoesNotExist)
+		i.message = errorMessage(SpecifiedLineNotFound)
 		return false
 	}
-	i.errorCode = LineNumberExpected
+	i.errorCode = NumericExpressionNeeded
 	i.badTokenIndex = 1
-	i.message = errorMessage(LineNumberExpected)
+	i.message = errorMessage(NumericExpressionNeeded)
 	return false
 }

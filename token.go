@@ -24,7 +24,12 @@ const (
 	Star
 	Exponential
 	LessThan
-	GreaterThan //14
+	GreaterThan
+	Exclamation
+	Hash
+	Tilde
+	LeftSquareBrace
+	RightSquareBrace
 
 	// Two-character tokens
 	Assign

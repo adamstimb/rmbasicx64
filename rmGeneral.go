@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 )
 
 // rmAssign represents a variable assignment (var = expr or var := expr)
@@ -31,17 +32,56 @@ func (i *Interpreter) rmAssign() (ok bool) {
 }
 
 // rmRun represents the RUN command
-// TODO: Run can accept one optional parameter for start-from line number
 func (i *Interpreter) rmRun() (ok bool) {
+	// pass thru is no program
+	if len(i.program) == 0 {
+		return true
+	}
 	i.programPointer = 0
 	lineOrder := i.GetLineOrder()
+	// Check for optional startFrom parameter
+	startFrom := lineOrder[i.programPointer]
+	if len(i.tokenStack) > 2 {
+		i.tokenPointer++
+		_, ok := i.AcceptAnyOfTheseTokens([]int{NumericalLiteral, IdentifierLiteral})
+		if ok {
+			i.tokenPointer--
+			val, ok := i.AcceptAnyNumber()
+			if ok {
+				startFrom = int(math.Round(val))
+			} else {
+				return false
+			}
+		} else {
+			return false
+		}
+	}
+	// Run the program and if startFrom was passed scan ahead to it before executing
+	scanAhead := true
 	for i.programPointer < len(lineOrder) {
+		i.lineNumber = lineOrder[i.programPointer]
+		if scanAhead && (i.lineNumber != startFrom) {
+			i.programPointer++
+			continue
+		}
+		if scanAhead && (i.lineNumber == startFrom) {
+			scanAhead = false
+		}
 		ok := i.RunLine(i.program[lineOrder[i.programPointer]])
 		if !ok {
 			i.programPointer = 0
 			return false
 		}
 	}
+	// Catch line number not found
+	if scanAhead {
+		i.errorCode = SpecifiedLineNotFound
+		i.message = errorMessage(SpecifiedLineNotFound)
+		i.badTokenIndex = 1
+		i.lineNumber = -1
+		return false
+	}
+	// Otherwise ok
 	i.programPointer = 0
 	return true
 }

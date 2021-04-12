@@ -15,6 +15,12 @@ const (
 	NotEnoughParametersFor
 	LineNumberExpected
 	LineNumberDoesNotExist
+	UnknownCommandProcedure
+	TryingToDivideByZero
+	EndOfInstructionExpected
+	NumericExpressionNeeded
+	InvalidExpressionFound
+	SpecifiedLineNotFound
 )
 
 // errorMessage returns the template error message for a given error code
@@ -33,6 +39,12 @@ func errorMessage(errorCode int) string {
 		NotEnoughParametersFor:                       "Not enough parameters for ",
 		LineNumberExpected:                           "Line number expected",
 		LineNumberDoesNotExist:                       "Line number does not exist",
+		TryingToDivideByZero:                         "Trying to divide by zero",    //70
+		UnknownCommandProcedure:                      "Unknown command/procedure",   //20
+		EndOfInstructionExpected:                     "End of instruction expected", //77
+		NumericExpressionNeeded:                      "Numeric expression needed",   //12
+		InvalidExpressionFound:                       "Invalid expression found",    //11
+		SpecifiedLineNotFound:                        "Specified line not found",    //18
 	}
 	return errorMessages[errorCode]
 }
