@@ -290,6 +290,16 @@ func (s *Scanner) scanToken() {
 	case '^':
 		s.addToken(Exponential, "^")
 		return
+	case '!':
+		s.addToken(Exclamation, "!")
+	case '#':
+		s.addToken(Hash, "#")
+	case '~':
+		s.addToken(Tilde, "~")
+	case '[':
+		s.addToken(LeftSquareBrace, "[")
+	case ']':
+		s.addToken(RightSquareBrace, "]")
 	// string literal
 	case '"':
 		s.getString()

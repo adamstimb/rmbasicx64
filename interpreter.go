@@ -109,368 +109,6 @@ func Precedence(t Token) int {
 	return precedences[t.TokenType]
 }
 
-// EvaluateExpression receives tokens that appear to represent an expression, tries to evaluate it
-// and returns the result.
-func (i *Interpreter) EvaluateExpression(tokens []Token) (result interface{}, ok bool) {
-	// If exactly one token representing a literal or variable we don't need to evaluate it
-	if len(tokens) == 1 {
-		switch tokens[0].TokenType {
-		case StringLiteral:
-			return tokens[0].Literal, true
-		case NumericalLiteral:
-			if valfloat64, err := strconv.ParseFloat(tokens[0].Literal, 64); err == nil {
-				return valfloat64, true
-			} else {
-				i.errorCode = CouldNotInterpretAsANumber
-				i.message = fmt.Sprintf("%s%s", tokens[0].Literal, errorMessage(CouldNotInterpretAsANumber))
-				i.badTokenIndex = 0 + i.tokenPointer
-				return 0, false
-			}
-		case IdentifierLiteral:
-			var val interface{}
-			val, ok = i.GetVar(tokens[0].Literal)
-			if !ok {
-				i.badTokenIndex = 0 + i.tokenPointer
-				return 0, false
-			} else {
-				return val, true
-			}
-		}
-	}
-	// Make the postfix then evaluate it following Carrano's pseudocode:
-	// http://www.solomonlrussell.com/spring16/cs2/ClassSource/Week6/stackcode.html
-	// (this has been extended quite a lot to deal with expressions that mix numeric and string values)
-	postfix := make([]Token, 0)
-	operatorStack := make([]Token, 0)
-	for _, t := range tokens {
-		if IsOperand(t) {
-			postfix = append(postfix, t)
-			continue
-		}
-		if t.TokenType == LeftParen {
-			// push
-			operatorStack = append([]Token{t}, operatorStack...)
-			continue
-		}
-		if t.TokenType == RightParen {
-			// pop operator stack until matching LeftParen
-			for operatorStack[0].TokenType != LeftParen {
-				postfix = append(postfix, operatorStack[0])
-				operatorStack = operatorStack[1:]
-			}
-			// pop and continue
-			operatorStack = operatorStack[1:]
-			continue
-		}
-		if IsOperator(t) {
-			for len(operatorStack) > 0 &&
-				operatorStack[0].TokenType != LeftParen &&
-				Precedence(t) <= Precedence(operatorStack[0]) {
-				postfix = append(postfix, operatorStack[0])
-				// pop
-				operatorStack = operatorStack[1:]
-			}
-			// push
-			operatorStack = append([]Token{t}, operatorStack...)
-			continue
-		}
-	}
-	for len(operatorStack) > 0 {
-		postfix = append(postfix, operatorStack[0])
-		// pop
-		operatorStack = operatorStack[1:]
-	}
-
-	// Now evaluate the postfix:
-	operandStack := make([]interface{}, 0)
-	for _, t := range postfix {
-		if IsOperand(t) {
-			// Handle operand
-			// Get the value and data type represented by the token.
-			if t.TokenType == NumericalLiteral {
-				// Is numeric but test it can be parsed before pushing token to operand stack
-				if valfloat64, err := strconv.ParseFloat(t.Literal, 64); err == nil {
-					// push
-					operandStack = append([]interface{}{valfloat64}, operandStack...)
-				} else {
-					// Is meant to represent a numeric value but it can't be parsed (this should never actually happen...maybe remove it?)
-					i.errorCode = CouldNotInterpretAsANumber
-					i.badTokenIndex = 0
-					i.message = fmt.Sprintf("%s%s", t.Literal, errorMessage(CouldNotInterpretAsANumber))
-					return 0, false
-				}
-			}
-			if t.TokenType == StringLiteral {
-				// push it as-is
-				operandStack = append([]interface{}{t.Literal}, operandStack...)
-			}
-			if t.TokenType == IdentifierLiteral {
-				// Is identifier, so first test it has been defined by looking in the store
-				if _, ok := i.store[t.Literal]; ok {
-					if t.Literal[len(tokens[0].Literal)-1:] != "$" {
-						// Represents a numeric value
-						valfloat64, ok := i.store[t.Literal].(float64)
-						if !ok {
-							// This should not happen therefore fatal
-							log.Fatalf("Fatal error!")
-						} else {
-							// push
-							operandStack = append([]interface{}{valfloat64}, operandStack...)
-						}
-					}
-				} else {
-					// Variable not defined
-					i.errorCode = HasNotBeenDefined
-					i.badTokenIndex = 0
-					i.message = fmt.Sprintf("%s%s", t.Literal, errorMessage(HasNotBeenDefined))
-					return 0, false
-				}
-			}
-		} else {
-			// Apply operator
-			// First try unary operators, currently only NOT is implemented so:
-			// Get operand 2 but *** DO NOT POP THE STACK ***
-			operand2 := operandStack[0]
-			if t.TokenType == NOT {
-				// Is unary NOT but we can only apply this to rounded floats or ints
-				if GetType(operand2) != "string" {
-					op2 := operand2.(float64)
-					if op2 != math.Round(op2) {
-						i.errorCode = CannotPerformBitwiseOperationsOnFloatValues
-						i.badTokenIndex = -1
-						i.message = fmt.Sprintf("%s%s", t.Literal, errorMessage(HasNotBeenDefined))
-						return 0, false
-					} else {
-						result = float64(^int(op2))
-						// pop the stack, push new result and skip to next item in the postfix
-						operandStack = operandStack[1:]
-						operandStack = append([]interface{}{result}, operandStack...)
-						continue
-					}
-				} else {
-					i.errorCode = CannotPerformBitwiseOperationsOnStringValues
-					i.badTokenIndex = -1
-					i.message = errorMessage(CannotPerformBitwiseOperationsOnStringValues)
-					return 0, false
-				}
-			}
-			// Binary operator
-			// pop the stack and get operand 1
-			operandStack = operandStack[1:]
-			operand1 := operandStack[0]
-			// pop the stack again
-			operandStack = operandStack[1:]
-			// Now decide if it's a string expression, numeric expression or invalid expression
-			// If one or both operands are string type then it's a string expression
-			// If both operands are numeric then it's a numeric expression (however this will
-			// not always be true, for example if the operator is a function that returns a string...)
-			if GetType(operand1) == "string" || GetType(operand2) == "string" {
-				// String binary expression
-				// If either operand is numeric, convert it to string before applying the operator
-				op1 := ""
-				op2 := ""
-				if GetType(operand1) == "string" {
-					op1 = operand1.(string)
-				}
-				if GetType(operand1) == "float64" {
-					op1 = fmt.Sprintf("%e", operand1.(float64))
-				}
-				if GetType(operand2) == "string" {
-					op2 = operand2.(string)
-				}
-				if GetType(operand2) == "float64" {
-					// Use scientific notation if...what? Check manual.
-					if operand2.(float64) == math.Round(operand2.(float64)) {
-						op2 = fmt.Sprintf("%.0f", operand2.(float64))
-					} else {
-						op2 = fmt.Sprintf("%e", operand2.(float64))
-					}
-				}
-				// Apply operation
-				switch t.TokenType {
-				case Plus:
-					result = op1 + op2
-				case Equal:
-					if op1 == op2 {
-						result = float64(-1)
-					} else {
-						result = float64(0)
-					}
-				case InterestinglyEqual:
-					if strings.EqualFold(op1, op2) {
-						result = float64(-1)
-					} else {
-						result = float64(0)
-					}
-				case LessThan:
-					if WeighString(op1) < WeighString(op2) {
-						result = float64(-1)
-					} else {
-						result = float64(0)
-					}
-				case GreaterThan:
-					if WeighString(op1) > WeighString(op2) {
-						result = float64(-1)
-					} else {
-						result = float64(0)
-					}
-				case LessThanEqualTo1:
-					if WeighString(op1) <= WeighString(op2) {
-						result = float64(-1)
-					} else {
-						result = float64(0)
-					}
-				case LessThanEqualTo2:
-					if WeighString(op1) <= WeighString(op2) {
-						result = float64(-1)
-					} else {
-						result = float64(0)
-					}
-				case GreaterThanEqualTo1:
-					if WeighString(op1) >= WeighString(op2) {
-						result = float64(-1)
-					} else {
-						result = float64(0)
-					}
-				case GreaterThanEqualTo2:
-					if WeighString(op1) >= WeighString(op2) {
-						result = float64(-1)
-					} else {
-						result = float64(0)
-					}
-				case Inequality1:
-					if WeighString(op1) != WeighString(op2) {
-						result = float64(-1)
-					} else {
-						result = float64(0)
-					}
-				case Inequality2:
-					if WeighString(op1) != WeighString(op2) {
-						result = float64(-1)
-					} else {
-						result = float64(0)
-					}
-				default:
-					i.errorCode = InvalidExpression
-					i.badTokenIndex = 0
-					i.message = fmt.Sprintf("%s%s", t.Literal, errorMessage(InvalidExpression))
-					return 0, false
-				}
-			} else {
-				// Numeric binary expression:
-				// Can assume both operands are numeric, i.e. float64 so convert them directly
-				op1 := operand1.(float64)
-				op2 := operand2.(float64)
-				// Apply operation
-				switch t.TokenType {
-				case Minus:
-					result = op1 - op2
-				case Plus:
-					result = op1 + op2
-				case ForwardSlash:
-					result = op1 / op2
-				case BackSlash:
-					result = float64(int(op1) / int(op2))
-				case Star:
-					result = op1 * op2
-				case Exponential:
-					result = math.Pow(op1, op2)
-				case MOD:
-					result = float64(int(op1) % int(op2))
-				case Equal:
-					if op1 == op2 {
-						result = float64(-1)
-					} else {
-						result = float64(0)
-					}
-				case InterestinglyEqual:
-					if op1 == op2 {
-						result = float64(-1)
-					} else {
-						result = float64(0)
-					}
-				case LessThan:
-					if op1 < op2 {
-						result = float64(-1)
-					} else {
-						result = float64(0)
-					}
-				case GreaterThan:
-					if op1 > op2 {
-						result = float64(-1)
-					} else {
-						result = float64(0)
-					}
-				case LessThanEqualTo1:
-					if op1 <= op2 {
-						result = float64(-1)
-					} else {
-						result = float64(0)
-					}
-				case LessThanEqualTo2:
-					if op1 <= op2 {
-						result = float64(-1)
-					} else {
-						result = float64(0)
-					}
-				case GreaterThanEqualTo1:
-					if op1 >= op2 {
-						result = float64(-1)
-					} else {
-						result = float64(0)
-					}
-				case GreaterThanEqualTo2:
-					if op1 >= op2 {
-						result = float64(-1)
-					} else {
-						result = float64(0)
-					}
-				case Inequality1:
-					if op1 != op2 {
-						result = float64(-1)
-					} else {
-						result = float64(0)
-					}
-				case Inequality2:
-					if op1 != op2 {
-						result = float64(-1)
-					} else {
-						result = float64(0)
-					}
-				case AND:
-					if op1 != math.Round(op1) || op2 != math.Round(op2) {
-						i.errorCode = CannotPerformBitwiseOperationsOnFloatValues
-						i.badTokenIndex = 0
-						i.message = errorMessage(CannotPerformBitwiseOperationsOnFloatValues)
-						return 0, false
-					}
-					result = float64(int(op1) & int(op2))
-				case OR:
-					if op1 != math.Round(op1) || op2 != math.Round(op2) {
-						i.errorCode = CannotPerformBitwiseOperationsOnFloatValues
-						i.badTokenIndex = 0
-						i.message = errorMessage(CannotPerformBitwiseOperationsOnFloatValues)
-						return 0, false
-					}
-					result = float64(int(op1) | int(op2))
-				case XOR:
-					if op1 != math.Round(op1) || op2 != math.Round(op2) {
-						i.errorCode = CannotPerformBitwiseOperationsOnFloatValues
-						i.badTokenIndex = 0
-						i.message = errorMessage(CannotPerformBitwiseOperationsOnFloatValues)
-						return 0, false
-					}
-					result = float64(int(op1) ^ int(op2))
-				}
-			}
-			// push
-			operandStack = append([]interface{}{result}, operandStack...)
-		}
-	}
-	// Evaluation complete
-	return result, true
-}
-
 // GetType receives an arbitrary interface and returns the data type as a string if it is one of float64, int64 or string.
 // If the type is not recognized it returns ""
 func GetType(interfaceToTest interface{}) (dataType string) {
@@ -537,16 +175,16 @@ func (i *Interpreter) RunSegment(tokens []Token) (ok bool) {
 	if IsKeyword(tokens[0]) {
 		switch tokens[0].TokenType {
 		case PRINT:
-			return i.rmPrint(tokens)
+			return i.rmPrint()
 		case GOTO:
-			return i.rmGoto(tokens)
+			return i.rmGoto()
 		case RUN:
 			return i.rmRun()
 		}
 	}
-	i.errorCode = ExpectedAKeywordLineNumberExpressionVariableAssignmentOrProcedureCall
+	i.errorCode = UnknownCommandProcedure
 	i.badTokenIndex = 0
-	i.message = errorMessage(ExpectedAKeywordLineNumberExpressionVariableAssignmentOrProcedureCall)
+	i.message = errorMessage(UnknownCommandProcedure)
 	return false
 }
 
@@ -555,6 +193,15 @@ func (i *Interpreter) RunSegment(tokens []Token) (ok bool) {
 func (i *Interpreter) RunLine(code string) (ok bool) {
 	// tokenize the code
 	i.Tokenize(code)
+	// ensure no illegal chars
+	for index, t := range i.currentTokens {
+		if t.TokenType == Illegal {
+			i.errorCode = EndOfInstructionExpected
+			i.message = errorMessage(EndOfInstructionExpected)
+			i.badTokenIndex = index
+			return false
+		}
+	}
 	// split the tokens into executable segments for each : token found
 	segments := make([][]Token, 0)
 	this_segment := make([]Token, 0)
@@ -611,10 +258,10 @@ func (i *Interpreter) ImmediateInput(code string) (response string) {
 		// There was an error so the response should include the error message
 		if i.lineNumber == -1 {
 			// immediate-mode syntax error without line number
-			response = fmt.Sprintf("Syntax error: %s\n%s", i.message, i.FormatCode(code, i.badTokenIndex, false))
+			response = fmt.Sprintf("Syntax error: %s\n  %s", i.message, i.FormatCode(code, i.badTokenIndex, false))
 		} else {
 			// syntax error with line number
-			response = fmt.Sprintf("Syntax error in line %d: %s\n%s", i.lineNumber, i.message, i.FormatCode(code, i.badTokenIndex, false))
+			response = fmt.Sprintf("Syntax error in line %d: %s\n  %d %s", i.lineNumber, i.message, 10, i.FormatCode(i.program[i.lineNumber], i.badTokenIndex, false))
 		}
 	}
 	return response
@@ -789,6 +436,8 @@ func (i *Interpreter) GetValueFromToken(t Token, castTo string) (value interface
 				i.message = fmt.Sprintf("%s%s", value.(string), errorMessage(CouldNotInterpretAsANumber))
 				return 0, false
 			}
+		case "":
+			return value, true
 		}
 	case "float64":
 		switch castTo {
@@ -798,21 +447,113 @@ func (i *Interpreter) GetValueFromToken(t Token, castTo string) (value interface
 			return value, true
 		case "int64":
 			return math.Round(value.(float64)), true
+		case "":
+			return value, true
 		}
 	}
 	log.Fatalf("Fatal error!")
 	return 0, false
 }
 
+// AcceptAnyFloat checks if the current token represents a number and returns the value.  If
+// it does not represent a number then the tokenPointer is reset to its original position.
+func (i *Interpreter) AcceptAnyNumber() (acceptedValue float64, acceptOk bool) {
+	originalPosition := i.tokenPointer
+	val, ok := i.EvaluateExpression()
+	if !ok {
+		// broken expression so reset pointer and return false
+		i.tokenPointer = originalPosition
+		return 0, false
+	} else {
+		if GetType(val) != "float64" {
+			// is not float
+			// error?
+			i.tokenPointer = originalPosition
+			return 0, false
+		} else {
+			return val.(float64), true
+		}
+	}
+}
+
+// AcceptAnyString checks if the current token represents a string, returns the value
+// and advances the pointer if so.
+func (i *Interpreter) AcceptAnyString() (acceptedValue string, acceptOk bool) {
+	originalPosition := i.tokenPointer
+	val, ok := i.EvaluateExpression()
+	if !ok {
+		// broken expression so reset pointer and return false
+		i.tokenPointer = originalPosition
+		return "", false
+	} else {
+		if GetType(val) != "string" {
+			// is not string
+			// error?
+			i.tokenPointer = originalPosition
+			return "", false
+		} else {
+			return val.(string), true
+		}
+	}
+}
+
+// AcceptAnyOfTheseTokens checks if the current token matches any that are passed in a slice and, if so,
+// returns the token and advances the pointer.
+func (i *Interpreter) AcceptAnyOfTheseTokens(acceptableTokens []int) (acceptedToken Token, acceptOk bool) {
+	for _, tokenType := range acceptableTokens {
+		if tokenType == i.tokenStack[i.tokenPointer].TokenType {
+			// found a match, advanced pointer and return the token type
+			i.tokenPointer++
+			return i.tokenStack[i.tokenPointer], true
+		}
+	}
+	// no matches
+	return Token{}, false
+}
+
+// IsAnyOfTheseTokens checks if the current token matches any that are passed in a slice and, if so,
+// returns true but *does not advance the pointer*.
+func (i *Interpreter) IsAnyOfTheseTokens(acceptableTokens []int) bool {
+	for _, tokenType := range acceptableTokens {
+		if tokenType == i.tokenStack[i.tokenPointer].TokenType {
+			// found a match
+			return true
+		}
+	}
+	// no matches
+	return false
+}
+
 // ExtractExpression receives a slice of tokens that represent an expression and returns
 // all those tokens up to where the expression ends.
 func (i *Interpreter) ExtractExpression() (expressionTokens []Token) {
-	for _, t := range i.tokenStack[i.tokenPointer:] {
-		if t.TokenType == Comma || t.TokenType == Semicolon || t.TokenType == EndOfLine || IsKeyword(t) {
+	tokenStackSlice := i.tokenStack[i.tokenPointer:]
+	for index, t := range tokenStackSlice {
+		// The following tokens can delimit an expression
+		if t.TokenType == Comma || t.TokenType == Semicolon || t.TokenType == EndOfLine || t.TokenType == Exclamation {
 			break
+		}
+		// An expression is also delimited if one operand follows another directly
+		if index < (len(tokenStackSlice) - 1) {
+			if IsOperand(t) && IsOperand(tokenStackSlice[index+1]) {
+				expressionTokens = append(expressionTokens, t)
+				i.tokenPointer++
+				break
+			}
 		}
 		expressionTokens = append(expressionTokens, t)
 		i.tokenPointer++
 	}
 	return expressionTokens
+}
+
+// EndOfTokens returns true if no more tokens are to be evaluated in the token stack
+func (i *Interpreter) EndOfTokens() bool {
+	if i.tokenPointer > len(i.tokenStack) {
+		return true
+	}
+	if i.tokenStack[i.tokenPointer].TokenType == EndOfLine {
+		return true
+	}
+	return false
 }

@@ -173,6 +173,36 @@ func TestScanner(t *testing.T) {
 				{EndOfLine, ""},
 			},
 		},
+		{
+			Source: "PRINT #1 !",
+			ExpectedTokens: []Token{
+				{PRINT, "PRINT"},
+				{Hash, "#"},
+				{NumericalLiteral, "1"},
+				{Exclamation, "!"},
+				{EndOfLine, ""},
+			},
+		},
+		{
+			Source: "PRINT 1,2",
+			ExpectedTokens: []Token{
+				{PRINT, "PRINT"},
+				{NumericalLiteral, "1"},
+				{Comma, ","},
+				{NumericalLiteral, "2"},
+				{EndOfLine, ""},
+			},
+		},
+		{
+			Source: "PRINT ~1 !",
+			ExpectedTokens: []Token{
+				{PRINT, "PRINT"},
+				{Tilde, "~"},
+				{NumericalLiteral, "1"},
+				{Exclamation, "!"},
+				{EndOfLine, ""},
+			},
+		},
 	}
 
 	// test that we always get expected tokens
