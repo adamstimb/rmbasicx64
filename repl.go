@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/elastic/go-sysinfo"
 )
@@ -35,10 +36,11 @@ func welcomeScreen(g *Game) {
 // editor is used to receive commands from the user in direct mode and edit
 // BASIC programs
 func repl(g *Game, i *Interpreter) {
+	i.Init()
 	for {
 		rawInput := g.Input(":")
-		//		code = strings.TrimSpace(code)
-		response := i.ImmediateInput(rawInput)
+		code := strings.TrimSpace(rawInput)
+		response := i.ImmediateInput(code)
 		if response != "" {
 			g.Print(response)
 		}
