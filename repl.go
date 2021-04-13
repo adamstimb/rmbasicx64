@@ -36,14 +36,11 @@ func welcomeScreen(g *Game) {
 // editor is used to receive commands from the user in direct mode and edit
 // BASIC programs
 func repl(g *Game, i *Interpreter) {
-	i.Init()
+	i.Init(g)
 	for {
 		rawInput := g.Input(":")
 		code := strings.TrimSpace(rawInput)
-		response := i.ImmediateInput(code)
-		if response != "" {
-			g.Print(response)
-		}
+		_ = i.ImmediateInput(code)
 	}
 }
 

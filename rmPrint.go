@@ -33,14 +33,16 @@ import (
 func (i *Interpreter) rmPrint() (ok bool) {
 	// PRINT with no args
 	if len(i.tokenStack) == 1 {
-		fmt.Println("")
+		//fmt.Println("")
+		i.g.Print("")
 		return true
 	}
 	if len(i.tokenStack) > 1 {
 		i.tokenPointer++
 		if i.tokenStack[i.tokenPointer].TokenType == EndOfLine {
 			// Also PRINT with no args
-			fmt.Println("")
+			// fmt.Println("")
+			i.g.Print("")
 			return true
 		}
 		// Handle channel number or writing area option
@@ -65,7 +67,8 @@ func (i *Interpreter) rmPrint() (ok bool) {
 			}
 			// Handle no further args
 			if i.EndOfTokens() {
-				fmt.Println("")
+				//fmt.Println("")
+				i.g.Print("")
 				return true
 			}
 		}
@@ -92,7 +95,7 @@ func (i *Interpreter) rmPrint() (ok bool) {
 				default:
 					toPrint, ok := i.EvaluateExpression()
 					if !ok {
-						i.badTokenIndex++
+						//i.badTokenIndex++
 						return false
 					} else {
 						switch GetType(toPrint) {
@@ -107,7 +110,8 @@ func (i *Interpreter) rmPrint() (ok bool) {
 				}
 			}
 			// Got all expressions so print the final string
-			fmt.Println(printString)
+			//fmt.Println(printString)
+			i.g.Print(printString)
 			return true
 		} else {
 			i.errorCode = EndOfInstructionExpected

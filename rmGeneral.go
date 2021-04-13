@@ -3,7 +3,24 @@ package main
 import (
 	"fmt"
 	"math"
+	"os"
 )
+
+// rmBye represents the BYE command
+func (i *Interpreter) rmBye() (ok bool) {
+	// Ensure no parameters
+	i.tokenPointer++
+	if !i.EndOfTokens() {
+		i.errorCode = EndOfInstructionExpected
+		i.message = errorMessage(EndOfInstructionExpected)
+		i.badTokenIndex = i.tokenPointer
+		return false
+	}
+	// Exit application with success code
+	os.Exit(0)
+	// Return never actually happens
+	return true
+}
 
 // rmAssign represents a variable assignment (var = expr or var := expr)
 func (i *Interpreter) rmAssign() (ok bool) {

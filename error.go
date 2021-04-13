@@ -21,6 +21,11 @@ const (
 	NumericExpressionNeeded
 	InvalidExpressionFound
 	SpecifiedLineNotFound
+	LineNumberLabelNeeded
+	StringExpressionNeeded
+	ExactFilenameIsNeeded
+	FilenameIsADirectory
+	FileOperationFailure
 )
 
 // errorMessage returns the template error message for a given error code
@@ -45,6 +50,11 @@ func errorMessage(errorCode int) string {
 		NumericExpressionNeeded:                      "Numeric expression needed",   //12
 		InvalidExpressionFound:                       "Invalid expression found",    //11
 		SpecifiedLineNotFound:                        "Specified line not found",    //18
+		LineNumberLabelNeeded:                        "Line number/label needed",    //19
+		StringExpressionNeeded:                       "String expression needed",    //13
+		ExactFilenameIsNeeded:                        "Exact filename is needed",    //38
+		FilenameIsADirectory:                         "Filename is a directory",     //100
+		FileOperationFailure:                         "File operation failure",      //93
 	}
 	return errorMessages[errorCode]
 }

@@ -23,10 +23,11 @@ type Interpreter struct {
 	programPointer int
 	tokenStack     []Token
 	tokenPointer   int
+	g              *Game
 }
 
 // Init initializes the Interpreter.
-func (i *Interpreter) Init() {
+func (i *Interpreter) Init(g *Game) {
 	i.store = make(map[string]interface{})
 	i.program = make(map[int]string)
 	i.currentTokens = []Token{}
@@ -36,6 +37,7 @@ func (i *Interpreter) Init() {
 	i.message = ""
 	i.programPointer = 0
 	i.tokenStack = []Token{}
+	i.g = g
 }
 
 // Tokenize receives a line of code, generates tokens and stores them in currentTokens.
@@ -174,12 +176,20 @@ func (i *Interpreter) RunSegment(tokens []Token) (ok bool) {
 	// 3. Try built-in / keywords functions.
 	if IsKeyword(tokens[0]) {
 		switch tokens[0].TokenType {
+		case REM:
+			return true
 		case PRINT:
 			return i.rmPrint()
 		case GOTO:
 			return i.rmGoto()
 		case RUN:
 			return i.rmRun()
+		case BYE:
+			return i.rmBye()
+		case LIST:
+			return i.rmList()
+		case SAVE:
+			return i.rmSave()
 		}
 	}
 	i.errorCode = UnknownCommandProcedure
@@ -209,6 +219,8 @@ func (i *Interpreter) RunLine(code string) (ok bool) {
 		if token.TokenType != Colon {
 			this_segment = append(this_segment, token)
 		} else {
+			// add EndOfLine to segment before adding to segments slice
+			this_segment = append(this_segment, Token{EndOfLine, ""})
 			segments = append(segments, this_segment)
 			this_segment = make([]Token, 0)
 		}
@@ -242,6 +254,7 @@ func (i *Interpreter) ImmediateInput(code string) (response string) {
 	i.Tokenize(code)
 	// If the code begins with a line number then add it to the program otherwise try to execute it.
 	if i.currentTokens[0].TokenType == NumericalLiteral {
+		// TODO: This needs its own command-----
 		// It starts with some kind of number so check if it's an integer, i.e. line number
 		lineNumber, err := strconv.ParseFloat(i.currentTokens[0].Literal, 64)
 		if err == nil {
@@ -258,9 +271,13 @@ func (i *Interpreter) ImmediateInput(code string) (response string) {
 		// There was an error so the response should include the error message
 		if i.lineNumber == -1 {
 			// immediate-mode syntax error without line number
+			i.g.Print(fmt.Sprintf("Syntax error: %s", i.message))
+			i.g.Print(fmt.Sprintf("  %s", i.FormatCode(code, i.badTokenIndex, false)))
 			response = fmt.Sprintf("Syntax error: %s\n  %s", i.message, i.FormatCode(code, i.badTokenIndex, false))
 		} else {
 			// syntax error with line number
+			i.g.Print(fmt.Sprintf("Syntax error in line %d: %s", i.lineNumber, i.message))
+			i.g.Print(fmt.Sprintf("  %d %s", i.lineNumber, i.FormatCode(code, i.badTokenIndex, false)))
 			response = fmt.Sprintf("Syntax error in line %d: %s\n  %d %s", i.lineNumber, i.message, 10, i.FormatCode(i.program[i.lineNumber], i.badTokenIndex, false))
 		}
 	}
@@ -530,7 +547,7 @@ func (i *Interpreter) ExtractExpression() (expressionTokens []Token) {
 	tokenStackSlice := i.tokenStack[i.tokenPointer:]
 	for index, t := range tokenStackSlice {
 		// The following tokens can delimit an expression
-		if t.TokenType == Comma || t.TokenType == Semicolon || t.TokenType == EndOfLine || t.TokenType == Exclamation {
+		if t.TokenType == Comma || t.TokenType == Semicolon || t.TokenType == EndOfLine || t.TokenType == Exclamation || t.TokenType == TO {
 			break
 		}
 		// An expression is also delimited if one operand follows another directly
