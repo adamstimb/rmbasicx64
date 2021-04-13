@@ -37,7 +37,7 @@ func TestRun(t *testing.T) {
 
 	interp := &Interpreter{}
 	for _, test := range tests {
-		interp.Init()
+		interp.Init(&Game{})
 		interp.program = test.Program
 		if !interp.rmRun() {
 			t.Fatalf("%s\n", interp.message)
@@ -109,7 +109,8 @@ func TestGoto(t *testing.T) {
 
 	interp := &Interpreter{}
 	for _, test := range tests {
-		interp.Init()
+		game := NewGame()
+		interp.Init(game)
 		interp.program = test.Program
 		if !interp.rmRun() {
 			t.Fatalf("%s\n", interp.message)

@@ -108,7 +108,8 @@ func TestInterpreterTokenize(t *testing.T) {
 	// test that we always get expected tokens
 	interp := &Interpreter{}
 	for i, test := range tests {
-		interp.Init()
+		game := NewGame()
+		interp.Init(game)
 		interp.Tokenize(test.Source)
 		for j, token := range interp.currentTokens {
 			if token.TokenType != test.ExpectedTokens[j].TokenType {
@@ -291,7 +292,8 @@ func TestInterpreterEvaluateExpression(t *testing.T) {
 	// test that we always get expected result
 	interp := &Interpreter{}
 	for _, test := range tests {
-		interp.Init()
+		game := NewGame()
+		interp.Init(game)
 		interp.Tokenize(test.Source)
 		interp.tokenStack = interp.currentTokens
 		interp.tokenPointer = 0
@@ -335,7 +337,8 @@ func TestFormatCode(t *testing.T) {
 	// test that we always get expected result
 	interp := &Interpreter{}
 	for _, test := range tests {
-		interp.Init()
+		game := NewGame()
+		interp.Init(game)
 		formattedCode := interp.FormatCode(test.Source, test.HighlightTokenIndex, false)
 		if formattedCode != test.ExpectedCode {
 			t.Fatalf("Expected [%s] but got [%s]", test.ExpectedCode, formattedCode)
@@ -419,7 +422,8 @@ func TestInterpreterVariableAssignment(t *testing.T) {
 	// test that we always get expected result
 	interp := &Interpreter{}
 	for _, test := range tests {
-		interp.Init()
+		game := NewGame()
+		interp.Init(game)
 		interp.RunLine(test.Source)
 		// Can variable be found?
 		if _, ok := interp.store[test.ExpectedName]; ok {
@@ -488,7 +492,8 @@ func TestImmediateInput(t *testing.T) {
 
 	// This test simulates a user manually keying in a program
 	interp := &Interpreter{}
-	interp.Init()
+	game := NewGame()
+	interp.Init(game)
 	for _, test := range tests {
 		interp.ImmediateInput(test.Source)
 		for lineNumber, expectedCode := range test.ExpectedProgram {
