@@ -1,4 +1,4 @@
-package main
+package token
 
 import "encoding/json"
 
@@ -233,8 +233,8 @@ const (
 	SET
 )
 
-// keywordsMap returns a map of keyword symbols to token ids
-func keywordMap() map[string]int {
+// KeywordsMap returns a map of keyword symbols to token ids
+func KeywordMap() map[string]int {
 	return map[string]int{
 		"ABS":        ABS,
 		"AND":        AND,

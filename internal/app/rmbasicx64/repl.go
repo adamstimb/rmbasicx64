@@ -1,4 +1,4 @@
-package main
+package rmbasicx64
 
 import (
 	"fmt"
@@ -33,8 +33,7 @@ func welcomeScreen(g *Game) {
 	g.Print(workspaceAvailable)
 }
 
-// editor is used to receive commands from the user in direct mode and edit
-// BASIC programs
+// repl is the REPL that handles input
 func repl(g *Game, i *Interpreter) {
 	i.Init(g)
 	for {
@@ -44,9 +43,8 @@ func repl(g *Game, i *Interpreter) {
 	}
 }
 
-// StartUi is called when BASIC loads if an argument to immediately run a BASIC
-// program has not been received.  It displays the welcome screen and starts
-// the editor.
+// StartUi is called by the ebiten App.  It draws the welcome screen then starts the
+// the REPL
 func StartUi(g *Game) {
 	welcomeScreen(g)
 	repl(g, &Interpreter{})

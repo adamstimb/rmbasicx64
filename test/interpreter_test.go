@@ -2,6 +2,9 @@ package main
 
 import (
 	"testing"
+
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
 )
 
 func TestInterpreterTokenize(t *testing.T) {
@@ -9,109 +12,109 @@ func TestInterpreterTokenize(t *testing.T) {
 	// test data
 	type test struct {
 		Source         string
-		ExpectedTokens []Token
+		ExpectedTokens []token.Token
 	}
 	tests := []test{
 		{
 			Source: "print \"Hello!\"",
-			ExpectedTokens: []Token{
-				{PRINT, "PRINT"},
-				{StringLiteral, "Hello!"},
-				{EndOfLine, ""},
+			ExpectedTokens: []token.Token{
+				{token.PRINT, "PRINT"},
+				{token.StringLiteral, "Hello!"},
+				{token.EndOfLine, ""},
 			},
 		},
 		{
 			Source: "Print \"Illegal char\" {",
-			ExpectedTokens: []Token{
-				{PRINT, "PRINT"},
-				{StringLiteral, "Illegal char"},
-				{Illegal, "{"},
-				{EndOfLine, ""},
+			ExpectedTokens: []token.Token{
+				{token.PRINT, "PRINT"},
+				{token.StringLiteral, "Illegal char"},
+				{token.Illegal, "{"},
+				{token.EndOfLine, ""},
 			},
 		},
 		{
 			Source: "Print \"So-called \"\"test\"\" this is\"",
-			ExpectedTokens: []Token{
-				{PRINT, "PRINT"},
-				{StringLiteral, "So-called \"\"test\"\" this is"},
-				{EndOfLine, ""},
+			ExpectedTokens: []token.Token{
+				{token.PRINT, "PRINT"},
+				{token.StringLiteral, "So-called \"\"test\"\" this is"},
+				{token.EndOfLine, ""},
 			},
 		},
 		{
 			Source: "Rem This is a comment",
-			ExpectedTokens: []Token{
-				{REM, "REM"},
-				{Comment, "This is a comment"},
-				{EndOfLine, ""},
+			ExpectedTokens: []token.Token{
+				{token.REM, "REM"},
+				{token.Comment, "This is a comment"},
+				{token.EndOfLine, ""},
 			},
 		},
 		{
 			Source: "let x = 5",
-			ExpectedTokens: []Token{
-				{LET, "LET"},
-				{IdentifierLiteral, "X"},
-				{Equal, "="},
-				{NumericalLiteral, "5"},
-				{EndOfLine, ""},
+			ExpectedTokens: []token.Token{
+				{token.LET, "LET"},
+				{token.IdentifierLiteral, "X"},
+				{token.Equal, "="},
+				{token.NumericalLiteral, "5"},
+				{token.EndOfLine, ""},
 			},
 		},
 		{
 			Source: "&554a3d2c",
-			ExpectedTokens: []Token{
-				{HexLiteral, "&554A3D2C"},
-				{EndOfLine, ""},
+			ExpectedTokens: []token.Token{
+				{token.HexLiteral, "&554A3D2C"},
+				{token.EndOfLine, ""},
 			},
 		},
 		{
 			Source: "let y = &5d",
-			ExpectedTokens: []Token{
-				{LET, "LET"},
-				{IdentifierLiteral, "Y"},
-				{Equal, "="},
-				{HexLiteral, "&5D"},
-				{EndOfLine, ""},
+			ExpectedTokens: []token.Token{
+				{token.LET, "LET"},
+				{token.IdentifierLiteral, "Y"},
+				{token.Equal, "="},
+				{token.HexLiteral, "&5D"},
+				{token.EndOfLine, ""},
 			},
 		},
 		{
 			Source: "rM_baSic_HAD_thiS_Weird_camel_case_tHING_GoInG_On$",
-			ExpectedTokens: []Token{
-				{IdentifierLiteral, "Rm_Basic_Had_This_Weird_Camel_Case_Thing_Going_On$"},
-				{EndOfLine, ""},
+			ExpectedTokens: []token.Token{
+				{token.IdentifierLiteral, "Rm_Basic_Had_This_Weird_Camel_Case_Thing_Going_On$"},
+				{token.EndOfLine, ""},
 			},
 		},
 		{
 			Source: "this% :=that$+ meh - 5.1234",
-			ExpectedTokens: []Token{
-				{IdentifierLiteral, "This%"},
-				{Assign, ":="},
-				{IdentifierLiteral, "That$"},
-				{Plus, "+"},
-				{IdentifierLiteral, "Meh"},
-				{Minus, "-"},
-				{NumericalLiteral, "5.1234"},
-				{EndOfLine, ""},
+			ExpectedTokens: []token.Token{
+				{token.IdentifierLiteral, "This%"},
+				{token.Assign, ":="},
+				{token.IdentifierLiteral, "That$"},
+				{token.Plus, "+"},
+				{token.IdentifierLiteral, "Meh"},
+				{token.Minus, "-"},
+				{token.NumericalLiteral, "5.1234"},
+				{token.EndOfLine, ""},
 			},
 		},
 		{
 			Source: "my_var% := yet_more_var% + foo_var",
-			ExpectedTokens: []Token{
-				{IdentifierLiteral, "My_Var%"},
-				{Assign, ":="},
-				{IdentifierLiteral, "Yet_More_Var%"},
-				{Plus, "+"},
-				{IdentifierLiteral, "Foo_Var"},
-				{EndOfLine, ""},
+			ExpectedTokens: []token.Token{
+				{token.IdentifierLiteral, "My_Var%"},
+				{token.Assign, ":="},
+				{token.IdentifierLiteral, "Yet_More_Var%"},
+				{token.Plus, "+"},
+				{token.IdentifierLiteral, "Foo_Var"},
+				{token.EndOfLine, ""},
 			},
 		},
 	}
 
 	// test that we always get expected tokens
-	interp := &Interpreter{}
+	interp := &rmbasicx64.Interpreter{}
 	for i, test := range tests {
-		game := NewGame()
+		game := rmbasicx64.NewGame()
 		interp.Init(game)
 		interp.Tokenize(test.Source)
-		for j, token := range interp.currentTokens {
+		for j, token := range interp.CurrentTokens {
 			if token.TokenType != test.ExpectedTokens[j].TokenType {
 				t.Fatalf("Token [%d]: TokenType [%d] expected, got [%d] from source [%q]", i, test.ExpectedTokens[j].TokenType, token.TokenType, test.Source)
 			}
@@ -290,13 +293,13 @@ func TestInterpreterEvaluateExpression(t *testing.T) {
 	}
 
 	// test that we always get expected result
-	interp := &Interpreter{}
+	interp := &rmbasicx64.Interpreter{}
 	for _, test := range tests {
-		game := NewGame()
+		game := rmbasicx64.NewGame()
 		interp.Init(game)
 		interp.Tokenize(test.Source)
-		interp.tokenStack = interp.currentTokens
-		interp.tokenPointer = 0
+		interp.TokenStack = interp.CurrentTokens
+		interp.TokenPointer = 0
 		result, _ := interp.EvaluateExpression()
 		if result != test.ExpectedResult {
 			t.Fatalf("Expected [%f] but got [%f] from source [%q]", test.ExpectedResult, result, test.Source)
@@ -335,9 +338,9 @@ func TestFormatCode(t *testing.T) {
 		},
 	}
 	// test that we always get expected result
-	interp := &Interpreter{}
+	interp := &rmbasicx64.Interpreter{}
 	for _, test := range tests {
-		game := NewGame()
+		game := rmbasicx64.NewGame()
 		interp.Init(game)
 		formattedCode := interp.FormatCode(test.Source, test.HighlightTokenIndex, false)
 		if formattedCode != test.ExpectedCode {
@@ -372,8 +375,8 @@ func TestFormatCode(t *testing.T) {
 //	for _, test := range tests {
 //		interp.Init()
 //		_ = interp.RunLine(test.Source)
-//		if interp.errorCode != test.ExpectedErrorCode {
-//			t.Fatalf("Expected errorCode %d (%s) but got %d (%s)", test.ExpectedErrorCode, errorMessage(test.ExpectedErrorCode), interp.errorCode, errorMessage(interp.errorCode))
+//		if interp.ErrorCode != test.ExpectedErrorCode {
+//			t.Fatalf("Expected errorCode %d (%s) but got %d (%s)", test.ExpectedErrorCode, syntaxerror.ErrorMessage(test.ExpectedErrorCode), interp.ErrorCode, syntaxerror.ErrorMessage(interp.ErrorCode))
 //		}
 //	}
 //}
@@ -420,14 +423,14 @@ func TestInterpreterVariableAssignment(t *testing.T) {
 	}
 
 	// test that we always get expected result
-	interp := &Interpreter{}
+	interp := &rmbasicx64.Interpreter{}
 	for _, test := range tests {
-		game := NewGame()
+		game := rmbasicx64.NewGame()
 		interp.Init(game)
 		interp.RunLine(test.Source)
 		// Can variable be found?
-		if _, ok := interp.store[test.ExpectedName]; ok {
-			valfloat64, ok := interp.store[test.ExpectedName].(float64)
+		if _, ok := interp.Store[test.ExpectedName]; ok {
+			valfloat64, ok := interp.Store[test.ExpectedName].(float64)
 			// Can the value be parsed?
 			if !ok {
 				t.Fatalf("Could not interpret stored value for [%q] as a number", test.ExpectedName)
@@ -444,7 +447,7 @@ func TestInterpreterVariableAssignment(t *testing.T) {
 }
 
 func TestInterpreterWeighString(t *testing.T) {
-	w := WeighString("Ohhhh yeah")
+	w := rmbasicx64.WeighString("Ohhhh yeah")
 	expected := 79 + (4 * 104) + 32 + 121 + 101 + 97 + 104
 	if w != expected {
 		t.Fatalf("Expected [%d] but got [%d]", expected, w)
@@ -491,13 +494,13 @@ func TestImmediateInput(t *testing.T) {
 	}
 
 	// This test simulates a user manually keying in a program
-	interp := &Interpreter{}
-	game := NewGame()
+	interp := &rmbasicx64.Interpreter{}
+	game := rmbasicx64.NewGame()
 	interp.Init(game)
 	for _, test := range tests {
 		interp.ImmediateInput(test.Source)
 		for lineNumber, expectedCode := range test.ExpectedProgram {
-			actualCode, ok := interp.program[lineNumber]
+			actualCode, ok := interp.Program[lineNumber]
 			if !ok {
 				t.Fatalf("Could not find line %d in program", lineNumber)
 			}

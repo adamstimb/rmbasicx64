@@ -1,4 +1,4 @@
-package main
+package rmbasicx64
 
 import (
 	_ "image/png"
@@ -73,7 +73,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	screen.DrawImage(g.Monitor, op)
 }
 
-func main() {
+// StartRepl sets up the application Window and initializes nimgobus/ebiten
+func StartRepl() {
 	// Set up resizeable window
 	ebiten.SetWindowSize(1260, 1000)
 	ebiten.SetWindowTitle("RM BASICx64")

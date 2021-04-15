@@ -1,4 +1,4 @@
-package main
+package rmbasicx64
 
 import (
 	"fmt"
@@ -6,6 +6,9 @@ import (
 	"math"
 	"strconv"
 	"strings"
+
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
 )
 
 // EvaluateExpression receives tokens that appear to represent an expression, tries to evaluate it
@@ -15,17 +18,17 @@ func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
 	// If exactly one token representing a literal or variable we don't need to evaluate it
 	if len(tokens) == 1 {
 		switch tokens[0].TokenType {
-		case StringLiteral:
+		case token.StringLiteral:
 			return tokens[0].Literal, true
-		case NumericalLiteral:
+		case token.NumericalLiteral:
 			if valfloat64, err := strconv.ParseFloat(tokens[0].Literal, 64); err == nil {
 				return valfloat64, true
 			} // this should never fail unless the scanner parses numeric literals incorrectly
-		case IdentifierLiteral:
+		case token.IdentifierLiteral:
 			var val interface{}
 			val, ok = i.GetVar(tokens[0].Literal)
 			if !ok {
-				i.badTokenIndex = 0 + i.tokenPointer
+				i.BadTokenIndex = 0 + i.TokenPointer
 				return 0, false
 			} else {
 				return val, true
@@ -35,21 +38,21 @@ func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
 	// Make the postfix then evaluate it following Carrano's pseudocode:
 	// http://www.solomonlrussell.com/spring16/cs2/ClassSource/Week6/stackcode.html
 	// (this has been extended quite a lot to deal with expressions that mix numeric and string values)
-	postfix := make([]Token, 0)
-	operatorStack := make([]Token, 0)
+	postfix := make([]token.Token, 0)
+	operatorStack := make([]token.Token, 0)
 	for index, t := range tokens {
 		if IsOperand(t) {
 			postfix = append(postfix, t)
 			continue
 		}
-		if t.TokenType == LeftParen {
+		if t.TokenType == token.LeftParen {
 			// push
-			operatorStack = append([]Token{t}, operatorStack...)
+			operatorStack = append([]token.Token{t}, operatorStack...)
 			continue
 		}
-		if t.TokenType == RightParen {
+		if t.TokenType == token.RightParen {
 			// pop operator stack until matching LeftParen
-			for operatorStack[0].TokenType != LeftParen {
+			for operatorStack[0].TokenType != token.LeftParen {
 				postfix = append(postfix, operatorStack[0])
 				operatorStack = operatorStack[1:]
 			}
@@ -59,19 +62,19 @@ func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
 		}
 		if IsOperator(t) {
 			for len(operatorStack) > 0 &&
-				operatorStack[0].TokenType != LeftParen &&
+				operatorStack[0].TokenType != token.LeftParen &&
 				Precedence(t) <= Precedence(operatorStack[0]) {
 				postfix = append(postfix, operatorStack[0])
 				// pop
 				operatorStack = operatorStack[1:]
 			}
 			// push
-			operatorStack = append([]Token{t}, operatorStack...)
+			operatorStack = append([]token.Token{t}, operatorStack...)
 			continue
 		}
-		i.errorCode = InvalidExpressionFound
-		i.message = errorMessage(InvalidExpressionFound)
-		i.badTokenIndex = index
+		i.ErrorCode = syntaxerror.InvalidExpressionFound
+		i.Message = syntaxerror.ErrorMessage(syntaxerror.InvalidExpressionFound)
+		i.BadTokenIndex = index
 		return 0, false
 	}
 	for len(operatorStack) > 0 {
@@ -86,23 +89,23 @@ func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
 		if IsOperand(t) {
 			// Handle operand
 			// Get the value and data type represented by the token.
-			if t.TokenType == NumericalLiteral {
+			if t.TokenType == token.NumericalLiteral {
 				// Is numeric but test it can be parsed before pushing token to operand stack
 				if valfloat64, err := strconv.ParseFloat(t.Literal, 64); err == nil {
 					// push
 					operandStack = append([]interface{}{valfloat64}, operandStack...)
 				}
 			}
-			if t.TokenType == StringLiteral {
+			if t.TokenType == token.StringLiteral {
 				// push it as-is
 				operandStack = append([]interface{}{t.Literal}, operandStack...)
 			}
-			if t.TokenType == IdentifierLiteral {
+			if t.TokenType == token.IdentifierLiteral {
 				// Is identifier, so first test it has been defined by looking in the store
-				if _, ok := i.store[t.Literal]; ok {
+				if _, ok := i.Store[t.Literal]; ok {
 					if t.Literal[len(tokens[0].Literal)-1:] != "$" {
 						// Represents a numeric value
-						valfloat64, ok := i.store[t.Literal].(float64)
+						valfloat64, ok := i.Store[t.Literal].(float64)
 						if !ok {
 							// This should not happen therefore fatal
 							log.Fatalf("Fatal error!")
@@ -113,9 +116,9 @@ func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
 					}
 				} else {
 					// Variable not defined
-					i.errorCode = HasNotBeenDefined
-					i.badTokenIndex = 0
-					i.message = fmt.Sprintf("%s%s", t.Literal, errorMessage(HasNotBeenDefined))
+					i.ErrorCode = syntaxerror.HasNotBeenDefined
+					i.BadTokenIndex = 0
+					i.Message = fmt.Sprintf("%s%s", t.Literal, syntaxerror.ErrorMessage(syntaxerror.HasNotBeenDefined))
 					return 0, false
 				}
 			}
@@ -124,7 +127,7 @@ func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
 			// First try unary operators, currently only NOT is implemented so:
 			// Get operand 2 but *** DO NOT POP THE STACK ***
 			operand2 := operandStack[0]
-			if t.TokenType == NOT {
+			if t.TokenType == token.NOT {
 				// Is unary NOT but we can only apply this to rounded floats or ints
 				if GetType(operand2) != "string" {
 					op2 := operand2.(float64)
@@ -136,9 +139,9 @@ func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
 					continue
 					//}
 				} else {
-					i.errorCode = NumericExpressionNeeded
-					i.badTokenIndex = 0
-					i.message = errorMessage(NumericExpressionNeeded)
+					i.ErrorCode = syntaxerror.NumericExpressionNeeded
+					i.BadTokenIndex = 0
+					i.Message = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
 					return 0, false
 				}
 			}
@@ -171,72 +174,72 @@ func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
 				}
 				// Apply operation
 				switch t.TokenType {
-				case Plus:
+				case token.Plus:
 					result = op1 + op2
-				case Equal:
+				case token.Equal:
 					if op1 == op2 {
 						result = float64(-1)
 					} else {
 						result = float64(0)
 					}
-				case InterestinglyEqual:
+				case token.InterestinglyEqual:
 					if strings.EqualFold(op1, op2) {
 						result = float64(-1)
 					} else {
 						result = float64(0)
 					}
-				case LessThan:
+				case token.LessThan:
 					if WeighString(op1) < WeighString(op2) {
 						result = float64(-1)
 					} else {
 						result = float64(0)
 					}
-				case GreaterThan:
+				case token.GreaterThan:
 					if WeighString(op1) > WeighString(op2) {
 						result = float64(-1)
 					} else {
 						result = float64(0)
 					}
-				case LessThanEqualTo1:
+				case token.LessThanEqualTo1:
 					if WeighString(op1) <= WeighString(op2) {
 						result = float64(-1)
 					} else {
 						result = float64(0)
 					}
-				case LessThanEqualTo2:
+				case token.LessThanEqualTo2:
 					if WeighString(op1) <= WeighString(op2) {
 						result = float64(-1)
 					} else {
 						result = float64(0)
 					}
-				case GreaterThanEqualTo1:
+				case token.GreaterThanEqualTo1:
 					if WeighString(op1) >= WeighString(op2) {
 						result = float64(-1)
 					} else {
 						result = float64(0)
 					}
-				case GreaterThanEqualTo2:
+				case token.GreaterThanEqualTo2:
 					if WeighString(op1) >= WeighString(op2) {
 						result = float64(-1)
 					} else {
 						result = float64(0)
 					}
-				case Inequality1:
+				case token.Inequality1:
 					if WeighString(op1) != WeighString(op2) {
 						result = float64(-1)
 					} else {
 						result = float64(0)
 					}
-				case Inequality2:
+				case token.Inequality2:
 					if WeighString(op1) != WeighString(op2) {
 						result = float64(-1)
 					} else {
 						result = float64(0)
 					}
 				default:
-					i.errorCode = InvalidExpressionFound
-					i.badTokenIndex = 0
-					i.message = errorMessage(InvalidExpressionFound)
+					i.ErrorCode = syntaxerror.InvalidExpressionFound
+					i.BadTokenIndex = 0
+					i.Message = syntaxerror.ErrorMessage(syntaxerror.InvalidExpressionFound)
 					return 0, false
 				}
 			} else {
@@ -246,101 +249,101 @@ func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
 				op2 := operand2.(float64)
 				// Apply operation
 				switch t.TokenType {
-				case Minus:
+				case token.Minus:
 					result = op1 - op2
-				case Plus:
+				case token.Plus:
 					result = op1 + op2
-				case ForwardSlash:
+				case token.ForwardSlash:
 					if op2 == float64(0) {
-						i.errorCode = TryingToDivideByZero
-						i.badTokenIndex = 0
-						i.message = errorMessage(TryingToDivideByZero)
+						i.ErrorCode = syntaxerror.TryingToDivideByZero
+						i.BadTokenIndex = 0
+						i.Message = syntaxerror.ErrorMessage(syntaxerror.TryingToDivideByZero)
 						return 0, false
 					}
 					result = op1 / op2
-				case BackSlash:
+				case token.BackSlash:
 					if op2 == float64(0) {
-						i.errorCode = TryingToDivideByZero
-						i.badTokenIndex = 0
-						i.message = errorMessage(TryingToDivideByZero)
+						i.ErrorCode = syntaxerror.TryingToDivideByZero
+						i.BadTokenIndex = 0
+						i.Message = syntaxerror.ErrorMessage(syntaxerror.TryingToDivideByZero)
 						return 0, false
 					}
 					result = float64(int(op1) / int(op2))
-				case Star:
+				case token.Star:
 					result = op1 * op2
-				case Exponential:
+				case token.Exponential:
 					result = math.Pow(op1, op2)
-				case MOD:
+				case token.MOD:
 					result = float64(int(op1) % int(op2))
-				case Equal:
+				case token.Equal:
 					if op1 == op2 {
 						result = float64(-1)
 					} else {
 						result = float64(0)
 					}
-				case InterestinglyEqual:
+				case token.InterestinglyEqual:
 					if op1 == op2 {
 						result = float64(-1)
 					} else {
 						result = float64(0)
 					}
-				case LessThan:
+				case token.LessThan:
 					if op1 < op2 {
 						result = float64(-1)
 					} else {
 						result = float64(0)
 					}
-				case GreaterThan:
+				case token.GreaterThan:
 					if op1 > op2 {
 						result = float64(-1)
 					} else {
 						result = float64(0)
 					}
-				case LessThanEqualTo1:
+				case token.LessThanEqualTo1:
 					if op1 <= op2 {
 						result = float64(-1)
 					} else {
 						result = float64(0)
 					}
-				case LessThanEqualTo2:
+				case token.LessThanEqualTo2:
 					if op1 <= op2 {
 						result = float64(-1)
 					} else {
 						result = float64(0)
 					}
-				case GreaterThanEqualTo1:
+				case token.GreaterThanEqualTo1:
 					if op1 >= op2 {
 						result = float64(-1)
 					} else {
 						result = float64(0)
 					}
-				case GreaterThanEqualTo2:
+				case token.GreaterThanEqualTo2:
 					if op1 >= op2 {
 						result = float64(-1)
 					} else {
 						result = float64(0)
 					}
-				case Inequality1:
+				case token.Inequality1:
 					if op1 != op2 {
 						result = float64(-1)
 					} else {
 						result = float64(0)
 					}
-				case Inequality2:
+				case token.Inequality2:
 					if op1 != op2 {
 						result = float64(-1)
 					} else {
 						result = float64(0)
 					}
-				case AND:
+				case token.AND:
 					op1 = math.Round(op1)
 					op2 = math.Round(op2)
 					result = float64(int(op1) & int(op2))
-				case OR:
+				case token.OR:
 					op1 = math.Round(op1)
 					op2 = math.Round(op2)
 					result = float64(int(op1) | int(op2))
-				case XOR:
+				case token.XOR:
 					op1 = math.Round(op1)
 					op2 = math.Round(op2)
 					result = float64(int(op1) ^ int(op2))
