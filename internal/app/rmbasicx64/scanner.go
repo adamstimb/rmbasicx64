@@ -1,9 +1,11 @@
-package main
+package rmbasicx64
 
 import (
 	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
 )
 
 // Scanner describes a type with methods for scanning a line of source code and generating
@@ -12,7 +14,7 @@ import (
 //		tokens := s.ScanTokens(source)
 type Scanner struct {
 	Source          string
-	Tokens          []Token
+	Tokens          []token.Token
 	CurrentPosition int
 }
 
@@ -62,7 +64,7 @@ func (s *Scanner) match(r rune) bool {
 
 // addToken creates a new token and adds it the slice of tokens
 func (s *Scanner) addToken(TokenType int, literal string) {
-	s.Tokens = append(s.Tokens, Token{TokenType, literal})
+	s.Tokens = append(s.Tokens, token.Token{TokenType, literal})
 }
 
 // getString extracts a string literal from the source code
@@ -88,7 +90,7 @@ func (s *Scanner) getString() {
 	if s.peek() == '"' {
 		s.advance()
 	}
-	s.addToken(StringLiteral, string(stringVal))
+	s.addToken(token.StringLiteral, string(stringVal))
 }
 
 // getHexLiteral extracts a hex literal from the source code
@@ -106,7 +108,7 @@ func (s *Scanner) getHexLiteral(firstRune rune) {
 			break
 		}
 	}
-	s.addToken(HexLiteral, strings.ToUpper(string(hexVal)))
+	s.addToken(token.HexLiteral, strings.ToUpper(string(hexVal)))
 }
 
 // getNumber extracts a numerical literal from the source code
@@ -130,7 +132,7 @@ func (s *Scanner) getNumber(firstRune rune) {
 		// not a valid rune for numerical literal so stop collecting
 		break
 	}
-	s.addToken(NumericalLiteral, string(stringVal))
+	s.addToken(token.NumericalLiteral, string(stringVal))
 }
 
 // getIdentifier extracts an identifier (keyword, variable, etc) from the source code
@@ -146,12 +148,12 @@ func (s *Scanner) getIdentifier(firstRune rune) {
 	// keyword add token with the token type identifying the keyword, otherwise add
 	// a variable (which in RM Basic then requires checking for a trailing $ or % to
 	// get the type, if any)
-	keywords := keywordMap()
+	keywords := token.KeywordMap()
 	if t, found := keywords[strings.ToUpper(string(stringVal))]; found {
 		// is a keyword
 		s.addToken(t, strings.ToUpper(string(stringVal)))
 		// Handle special case of REM (comment)
-		if t == REM {
+		if t == token.REM {
 			s.getComment()
 		}
 	} else {
@@ -165,7 +167,7 @@ func (s *Scanner) getIdentifier(firstRune rune) {
 		newStringVal := ""
 		subwords := strings.Split(string(stringVal), "_")
 		if len(subwords) == 0 {
-			s.addToken(IdentifierLiteral, strings.Title(strings.ToLower(string(stringVal))))
+			s.addToken(token.IdentifierLiteral, strings.Title(strings.ToLower(string(stringVal))))
 		} else {
 			for _, subword := range subwords {
 				if newStringVal == "" {
@@ -174,7 +176,7 @@ func (s *Scanner) getIdentifier(firstRune rune) {
 					newStringVal = newStringVal + "_" + strings.Title(strings.ToLower(subword))
 				}
 			}
-			s.addToken(IdentifierLiteral, newStringVal)
+			s.addToken(token.IdentifierLiteral, newStringVal)
 		}
 	}
 }
@@ -183,7 +185,7 @@ func (s *Scanner) getIdentifier(firstRune rune) {
 func (s *Scanner) getComment() {
 	stringVal := s.Source[s.CurrentPosition+1:]
 	s.advance()
-	s.addToken(Comment, stringVal)
+	s.addToken(token.Comment, stringVal)
 	s.CurrentPosition = len(s.Source)
 }
 
@@ -196,67 +198,67 @@ func (s *Scanner) scanToken() {
 	// one- and two-character tokens
 	case ':':
 		if s.match('=') {
-			s.addToken(Assign, ":=")
+			s.addToken(token.Assign, ":=")
 			return
 		}
-		s.addToken(Colon, ":")
+		s.addToken(token.Colon, ":")
 		return
 	case '/':
 		if s.match('/') {
-			s.addToken(IntegerDivision, "//")
+			s.addToken(token.IntegerDivision, "//")
 			return
 		}
-		s.addToken(ForwardSlash, "/")
+		s.addToken(token.ForwardSlash, "/")
 		return
 	case '<':
 		if s.match('>') {
-			s.addToken(Inequality1, "<>")
+			s.addToken(token.Inequality1, "<>")
 			return
 		}
 		if s.match('=') {
-			s.addToken(LessThanEqualTo1, "<=")
+			s.addToken(token.LessThanEqualTo1, "<=")
 			return
 		}
-		s.addToken(LessThan, "<")
+		s.addToken(token.LessThan, "<")
 		return
 	case '>':
 		if s.match('<') {
-			s.addToken(Inequality2, "><")
+			s.addToken(token.Inequality2, "><")
 			return
 		}
 		if s.match('=') {
-			s.addToken(GreaterThanEqualTo1, ">=")
+			s.addToken(token.GreaterThanEqualTo1, ">=")
 			return
 		}
-		s.addToken(GreaterThan, ">")
+		s.addToken(token.GreaterThan, ">")
 		return
 	case '=':
 		if s.match('<') {
-			s.addToken(LessThanEqualTo2, "=<")
+			s.addToken(token.LessThanEqualTo2, "=<")
 			return
 		}
 		if s.match('>') {
-			s.addToken(GreaterThanEqualTo2, "=>")
+			s.addToken(token.GreaterThanEqualTo2, "=>")
 			return
 		}
 		if s.match('=') {
-			s.addToken(InterestinglyEqual, "==")
+			s.addToken(token.InterestinglyEqual, "==")
 			return
 		}
-		s.addToken(Equal, "=")
+		s.addToken(token.Equal, "=")
 		return
 	// then single-character
 	case '(':
-		s.addToken(LeftParen, "(")
+		s.addToken(token.LeftParen, "(")
 		return
 	case ')':
-		s.addToken(RightParen, ")")
+		s.addToken(token.RightParen, ")")
 		return
 	case ',':
-		s.addToken(Comma, ",")
+		s.addToken(token.Comma, ",")
 		return
 	case '.':
-		s.addToken(Dot, ".")
+		s.addToken(token.Dot, ".")
 		return
 	case '-':
 		// Check if it represents an operator or negative number
@@ -267,39 +269,39 @@ func (s *Scanner) scanToken() {
 			s.getNumber(r)
 			return
 		}
-		if len(s.Tokens) >= 1 && (IsOperator(s.Tokens[len(s.Tokens)-1]) || s.Tokens[len(s.Tokens)-1].TokenType == LeftParen) {
+		if len(s.Tokens) >= 1 && (IsOperator(s.Tokens[len(s.Tokens)-1]) || s.Tokens[len(s.Tokens)-1].TokenType == token.LeftParen) {
 			s.getNumber(r)
 			return
 		} else {
 			// Is operator so just collect it
-			s.addToken(Minus, "-")
+			s.addToken(token.Minus, "-")
 			return
 		}
 	case '+':
-		s.addToken(Plus, "+")
+		s.addToken(token.Plus, "+")
 		return
 	case ';':
-		s.addToken(Semicolon, ";")
+		s.addToken(token.Semicolon, ";")
 		return
 	case '\\':
-		s.addToken(BackSlash, "\\")
+		s.addToken(token.BackSlash, "\\")
 		return
 	case '*':
-		s.addToken(Star, "*")
+		s.addToken(token.Star, "*")
 		return
 	case '^':
-		s.addToken(Exponential, "^")
+		s.addToken(token.Exponential, "^")
 		return
 	case '!':
-		s.addToken(Exclamation, "!")
+		s.addToken(token.Exclamation, "!")
 	case '#':
-		s.addToken(Hash, "#")
+		s.addToken(token.Hash, "#")
 	case '~':
-		s.addToken(Tilde, "~")
+		s.addToken(token.Tilde, "~")
 	case '[':
-		s.addToken(LeftSquareBrace, "[")
+		s.addToken(token.LeftSquareBrace, "[")
 	case ']':
-		s.addToken(RightSquareBrace, "]")
+		s.addToken(token.RightSquareBrace, "]")
 	// string literal
 	case '"':
 		s.getString()
@@ -324,14 +326,14 @@ func (s *Scanner) scanToken() {
 			return
 		}
 		// unexpected chars are tokenized as Illegal
-		s.addToken(Illegal, string(r))
+		s.addToken(token.Illegal, string(r))
 	}
 }
 
 // Scan scans the source code and returns a slice of tokens
-func (s *Scanner) Scan(source string) []Token {
+func (s *Scanner) Scan(source string) []token.Token {
 	s.Source = source
-	s.Tokens = []Token{}
+	s.Tokens = []token.Token{}
 	s.CurrentPosition = 0
 	// Handle special case of only whitespace as input
 	if strings.TrimSpace(s.Source) == "" {
@@ -342,6 +344,6 @@ func (s *Scanner) Scan(source string) []Token {
 		}
 	}
 	// All done - add end of line token and return
-	s.addToken(EndOfLine, "")
+	s.addToken(token.EndOfLine, "")
 	return s.Tokens
 }

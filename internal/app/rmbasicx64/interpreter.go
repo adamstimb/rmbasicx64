@@ -1,4 +1,4 @@
-package main
+package rmbasicx64
 
 import (
 	"fmt"
@@ -7,51 +7,56 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
 )
 
 // Interpreter is the BASIC interpreter itself and behaves as a state machine that
 // can receive, store and interpret BASIC code and execute the code to update its
 // own state.
 type Interpreter struct {
-	store          map[string]interface{} // A map for storing variables and array (the key is the variable name)
-	program        map[int]string         // A map for storing a program (the key is the line number)
-	currentTokens  []Token                // A line of tokens for immediate execution
-	errorCode      int                    // The current errorCode
-	lineNumber     int                    // The current line number being executed (-1 indicates immediate-mode, therefore no line number)
-	badTokenIndex  int                    // If there was an error, the index of the token that raised the error is stored here
-	message        string                 // The current error message, if any
-	programPointer int
-	tokenStack     []Token
-	tokenPointer   int
+	Store          map[string]interface{} // A map for storing variables and array (the key is the variable name)
+	Program        map[int]string         // A map for storing a program (the key is the line number)
+	CurrentTokens  []token.Token          // A line of tokens for immediate execution
+	ErrorCode      int                    // The current errorCode
+	LineNumber     int                    // The current line number being executed (-1 indicates immediate-mode, therefore no line number)
+	BadTokenIndex  int                    // If there was an error, the index of the token that raised the error is stored here
+	Message        string                 // The current error message, if any
+	ProgramPointer int
+	TokenStack     []token.Token
+	TokenPointer   int
 	g              *Game
 }
 
 // Init initializes the Interpreter.
 func (i *Interpreter) Init(g *Game) {
-	i.store = make(map[string]interface{})
-	i.program = make(map[int]string)
-	i.currentTokens = []Token{}
-	i.errorCode = Success
-	i.lineNumber = -1
-	i.badTokenIndex = -1
-	i.message = ""
-	i.programPointer = 0
-	i.tokenStack = []Token{}
+	i.Store = make(map[string]interface{})
+	i.Program = make(map[int]string)
+	i.CurrentTokens = []token.Token{}
+	i.ErrorCode = syntaxerror.Success
+	i.LineNumber = -1
+	i.BadTokenIndex = -1
+	i.Message = ""
+	i.ProgramPointer = 0
+	i.TokenStack = []token.Token{}
 	i.g = g
 }
 
 // Tokenize receives a line of code, generates tokens and stores them in currentTokens.
 func (i *Interpreter) Tokenize(code string) {
 	s := &Scanner{}
-	i.currentTokens = s.Scan(code)
+	i.CurrentTokens = s.Scan(code)
 }
 
 // IsOperator receives a token and returns true if the token represents an operator
 // otherwise false
-func IsOperator(t Token) bool {
-	operators := []int{Minus, Plus, ForwardSlash, Star, Exponential, BackSlash, Equal, InterestinglyEqual, LessThan,
-		GreaterThan, LessThanEqualTo1, LessThanEqualTo2, GreaterThanEqualTo1, GreaterThanEqualTo2, Inequality1, Inequality2,
-		AND, OR, XOR, NOT}
+func IsOperator(t token.Token) bool {
+	operators := []int{token.Minus, token.Plus, token.ForwardSlash, token.Star, token.Exponential,
+		token.BackSlash, token.Equal, token.InterestinglyEqual, token.LessThan,
+		token.GreaterThan, token.LessThanEqualTo1, token.LessThanEqualTo2, token.GreaterThanEqualTo1,
+		token.GreaterThanEqualTo2, token.Inequality1, token.Inequality2,
+		token.AND, token.OR, token.XOR, token.NOT}
 	for _, op := range operators {
 		if op == t.TokenType {
 			return true
@@ -62,8 +67,8 @@ func IsOperator(t Token) bool {
 
 // IsOperand receives a token and returns true if the token represents an operand
 // otherwise false
-func IsOperand(t Token) bool {
-	operands := []int{NumericalLiteral, IdentifierLiteral, StringLiteral}
+func IsOperand(t token.Token) bool {
+	operands := []int{token.NumericalLiteral, token.IdentifierLiteral, token.StringLiteral}
 	for _, op := range operands {
 		if op == t.TokenType {
 			return true
@@ -74,8 +79,8 @@ func IsOperand(t Token) bool {
 
 // IsKeyword receives a token and returns true if the token's literal is a keyword
 // otherwise false
-func IsKeyword(t Token) bool {
-	km := keywordMap()
+func IsKeyword(t token.Token) bool {
+	km := token.KeywordMap()
 	if _, ok := km[t.Literal]; ok {
 		// is a keyword
 		return true
@@ -84,30 +89,30 @@ func IsKeyword(t Token) bool {
 }
 
 // Precedence returns the precedence of a token representing an operator
-func Precedence(t Token) int {
+func Precedence(t token.Token) int {
 	// As defined in the BASIC book p57
 	precedences := map[int]int{}
-	precedences[XOR] = 0
-	precedences[OR] = 1
-	precedences[AND] = 2
-	precedences[NOT] = 3
-	precedences[LessThan] = 4
-	precedences[GreaterThan] = 4
-	precedences[Inequality1] = 4
-	precedences[Inequality2] = 4
-	precedences[LessThanEqualTo1] = 4
-	precedences[LessThanEqualTo2] = 4
-	precedences[GreaterThanEqualTo1] = 4
-	precedences[GreaterThanEqualTo2] = 4
-	precedences[InterestinglyEqual] = 4
-	precedences[Equal] = 4
-	precedences[Plus] = 5
-	precedences[Minus] = 5
-	precedences[Star] = 6
-	precedences[ForwardSlash] = 6
-	precedences[BackSlash] = 6
-	precedences[MOD] = 6
-	precedences[Exponential] = 7
+	precedences[token.XOR] = 0
+	precedences[token.OR] = 1
+	precedences[token.AND] = 2
+	precedences[token.NOT] = 3
+	precedences[token.LessThan] = 4
+	precedences[token.GreaterThan] = 4
+	precedences[token.Inequality1] = 4
+	precedences[token.Inequality2] = 4
+	precedences[token.LessThanEqualTo1] = 4
+	precedences[token.LessThanEqualTo2] = 4
+	precedences[token.GreaterThanEqualTo1] = 4
+	precedences[token.GreaterThanEqualTo2] = 4
+	precedences[token.InterestinglyEqual] = 4
+	precedences[token.Equal] = 4
+	precedences[token.Plus] = 5
+	precedences[token.Minus] = 5
+	precedences[token.Star] = 6
+	precedences[token.ForwardSlash] = 6
+	precedences[token.BackSlash] = 6
+	precedences[token.MOD] = 6
+	precedences[token.Exponential] = 7
 	return precedences[t.TokenType]
 }
 
@@ -153,48 +158,48 @@ func WeighString(s string) (weight int) {
 
 // RunSegment attempts to execute a segment of tokens and replies with an error code, the index
 // of the token where parsing failed, and a message, or something.
-func (i *Interpreter) RunSegment(tokens []Token) (ok bool) {
+func (i *Interpreter) RunSegment(tokens []token.Token) (ok bool) {
 	// Load tokens onto the stack
-	i.tokenStack = tokens
-	i.tokenPointer = 0
+	i.TokenStack = tokens
+	i.TokenPointer = 0
 	// 1. Pass if empty line
 	if len(tokens) == 0 {
 		return true
 	}
-	if tokens[0].TokenType == EndOfLine {
+	if tokens[0].TokenType == token.EndOfLine {
 		return true
 	}
 	// 2. Try numeric variable assignment.  Must be at least 3 tokens.
 	if len(tokens) >= 3 {
 		// First 2 tokens must be identifier literal followed by = (equal) or := (assign)
-		if tokens[0].TokenType == IdentifierLiteral &&
-			(tokens[1].TokenType == Equal || tokens[1].TokenType == Assign) {
+		if tokens[0].TokenType == token.IdentifierLiteral &&
+			(tokens[1].TokenType == token.Equal || tokens[1].TokenType == token.Assign) {
 			// Hand over to rmAssign
-			return i.rmAssign()
+			return i.RmAssign()
 		}
 	}
 	// 3. Try built-in / keywords functions.
 	if IsKeyword(tokens[0]) {
 		switch tokens[0].TokenType {
-		case REM:
+		case token.REM:
 			return true
-		case PRINT:
-			return i.rmPrint()
-		case GOTO:
-			return i.rmGoto()
-		case RUN:
-			return i.rmRun()
-		case BYE:
-			return i.rmBye()
-		case LIST:
-			return i.rmList()
-		case SAVE:
-			return i.rmSave()
+		case token.PRINT:
+			return i.RmPrint()
+		case token.GOTO:
+			return i.RmGoto()
+		case token.RUN:
+			return i.RmRun()
+		case token.BYE:
+			return i.RmBye()
+		case token.LIST:
+			return i.RmList()
+		case token.SAVE:
+			return i.RmSave()
 		}
 	}
-	i.errorCode = UnknownCommandProcedure
-	i.badTokenIndex = 0
-	i.message = errorMessage(UnknownCommandProcedure)
+	i.ErrorCode = syntaxerror.UnknownCommandProcedure
+	i.BadTokenIndex = 0
+	i.Message = syntaxerror.ErrorMessage(syntaxerror.UnknownCommandProcedure)
 	return false
 }
 
@@ -204,25 +209,25 @@ func (i *Interpreter) RunLine(code string) (ok bool) {
 	// tokenize the code
 	i.Tokenize(code)
 	// ensure no illegal chars
-	for index, t := range i.currentTokens {
-		if t.TokenType == Illegal {
-			i.errorCode = EndOfInstructionExpected
-			i.message = errorMessage(EndOfInstructionExpected)
-			i.badTokenIndex = index
+	for index, t := range i.CurrentTokens {
+		if t.TokenType == token.Illegal {
+			i.ErrorCode = syntaxerror.EndOfInstructionExpected
+			i.Message = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+			i.BadTokenIndex = index
 			return false
 		}
 	}
 	// split the tokens into executable segments for each : token found
-	segments := make([][]Token, 0)
-	this_segment := make([]Token, 0)
-	for _, token := range i.currentTokens {
-		if token.TokenType != Colon {
-			this_segment = append(this_segment, token)
+	segments := make([][]token.Token, 0)
+	this_segment := make([]token.Token, 0)
+	for _, t := range i.CurrentTokens {
+		if t.TokenType != token.Colon {
+			this_segment = append(this_segment, t)
 		} else {
 			// add EndOfLine to segment before adding to segments slice
-			this_segment = append(this_segment, Token{EndOfLine, ""})
+			this_segment = append(this_segment, token.Token{token.EndOfLine, ""})
 			segments = append(segments, this_segment)
-			this_segment = make([]Token, 0)
+			this_segment = make([]token.Token, 0)
 		}
 	}
 	if len(this_segment) > 0 {
@@ -239,7 +244,7 @@ func (i *Interpreter) RunLine(code string) (ok bool) {
 			return false
 		}
 	}
-	i.programPointer += 1
+	i.ProgramPointer += 1
 	return true
 }
 
@@ -247,20 +252,20 @@ func (i *Interpreter) RunLine(code string) (ok bool) {
 // with a message, if any
 func (i *Interpreter) ImmediateInput(code string) (response string) {
 	// reset error status and tokenize code
-	i.errorCode = Success
-	i.message = ""
-	i.badTokenIndex = 0
-	i.lineNumber = -1
+	i.ErrorCode = syntaxerror.Success
+	i.Message = ""
+	i.BadTokenIndex = 0
+	i.LineNumber = -1
 	i.Tokenize(code)
 	// If the code begins with a line number then add it to the program otherwise try to execute it.
-	if i.currentTokens[0].TokenType == NumericalLiteral {
+	if i.CurrentTokens[0].TokenType == token.NumericalLiteral {
 		// TODO: This needs its own command-----
 		// It starts with some kind of number so check if it's an integer, i.e. line number
-		lineNumber, err := strconv.ParseFloat(i.currentTokens[0].Literal, 64)
+		lineNumber, err := strconv.ParseFloat(i.CurrentTokens[0].Literal, 64)
 		if err == nil {
 			if lineNumber == math.Round(lineNumber) {
 				// is a line number so format line and add to program
-				i.program[int(lineNumber)] = i.FormatCode(code, -1, true)
+				i.Program[int(lineNumber)] = i.FormatCode(code, -1, true)
 				return response
 			}
 		}
@@ -269,16 +274,16 @@ func (i *Interpreter) ImmediateInput(code string) (response string) {
 	ok := i.RunLine(code)
 	if !ok {
 		// There was an error so the response should include the error message
-		if i.lineNumber == -1 {
+		if i.LineNumber == -1 {
 			// immediate-mode syntax error without line number
-			i.g.Print(fmt.Sprintf("Syntax error: %s", i.message))
-			i.g.Print(fmt.Sprintf("  %s", i.FormatCode(code, i.badTokenIndex, false)))
-			response = fmt.Sprintf("Syntax error: %s\n  %s", i.message, i.FormatCode(code, i.badTokenIndex, false))
+			i.g.Print(fmt.Sprintf("Syntax error: %s", i.Message))
+			i.g.Print(fmt.Sprintf("  %s", i.FormatCode(code, i.BadTokenIndex, false)))
+			response = fmt.Sprintf("Syntax error: %s\n  %s", i.Message, i.FormatCode(code, i.BadTokenIndex, false))
 		} else {
 			// syntax error with line number
-			i.g.Print(fmt.Sprintf("Syntax error in line %d: %s", i.lineNumber, i.message))
-			i.g.Print(fmt.Sprintf("  %d %s", i.lineNumber, i.FormatCode(code, i.badTokenIndex, false)))
-			response = fmt.Sprintf("Syntax error in line %d: %s\n  %d %s", i.lineNumber, i.message, 10, i.FormatCode(i.program[i.lineNumber], i.badTokenIndex, false))
+			i.g.Print(fmt.Sprintf("Syntax error in line %d: %s", i.LineNumber, i.Message))
+			i.g.Print(fmt.Sprintf("  %d %s", i.LineNumber, i.FormatCode(code, i.BadTokenIndex, false)))
+			response = fmt.Sprintf("Syntax error in line %d: %s\n  %d %s", i.LineNumber, i.Message, 10, i.FormatCode(i.Program[i.LineNumber], i.BadTokenIndex, false))
 		}
 	}
 	return response
@@ -292,20 +297,20 @@ func (i *Interpreter) FormatCode(code string, highlightTokenIndex int, skipFirst
 	formattedCode := ""
 	// handle skipFirstToken
 	if skipFirstToken {
-		i.currentTokens = i.currentTokens[1:]
+		i.CurrentTokens = i.CurrentTokens[1:]
 	}
 	// bump highlighter if it's pointing at :
 	if highlightTokenIndex >= 0 {
-		if i.currentTokens[highlightTokenIndex].TokenType == Colon && len(i.currentTokens) > highlightTokenIndex+1 {
+		if i.CurrentTokens[highlightTokenIndex].TokenType == token.Colon && len(i.CurrentTokens) > highlightTokenIndex+1 {
 			highlightTokenIndex += 1
 		}
 	}
 	// format code and insert highlighter
-	for index, t := range i.currentTokens {
+	for index, t := range i.CurrentTokens {
 		if index == highlightTokenIndex {
 			formattedCode += "--> "
 		}
-		if t.TokenType == StringLiteral {
+		if t.TokenType == token.StringLiteral {
 			formattedCode += "\""
 			formattedCode += t.Literal
 			formattedCode += "\""
@@ -320,7 +325,7 @@ func (i *Interpreter) FormatCode(code string, highlightTokenIndex int, skipFirst
 
 // GetLineOrder returns a list of program line numbers ordered from smallest to greatest
 func (i *Interpreter) GetLineOrder() (ordered []int) {
-	for lineNumber, _ := range i.program {
+	for lineNumber, _ := range i.Program {
 		ordered = append(ordered, lineNumber)
 	}
 	sort.Ints(ordered)
@@ -328,8 +333,8 @@ func (i *Interpreter) GetLineOrder() (ordered []int) {
 }
 
 // IsStringVar returns true if a token represents a string variable
-func IsStringVar(t Token) bool {
-	if t.TokenType == IdentifierLiteral && t.Literal[len(t.Literal)-1:] == "$" {
+func IsStringVar(t token.Token) bool {
+	if t.TokenType == token.IdentifierLiteral && t.Literal[len(t.Literal)-1:] == "$" {
 		return true
 	} else {
 		return false
@@ -337,8 +342,8 @@ func IsStringVar(t Token) bool {
 }
 
 // IsIntVar returns true if a token represents a integer variable
-func IsIntVar(t Token) bool {
-	if t.TokenType == IdentifierLiteral && t.Literal[len(t.Literal)-1:] == "%" {
+func IsIntVar(t token.Token) bool {
+	if t.TokenType == token.IdentifierLiteral && t.Literal[len(t.Literal)-1:] == "%" {
 		return true
 	} else {
 		return false
@@ -346,8 +351,8 @@ func IsIntVar(t Token) bool {
 }
 
 // IsFloatVar returns true if a token represents a float variable
-func IsFloatVar(t Token) bool {
-	if t.TokenType == IdentifierLiteral && (t.Literal[len(t.Literal)-1:] != "%" && t.Literal[len(t.Literal)-1:] != "$") {
+func IsFloatVar(t token.Token) bool {
+	if t.TokenType == token.IdentifierLiteral && (t.Literal[len(t.Literal)-1:] != "%" && t.Literal[len(t.Literal)-1:] != "$") {
 		return true
 	} else {
 		return false
@@ -361,26 +366,26 @@ func (i *Interpreter) SetVar(variableName string, value interface{}) bool {
 		// set string variable
 		if GetType(value) == "float64" {
 			// cast float value to string and store
-			i.store[variableName] = fmt.Sprintf("%e", value.(float64))
+			i.Store[variableName] = fmt.Sprintf("%e", value.(float64))
 		} else {
 			// store float value directly
-			i.store[variableName] = value.(string)
+			i.Store[variableName] = value.(string)
 			return true
 		}
 	case "%":
 		// set integer variable
 		if GetType(value) == "float64" {
 			// round float and store
-			i.store[variableName] = math.Round(value.(float64))
+			i.Store[variableName] = math.Round(value.(float64))
 			return true
 		} else {
 			// try to parse float from string then round to int
 			if valfloat64, err := strconv.ParseFloat(value.(string), 64); err == nil {
-				i.store[variableName] = math.Round(valfloat64)
+				i.Store[variableName] = math.Round(valfloat64)
 				return true
 			} else {
-				i.errorCode = CouldNotInterpretAsANumber
-				i.message = fmt.Sprintf("%s%s", value.(string), errorMessage(CouldNotInterpretAsANumber))
+				i.ErrorCode = syntaxerror.CouldNotInterpretAsANumber
+				i.Message = fmt.Sprintf("%s%s", value.(string), syntaxerror.ErrorMessage(syntaxerror.CouldNotInterpretAsANumber))
 				return false
 			}
 		}
@@ -388,16 +393,16 @@ func (i *Interpreter) SetVar(variableName string, value interface{}) bool {
 		// set float variable
 		if GetType(value) == "float64" {
 			// store
-			i.store[variableName] = value.(float64)
+			i.Store[variableName] = value.(float64)
 			return true
 		} else {
 			// try to parse float from string
 			if valfloat64, err := strconv.ParseFloat(value.(string), 64); err == nil {
-				i.store[variableName] = valfloat64
+				i.Store[variableName] = valfloat64
 				return true
 			} else {
-				i.errorCode = CouldNotInterpretAsANumber
-				i.message = fmt.Sprintf("%s%s", value.(string), errorMessage(CouldNotInterpretAsANumber))
+				i.ErrorCode = syntaxerror.CouldNotInterpretAsANumber
+				i.Message = fmt.Sprintf("%s%s", value.(string), syntaxerror.ErrorMessage(syntaxerror.CouldNotInterpretAsANumber))
 				return false
 			}
 		}
@@ -409,10 +414,10 @@ func (i *Interpreter) SetVar(variableName string, value interface{}) bool {
 
 // GetVar retrieves the value of a variable from the store
 func (i *Interpreter) GetVar(variableName string) (value interface{}, ok bool) {
-	val, ok := i.store[variableName]
+	val, ok := i.Store[variableName]
 	if !ok {
-		i.errorCode = HasNotBeenDefined
-		i.message = fmt.Sprintf("%s%s", variableName, errorMessage(HasNotBeenDefined))
+		i.ErrorCode = syntaxerror.HasNotBeenDefined
+		i.Message = fmt.Sprintf("%s%s", variableName, syntaxerror.ErrorMessage(syntaxerror.HasNotBeenDefined))
 		return 0, false
 	} else {
 		return val, true
@@ -421,8 +426,8 @@ func (i *Interpreter) GetVar(variableName string) (value interface{}, ok bool) {
 
 // GetValueFromToken receives a token representing either a variable or a literal, gets
 // the value, and ~casts~ it to the required type
-func (i *Interpreter) GetValueFromToken(t Token, castTo string) (value interface{}, ok bool) {
-	if t.TokenType == IdentifierLiteral {
+func (i *Interpreter) GetValueFromToken(t token.Token, castTo string) (value interface{}, ok bool) {
+	if t.TokenType == token.IdentifierLiteral {
 		value, ok = i.GetVar(t.Literal)
 		if !ok {
 			return 0, false
@@ -440,8 +445,8 @@ func (i *Interpreter) GetValueFromToken(t Token, castTo string) (value interface
 			if valfloat64, err := strconv.ParseFloat(value.(string), 64); err == nil {
 				return valfloat64, true
 			} else {
-				i.errorCode = CouldNotInterpretAsANumber
-				i.message = fmt.Sprintf("%s%s", value.(string), errorMessage(CouldNotInterpretAsANumber))
+				i.ErrorCode = syntaxerror.CouldNotInterpretAsANumber
+				i.Message = fmt.Sprintf("%s%s", value.(string), syntaxerror.ErrorMessage(syntaxerror.CouldNotInterpretAsANumber))
 				return 0, false
 			}
 		case "int64":
@@ -449,8 +454,8 @@ func (i *Interpreter) GetValueFromToken(t Token, castTo string) (value interface
 			if valfloat64, err := strconv.ParseFloat(value.(string), 64); err == nil {
 				return math.Round(valfloat64), true
 			} else {
-				i.errorCode = CouldNotInterpretAsANumber
-				i.message = fmt.Sprintf("%s%s", value.(string), errorMessage(CouldNotInterpretAsANumber))
+				i.ErrorCode = syntaxerror.CouldNotInterpretAsANumber
+				i.Message = fmt.Sprintf("%s%s", value.(string), syntaxerror.ErrorMessage(syntaxerror.CouldNotInterpretAsANumber))
 				return 0, false
 			}
 		case "":
@@ -475,17 +480,17 @@ func (i *Interpreter) GetValueFromToken(t Token, castTo string) (value interface
 // AcceptAnyFloat checks if the current token represents a number and returns the value.  If
 // it does not represent a number then the tokenPointer is reset to its original position.
 func (i *Interpreter) AcceptAnyNumber() (acceptedValue float64, acceptOk bool) {
-	originalPosition := i.tokenPointer
+	originalPosition := i.TokenPointer
 	val, ok := i.EvaluateExpression()
 	if !ok {
 		// broken expression so reset pointer and return false
-		i.tokenPointer = originalPosition
+		i.TokenPointer = originalPosition
 		return 0, false
 	} else {
 		if GetType(val) != "float64" {
 			// is not float
 			// error?
-			i.tokenPointer = originalPosition
+			i.TokenPointer = originalPosition
 			return 0, false
 		} else {
 			return val.(float64), true
@@ -496,17 +501,17 @@ func (i *Interpreter) AcceptAnyNumber() (acceptedValue float64, acceptOk bool) {
 // AcceptAnyString checks if the current token represents a string, returns the value
 // and advances the pointer if so.
 func (i *Interpreter) AcceptAnyString() (acceptedValue string, acceptOk bool) {
-	originalPosition := i.tokenPointer
+	originalPosition := i.TokenPointer
 	val, ok := i.EvaluateExpression()
 	if !ok {
 		// broken expression so reset pointer and return false
-		i.tokenPointer = originalPosition
+		i.TokenPointer = originalPosition
 		return "", false
 	} else {
 		if GetType(val) != "string" {
 			// is not string
 			// error?
-			i.tokenPointer = originalPosition
+			i.TokenPointer = originalPosition
 			return "", false
 		} else {
 			return val.(string), true
@@ -516,23 +521,23 @@ func (i *Interpreter) AcceptAnyString() (acceptedValue string, acceptOk bool) {
 
 // AcceptAnyOfTheseTokens checks if the current token matches any that are passed in a slice and, if so,
 // returns the token and advances the pointer.
-func (i *Interpreter) AcceptAnyOfTheseTokens(acceptableTokens []int) (acceptedToken Token, acceptOk bool) {
+func (i *Interpreter) AcceptAnyOfTheseTokens(acceptableTokens []int) (acceptedToken token.Token, acceptOk bool) {
 	for _, tokenType := range acceptableTokens {
-		if tokenType == i.tokenStack[i.tokenPointer].TokenType {
+		if tokenType == i.TokenStack[i.TokenPointer].TokenType {
 			// found a match, advanced pointer and return the token type
-			i.tokenPointer++
-			return i.tokenStack[i.tokenPointer], true
+			i.TokenPointer++
+			return i.TokenStack[i.TokenPointer], true
 		}
 	}
 	// no matches
-	return Token{}, false
+	return token.Token{}, false
 }
 
 // IsAnyOfTheseTokens checks if the current token matches any that are passed in a slice and, if so,
 // returns true but *does not advance the pointer*.
 func (i *Interpreter) IsAnyOfTheseTokens(acceptableTokens []int) bool {
 	for _, tokenType := range acceptableTokens {
-		if tokenType == i.tokenStack[i.tokenPointer].TokenType {
+		if tokenType == i.TokenStack[i.TokenPointer].TokenType {
 			// found a match
 			return true
 		}
@@ -543,33 +548,33 @@ func (i *Interpreter) IsAnyOfTheseTokens(acceptableTokens []int) bool {
 
 // ExtractExpression receives a slice of tokens that represent an expression and returns
 // all those tokens up to where the expression ends.
-func (i *Interpreter) ExtractExpression() (expressionTokens []Token) {
-	tokenStackSlice := i.tokenStack[i.tokenPointer:]
+func (i *Interpreter) ExtractExpression() (expressionTokens []token.Token) {
+	tokenStackSlice := i.TokenStack[i.TokenPointer:]
 	for index, t := range tokenStackSlice {
 		// The following tokens can delimit an expression
-		if t.TokenType == Comma || t.TokenType == Semicolon || t.TokenType == EndOfLine || t.TokenType == Exclamation || t.TokenType == TO {
+		if t.TokenType == token.Comma || t.TokenType == token.Semicolon || t.TokenType == token.EndOfLine || t.TokenType == token.Exclamation || t.TokenType == token.TO {
 			break
 		}
 		// An expression is also delimited if one operand follows another directly
 		if index < (len(tokenStackSlice) - 1) {
 			if IsOperand(t) && IsOperand(tokenStackSlice[index+1]) {
 				expressionTokens = append(expressionTokens, t)
-				i.tokenPointer++
+				i.TokenPointer++
 				break
 			}
 		}
 		expressionTokens = append(expressionTokens, t)
-		i.tokenPointer++
+		i.TokenPointer++
 	}
 	return expressionTokens
 }
 
 // EndOfTokens returns true if no more tokens are to be evaluated in the token stack
 func (i *Interpreter) EndOfTokens() bool {
-	if i.tokenPointer > len(i.tokenStack) {
+	if i.TokenPointer > len(i.TokenStack) {
 		return true
 	}
-	if i.tokenStack[i.tokenPointer].TokenType == EndOfLine {
+	if i.TokenStack[i.TokenPointer].TokenType == token.EndOfLine {
 		return true
 	}
 	return false

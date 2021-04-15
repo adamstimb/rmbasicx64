@@ -1,6 +1,6 @@
-package main
+package syntaxerror
 
-// Error codes define here
+// Error codes defined here
 const (
 	Success = iota
 	ExpectedAKeywordLineNumberExpressionVariableAssignmentOrProcedureCall
@@ -28,8 +28,8 @@ const (
 	FileOperationFailure
 )
 
-// errorMessage returns the template error message for a given error code
-func errorMessage(errorCode int) string {
+// ErrorMessage returns the template error message for a given error code
+func ErrorMessage(errorCode int) string {
 	errorMessages := map[int]string{
 		Success: "",
 		ExpectedAKeywordLineNumberExpressionVariableAssignmentOrProcedureCall: "Expected a keyword, line number, expression, variable assignment or procedure call",

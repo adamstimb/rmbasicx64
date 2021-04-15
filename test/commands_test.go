@@ -2,6 +2,8 @@ package main
 
 import (
 	"testing"
+
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64"
 )
 
 func TestRun(t *testing.T) {
@@ -35,15 +37,15 @@ func TestRun(t *testing.T) {
 		},
 	}
 
-	interp := &Interpreter{}
+	interp := &rmbasicx64.Interpreter{}
 	for _, test := range tests {
-		interp.Init(&Game{})
-		interp.program = test.Program
-		if !interp.rmRun() {
-			t.Fatalf("%s\n", interp.message)
+		interp.Init(&rmbasicx64.Game{})
+		interp.Program = test.Program
+		if !interp.RmRun() {
+			t.Fatalf("%s\n", interp.Message)
 		}
-		if _, ok := interp.store["Test"]; ok {
-			valfloat64, ok := interp.store["Test"].(float64)
+		if _, ok := interp.Store["Test"]; ok {
+			valfloat64, ok := interp.Store["Test"].(float64)
 			if !ok {
 				t.Fatalf("Could not extract value of variable Test from store")
 			} else {
@@ -107,16 +109,16 @@ func TestGoto(t *testing.T) {
 		},
 	}
 
-	interp := &Interpreter{}
+	interp := &rmbasicx64.Interpreter{}
 	for _, test := range tests {
-		game := NewGame()
+		game := rmbasicx64.NewGame()
 		interp.Init(game)
-		interp.program = test.Program
-		if !interp.rmRun() {
-			t.Fatalf("%s\n", interp.message)
+		interp.Program = test.Program
+		if !interp.RmRun() {
+			t.Fatalf("%s\n", interp.Message)
 		}
-		if _, ok := interp.store["Test"]; ok {
-			valfloat64, ok := interp.store["Test"].(float64)
+		if _, ok := interp.Store["Test"]; ok {
+			valfloat64, ok := interp.Store["Test"].(float64)
 			if !ok {
 				t.Fatalf("Could not extract value of variable Test from store")
 			} else {

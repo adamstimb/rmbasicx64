@@ -1,9 +1,12 @@
-package main
+package rmbasicx64
 
 import (
 	"fmt"
 	"math"
 	"strings"
+
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
 )
 
 // rmPrint represents the Print command
@@ -30,23 +33,23 @@ import (
 // If ; or , terminates [print list] then PRINT does not line feed
 // and applies the above spacing rules
 // See also WIDTH command.....
-func (i *Interpreter) rmPrint() (ok bool) {
+func (i *Interpreter) RmPrint() (ok bool) {
 	// PRINT with no args
-	if len(i.tokenStack) == 1 {
+	if len(i.TokenStack) == 1 {
 		//fmt.Println("")
 		i.g.Print("")
 		return true
 	}
-	if len(i.tokenStack) > 1 {
-		i.tokenPointer++
-		if i.tokenStack[i.tokenPointer].TokenType == EndOfLine {
+	if len(i.TokenStack) > 1 {
+		i.TokenPointer++
+		if i.TokenStack[i.TokenPointer].TokenType == token.EndOfLine {
 			// Also PRINT with no args
 			// fmt.Println("")
 			i.g.Print("")
 			return true
 		}
 		// Handle channel number or writing area option
-		tildeOrHash, ok := i.AcceptAnyOfTheseTokens([]int{Tilde, Hash})
+		tildeOrHash, ok := i.AcceptAnyOfTheseTokens([]int{token.Tilde, token.Hash})
 		writingArea := 0
 		printChannel := 0
 		if ok {
@@ -57,10 +60,10 @@ func (i *Interpreter) rmPrint() (ok bool) {
 				return false
 			} else {
 				switch tildeOrHash.TokenType {
-				case Tilde:
+				case token.Tilde:
 					// select writing area
 					writingArea = int(math.Round(optionVal))
-				case Hash:
+				case token.Hash:
 					// select print channel
 					printChannel = int(math.Round(optionVal))
 				}
@@ -75,27 +78,27 @@ func (i *Interpreter) rmPrint() (ok bool) {
 		_ = writingArea // TODO: implement
 		_ = printChannel
 		// Handle expression list
-		if i.IsAnyOfTheseTokens([]int{StringLiteral, IdentifierLiteral, NumericalLiteral, Exclamation}) {
+		if i.IsAnyOfTheseTokens([]int{token.StringLiteral, token.IdentifierLiteral, token.NumericalLiteral, token.Exclamation}) {
 			// Evaluate all expressions in list, concatenate their results and send to print
 			printString := ""
 			for !i.EndOfTokens() {
 				// Handle list punctuation
-				switch i.tokenStack[i.tokenPointer].TokenType {
-				case Semicolon:
+				switch i.TokenStack[i.TokenPointer].TokenType {
+				case token.Semicolon:
 					// no space, go to next token
-					i.tokenPointer++
-				case Comma:
+					i.TokenPointer++
+				case token.Comma:
 					// should jump to next print zone but for now add a tab
 					printString += "\t"
-					i.tokenPointer++
-				case Exclamation:
+					i.TokenPointer++
+				case token.Exclamation:
 					// add new line
 					printString += "\n"
-					i.tokenPointer++
+					i.TokenPointer++
 				default:
 					toPrint, ok := i.EvaluateExpression()
 					if !ok {
-						//i.badTokenIndex++
+						//i.BadTokenIndex++
 						return false
 					} else {
 						switch GetType(toPrint) {
@@ -114,15 +117,15 @@ func (i *Interpreter) rmPrint() (ok bool) {
 			i.g.Print(printString)
 			return true
 		} else {
-			i.errorCode = EndOfInstructionExpected
-			i.message = errorMessage(EndOfInstructionExpected)
-			i.badTokenIndex = i.tokenPointer
+			i.ErrorCode = syntaxerror.EndOfInstructionExpected
+			i.Message = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+			i.BadTokenIndex = i.TokenPointer
 			return false
 		}
 	}
-	i.errorCode = EndOfInstructionExpected
-	i.message = errorMessage(EndOfInstructionExpected)
-	i.badTokenIndex = i.tokenPointer
+	i.ErrorCode = syntaxerror.EndOfInstructionExpected
+	i.Message = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+	i.BadTokenIndex = i.TokenPointer
 	return false
 }
 

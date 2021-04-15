@@ -1,8 +1,11 @@
-package main
+package rmbasicx64
 
 import (
 	"fmt"
 	"math"
+
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
 )
 
 // rmList represents the LIST command
@@ -16,20 +19,20 @@ import (
 // LIST line1 TO - lists all lines from line1 onwards
 // LIST line1 TO line2 - lists all lines between
 // LIST TO line2 - lists all lines up to line2
-func (i *Interpreter) rmList() (ok bool) {
-	i.tokenPointer++
+func (i *Interpreter) RmList() (ok bool) {
+	i.TokenPointer++
 	line1 := -1
 	line2 := -1
 	if !i.EndOfTokens() {
 		// Get line1 and line2
-		if i.IsAnyOfTheseTokens([]int{NumericalLiteral, IdentifierLiteral, TO}) {
-			switch i.tokenStack[i.tokenPointer].TokenType {
-			case TO:
-				i.tokenPointer++
+		if i.IsAnyOfTheseTokens([]int{token.NumericalLiteral, token.IdentifierLiteral, token.TO}) {
+			switch i.TokenStack[i.TokenPointer].TokenType {
+			case token.TO:
+				i.TokenPointer++
 				if i.EndOfTokens() {
-					i.errorCode = LineNumberExpected
-					i.message = errorMessage(LineNumberExpected)
-					i.badTokenIndex = i.tokenPointer
+					i.ErrorCode = syntaxerror.LineNumberExpected
+					i.Message = syntaxerror.ErrorMessage(syntaxerror.LineNumberExpected)
+					i.BadTokenIndex = i.TokenPointer
 					return false
 				}
 				val, ok := i.AcceptAnyNumber()
@@ -51,38 +54,38 @@ func (i *Interpreter) rmList() (ok bool) {
 				}
 				if !i.EndOfTokens() {
 					// Must be followed by TO
-					_, ok := i.AcceptAnyOfTheseTokens([]int{TO})
+					_, ok := i.AcceptAnyOfTheseTokens([]int{token.TO})
 					if ok {
 						val, ok := i.AcceptAnyNumber()
 						if ok {
 							// get line2 and accept no further parameters
 							line2 = int(math.Round(val))
 							if !i.EndOfTokens() {
-								i.errorCode = EndOfInstructionExpected
-								i.message = errorMessage(EndOfInstructionExpected)
-								i.badTokenIndex = i.tokenPointer
+								i.ErrorCode = syntaxerror.EndOfInstructionExpected
+								i.Message = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+								i.BadTokenIndex = i.TokenPointer
 								return false
 							}
 						} else {
 							return false
 						}
 					} else {
-						i.errorCode = EndOfInstructionExpected
-						i.message = errorMessage(EndOfInstructionExpected)
-						i.badTokenIndex = i.tokenPointer - 1
+						i.ErrorCode = syntaxerror.EndOfInstructionExpected
+						i.Message = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+						i.BadTokenIndex = i.TokenPointer - 1
 						return false
 					}
 				}
 			}
 		} else {
-			i.errorCode = EndOfInstructionExpected
-			i.message = errorMessage(EndOfInstructionExpected)
-			i.badTokenIndex = i.tokenPointer
+			i.ErrorCode = syntaxerror.EndOfInstructionExpected
+			i.Message = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+			i.BadTokenIndex = i.TokenPointer
 			return false
 		}
 	}
 	// Pass through if no program
-	if len(i.program) == 0 {
+	if len(i.Program) == 0 {
 		return true
 	}
 	// Set default line1, line2
@@ -100,7 +103,7 @@ func (i *Interpreter) rmList() (ok bool) {
 			inRange = true
 		}
 		if inRange {
-			i.g.Print(fmt.Sprintf("%d %s", lineNumber, i.program[lineNumber]))
+			i.g.Print(fmt.Sprintf("%d %s", lineNumber, i.Program[lineNumber]))
 		}
 		if inRange && lineNumber == line2 {
 			inRange = false

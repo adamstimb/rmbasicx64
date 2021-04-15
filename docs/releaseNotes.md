@@ -1,12 +1,12 @@
 # Release Notes
 
-## 0.01
+## 0.01 (alpha)
 
-This is a minimal feature set pre-release.
+In progress: This is a minimal feature set alpha release.
 
 ### New features
 
-- RM Basic-style REPL
+- RM Basic user interface
 - String-type variables
 - Integer-type variables
 - Float-type variables
@@ -20,4 +20,5 @@ This is a minimal feature set pre-release.
 - SAVE command
 - EDIT command
 - AUTO command
+- Windows installer
 
