@@ -22,7 +22,6 @@ type Interpreter struct {
 	ErrorCode      int                    // The current errorCode
 	LineNumber     int                    // The current line number being executed (-1 indicates immediate-mode, therefore no line number)
 	BadTokenIndex  int                    // If there was an error, the index of the token that raised the error is stored here
-	Message        string                 // The current error message, if any
 	ProgramPointer int
 	TokenStack     []token.Token
 	TokenPointer   int
@@ -37,7 +36,6 @@ func (i *Interpreter) Init(g *Game) {
 	i.ErrorCode = syntaxerror.Success
 	i.LineNumber = -1
 	i.BadTokenIndex = -1
-	i.Message = ""
 	i.ProgramPointer = 0
 	i.TokenStack = []token.Token{}
 	i.g = g
@@ -195,24 +193,29 @@ func (i *Interpreter) RunSegment(tokens []token.Token) (ok bool) {
 			return i.RmList()
 		case token.SAVE:
 			return i.RmSave()
+		case token.LOAD:
+			return i.RmLoad()
+		case token.EDIT:
+			return i.RmEdit()
 		}
 	}
 	i.ErrorCode = syntaxerror.UnknownCommandProcedure
 	i.BadTokenIndex = 0
-	i.Message = syntaxerror.ErrorMessage(syntaxerror.UnknownCommandProcedure)
 	return false
 }
 
-// RunLine attempts to run a line of BASIC code and replies with an error code, the index
-// of the token where parsing failed, and a message, or something.
+// RunLine attempts to run a line of BASIC code.
 func (i *Interpreter) RunLine(code string) (ok bool) {
 	// tokenize the code
 	i.Tokenize(code)
+	// Handle update program line
+	if i.CurrentTokens[0].TokenType == token.NumericalLiteral {
+		return i.RmUpdateLine(code)
+	}
 	// ensure no illegal chars
 	for index, t := range i.CurrentTokens {
 		if t.TokenType == token.Illegal {
 			i.ErrorCode = syntaxerror.EndOfInstructionExpected
-			i.Message = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
 			i.BadTokenIndex = index
 			return false
 		}
@@ -248,42 +251,41 @@ func (i *Interpreter) RunLine(code string) (ok bool) {
 	return true
 }
 
-// ImmediateInput receives a string inputted by the REPL user, processes it and responds
+// ImmediateInput receives a string inputted by the REPL user or by the LOAD command, processes it and responds
 // with a message, if any
 func (i *Interpreter) ImmediateInput(code string) (response string) {
 	// reset error status and tokenize code
 	i.ErrorCode = syntaxerror.Success
-	i.Message = ""
 	i.BadTokenIndex = 0
 	i.LineNumber = -1
 	i.Tokenize(code)
-	// If the code begins with a line number then add it to the program otherwise try to execute it.
-	if i.CurrentTokens[0].TokenType == token.NumericalLiteral {
-		// TODO: This needs its own command-----
-		// It starts with some kind of number so check if it's an integer, i.e. line number
-		lineNumber, err := strconv.ParseFloat(i.CurrentTokens[0].Literal, 64)
-		if err == nil {
-			if lineNumber == math.Round(lineNumber) {
-				// is a line number so format line and add to program
-				i.Program[int(lineNumber)] = i.FormatCode(code, -1, true)
-				return response
-			}
-		}
-	}
+	//// If the code begins with a line number then add it to the program otherwise try to execute it.
+	//if i.CurrentTokens[0].TokenType == token.NumericalLiteral {
+	//	// TODO: This needs its own command-----
+	//	// It starts with some kind of number so check if it's an integer, i.e. line number
+	//	lineNumber, err := strconv.ParseFloat(i.CurrentTokens[0].Literal, 64)
+	//	if err == nil {
+	//		if lineNumber == math.Round(lineNumber) {
+	//			// is a line number so format line and add to program
+	//			i.Program[int(lineNumber)] = i.FormatCode(code, -1, true)
+	//			return response
+	//		}
+	//	}
+	//}
 	// Does not begin with line number so try to execute
 	ok := i.RunLine(code)
 	if !ok {
 		// There was an error so the response should include the error message
 		if i.LineNumber == -1 {
 			// immediate-mode syntax error without line number
-			i.g.Print(fmt.Sprintf("Syntax error: %s", i.Message))
+			i.g.Print(fmt.Sprintf("Syntax error: %s", syntaxerror.ErrorMessage(i.ErrorCode)))
 			i.g.Print(fmt.Sprintf("  %s", i.FormatCode(code, i.BadTokenIndex, false)))
-			response = fmt.Sprintf("Syntax error: %s\n  %s", i.Message, i.FormatCode(code, i.BadTokenIndex, false))
+			response = fmt.Sprintf("Syntax error: %s\n  %s", syntaxerror.ErrorMessage(i.ErrorCode), i.FormatCode(code, i.BadTokenIndex, false))
 		} else {
 			// syntax error with line number
-			i.g.Print(fmt.Sprintf("Syntax error in line %d: %s", i.LineNumber, i.Message))
+			i.g.Print(fmt.Sprintf("Syntax error in line %d: %s", i.LineNumber, syntaxerror.ErrorMessage(i.ErrorCode)))
 			i.g.Print(fmt.Sprintf("  %d %s", i.LineNumber, i.FormatCode(code, i.BadTokenIndex, false)))
-			response = fmt.Sprintf("Syntax error in line %d: %s\n  %d %s", i.LineNumber, i.Message, 10, i.FormatCode(i.Program[i.LineNumber], i.BadTokenIndex, false))
+			response = fmt.Sprintf("Syntax error in line %d: %s\n  %d %s", i.LineNumber, syntaxerror.ErrorMessage(i.ErrorCode), i.LineNumber, i.FormatCode(i.Program[i.LineNumber], i.BadTokenIndex, false))
 		}
 	}
 	return response
@@ -384,8 +386,7 @@ func (i *Interpreter) SetVar(variableName string, value interface{}) bool {
 				i.Store[variableName] = math.Round(valfloat64)
 				return true
 			} else {
-				i.ErrorCode = syntaxerror.CouldNotInterpretAsANumber
-				i.Message = fmt.Sprintf("%s%s", value.(string), syntaxerror.ErrorMessage(syntaxerror.CouldNotInterpretAsANumber))
+				i.ErrorCode = syntaxerror.NumericExpressionNeeded
 				return false
 			}
 		}
@@ -401,8 +402,7 @@ func (i *Interpreter) SetVar(variableName string, value interface{}) bool {
 				i.Store[variableName] = valfloat64
 				return true
 			} else {
-				i.ErrorCode = syntaxerror.CouldNotInterpretAsANumber
-				i.Message = fmt.Sprintf("%s%s", value.(string), syntaxerror.ErrorMessage(syntaxerror.CouldNotInterpretAsANumber))
+				i.ErrorCode = syntaxerror.NumericExpressionNeeded
 				return false
 			}
 		}
@@ -417,7 +417,7 @@ func (i *Interpreter) GetVar(variableName string) (value interface{}, ok bool) {
 	val, ok := i.Store[variableName]
 	if !ok {
 		i.ErrorCode = syntaxerror.HasNotBeenDefined
-		i.Message = fmt.Sprintf("%s%s", variableName, syntaxerror.ErrorMessage(syntaxerror.HasNotBeenDefined))
+		// How do we handle undefined vars?
 		return 0, false
 	} else {
 		return val, true
@@ -446,7 +446,6 @@ func (i *Interpreter) GetValueFromToken(t token.Token, castTo string) (value int
 				return valfloat64, true
 			} else {
 				i.ErrorCode = syntaxerror.CouldNotInterpretAsANumber
-				i.Message = fmt.Sprintf("%s%s", value.(string), syntaxerror.ErrorMessage(syntaxerror.CouldNotInterpretAsANumber))
 				return 0, false
 			}
 		case "int64":
@@ -454,8 +453,7 @@ func (i *Interpreter) GetValueFromToken(t token.Token, castTo string) (value int
 			if valfloat64, err := strconv.ParseFloat(value.(string), 64); err == nil {
 				return math.Round(valfloat64), true
 			} else {
-				i.ErrorCode = syntaxerror.CouldNotInterpretAsANumber
-				i.Message = fmt.Sprintf("%s%s", value.(string), syntaxerror.ErrorMessage(syntaxerror.CouldNotInterpretAsANumber))
+				i.ErrorCode = syntaxerror.NumericExpressionNeeded
 				return 0, false
 			}
 		case "":

@@ -26,6 +26,7 @@ const (
 	ExactFilenameIsNeeded
 	FilenameIsADirectory
 	FileOperationFailure
+	UnableToOpenNamedFile
 )
 
 // ErrorMessage returns the template error message for a given error code
@@ -55,6 +56,7 @@ func ErrorMessage(errorCode int) string {
 		ExactFilenameIsNeeded:                        "Exact filename is needed",    //38
 		FilenameIsADirectory:                         "Filename is a directory",     //100
 		FileOperationFailure:                         "File operation failure",      //93
+		UnableToOpenNamedFile:                        "Unable to open named file",   //42
 	}
 	return errorMessages[errorCode]
 }

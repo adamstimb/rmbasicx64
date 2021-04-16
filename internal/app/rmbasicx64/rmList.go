@@ -31,7 +31,6 @@ func (i *Interpreter) RmList() (ok bool) {
 				i.TokenPointer++
 				if i.EndOfTokens() {
 					i.ErrorCode = syntaxerror.LineNumberExpected
-					i.Message = syntaxerror.ErrorMessage(syntaxerror.LineNumberExpected)
 					i.BadTokenIndex = i.TokenPointer
 					return false
 				}
@@ -62,7 +61,6 @@ func (i *Interpreter) RmList() (ok bool) {
 							line2 = int(math.Round(val))
 							if !i.EndOfTokens() {
 								i.ErrorCode = syntaxerror.EndOfInstructionExpected
-								i.Message = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
 								i.BadTokenIndex = i.TokenPointer
 								return false
 							}
@@ -71,7 +69,6 @@ func (i *Interpreter) RmList() (ok bool) {
 						}
 					} else {
 						i.ErrorCode = syntaxerror.EndOfInstructionExpected
-						i.Message = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
 						i.BadTokenIndex = i.TokenPointer - 1
 						return false
 					}
@@ -79,7 +76,6 @@ func (i *Interpreter) RmList() (ok bool) {
 			}
 		} else {
 			i.ErrorCode = syntaxerror.EndOfInstructionExpected
-			i.Message = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
 			i.BadTokenIndex = i.TokenPointer
 			return false
 		}
