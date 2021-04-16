@@ -1,16 +1,15 @@
 package rmbasicx64
 
 import (
-	"bufio"
-	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
 )
 
-// rmSave represents the SAVE command
-func (i *Interpreter) RmSave() (ok bool) {
+// RmLoad represents the LOAD command
+func (i *Interpreter) RmLoad() (ok bool) {
 	i.TokenPointer++
 	if i.EndOfTokens() {
 		// No filename passed
@@ -31,7 +30,7 @@ func (i *Interpreter) RmSave() (ok bool) {
 		if !strings.HasSuffix(strings.ToUpper(filename), ".BAS") {
 			filename += ".BAS"
 		}
-		// Don't accept a directory
+		// Don't accept a directory or nonexistant file
 		info, err := os.Stat(filename)
 		if !os.IsNotExist(err) {
 			if info.IsDir() {
@@ -39,28 +38,30 @@ func (i *Interpreter) RmSave() (ok bool) {
 				i.BadTokenIndex = 1
 				return false
 			}
+		} else {
+			i.ErrorCode = syntaxerror.UnableToOpenNamedFile
+			i.BadTokenIndex = 1
+			return false
 		}
 	} else {
 		i.BadTokenIndex = 1
 		return false
 	}
-	// Pass through if no program
-	if len(i.Program) == 0 {
-		return true
-	}
-	// Save program to file
-	f, err := os.Create(filename)
+	// Load program using ImmediateInput
+	content, err := ioutil.ReadFile(filename)
 	if err != nil {
 		i.ErrorCode = syntaxerror.FileOperationFailure
 		i.BadTokenIndex = 0
+		i.g.Print("Badness")
 		return false
 	}
-	defer f.Close()
-	w := bufio.NewWriter(f)
-	lineOrder := i.GetLineOrder()
-	for _, lineNumber := range lineOrder {
-		w.WriteString(fmt.Sprintf("%d %s\n", lineNumber, i.Program[lineNumber]))
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		_ = i.ImmediateInput(line)
+		if i.ErrorCode != syntaxerror.Success {
+			return false
+		}
 	}
-	w.Flush()
+
 	return true
 }

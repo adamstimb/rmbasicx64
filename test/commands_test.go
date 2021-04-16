@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
 )
 
 func TestRun(t *testing.T) {
@@ -42,7 +43,7 @@ func TestRun(t *testing.T) {
 		interp.Init(&rmbasicx64.Game{})
 		interp.Program = test.Program
 		if !interp.RmRun() {
-			t.Fatalf("%s\n", interp.Message)
+			t.Fatalf("%s\n", syntaxerror.ErrorMessage(interp.ErrorCode))
 		}
 		if _, ok := interp.Store["Test"]; ok {
 			valfloat64, ok := interp.Store["Test"].(float64)
@@ -115,7 +116,7 @@ func TestGoto(t *testing.T) {
 		interp.Init(game)
 		interp.Program = test.Program
 		if !interp.RmRun() {
-			t.Fatalf("%s\n", interp.Message)
+			t.Fatalf("%s\n", syntaxerror.ErrorMessage(interp.ErrorCode))
 		}
 		if _, ok := interp.Store["Test"]; ok {
 			valfloat64, ok := interp.Store["Test"].(float64)

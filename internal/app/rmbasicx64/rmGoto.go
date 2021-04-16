@@ -13,7 +13,6 @@ func (i *Interpreter) RmGoto() (ok bool) {
 	if len(i.TokenStack) < 3 {
 		i.ErrorCode = syntaxerror.NumericExpressionNeeded
 		i.BadTokenIndex = 1
-		i.Message = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
 		return false
 	}
 	// Get gotoLine
@@ -36,11 +35,9 @@ func (i *Interpreter) RmGoto() (ok bool) {
 		// line does not exist
 		i.ErrorCode = syntaxerror.SpecifiedLineNotFound
 		i.BadTokenIndex = 2
-		i.Message = syntaxerror.ErrorMessage(syntaxerror.SpecifiedLineNotFound)
 		return false
 	}
 	i.ErrorCode = syntaxerror.NumericExpressionNeeded
 	i.BadTokenIndex = 1
-	i.Message = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
 	return false
 }

@@ -118,13 +118,11 @@ func (i *Interpreter) RmPrint() (ok bool) {
 			return true
 		} else {
 			i.ErrorCode = syntaxerror.EndOfInstructionExpected
-			i.Message = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
 			i.BadTokenIndex = i.TokenPointer
 			return false
 		}
 	}
 	i.ErrorCode = syntaxerror.EndOfInstructionExpected
-	i.Message = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
 	i.BadTokenIndex = i.TokenPointer
 	return false
 }

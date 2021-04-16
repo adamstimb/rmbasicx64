@@ -37,7 +37,7 @@ func welcomeScreen(g *Game) {
 func repl(g *Game, i *Interpreter) {
 	i.Init(g)
 	for {
-		rawInput := g.Input(":")
+		rawInput := g.Input(":", "")
 		code := strings.TrimSpace(rawInput)
 		_ = i.ImmediateInput(code)
 	}

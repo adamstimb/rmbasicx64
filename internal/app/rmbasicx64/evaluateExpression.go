@@ -1,7 +1,6 @@
 package rmbasicx64
 
 import (
-	"fmt"
 	"log"
 	"math"
 	"strconv"
@@ -73,7 +72,6 @@ func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
 			continue
 		}
 		i.ErrorCode = syntaxerror.InvalidExpressionFound
-		i.Message = syntaxerror.ErrorMessage(syntaxerror.InvalidExpressionFound)
 		i.BadTokenIndex = index
 		return 0, false
 	}
@@ -118,7 +116,6 @@ func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
 					// Variable not defined
 					i.ErrorCode = syntaxerror.HasNotBeenDefined
 					i.BadTokenIndex = 0
-					i.Message = fmt.Sprintf("%s%s", t.Literal, syntaxerror.ErrorMessage(syntaxerror.HasNotBeenDefined))
 					return 0, false
 				}
 			}
@@ -141,7 +138,6 @@ func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
 				} else {
 					i.ErrorCode = syntaxerror.NumericExpressionNeeded
 					i.BadTokenIndex = 0
-					i.Message = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
 					return 0, false
 				}
 			}
@@ -239,7 +235,6 @@ func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
 				default:
 					i.ErrorCode = syntaxerror.InvalidExpressionFound
 					i.BadTokenIndex = 0
-					i.Message = syntaxerror.ErrorMessage(syntaxerror.InvalidExpressionFound)
 					return 0, false
 				}
 			} else {
@@ -257,7 +252,6 @@ func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
 					if op2 == float64(0) {
 						i.ErrorCode = syntaxerror.TryingToDivideByZero
 						i.BadTokenIndex = 0
-						i.Message = syntaxerror.ErrorMessage(syntaxerror.TryingToDivideByZero)
 						return 0, false
 					}
 					result = op1 / op2
@@ -265,7 +259,6 @@ func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
 					if op2 == float64(0) {
 						i.ErrorCode = syntaxerror.TryingToDivideByZero
 						i.BadTokenIndex = 0
-						i.Message = syntaxerror.ErrorMessage(syntaxerror.TryingToDivideByZero)
 						return 0, false
 					}
 					result = float64(int(op1) / int(op2))
