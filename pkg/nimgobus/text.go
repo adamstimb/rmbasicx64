@@ -209,7 +209,7 @@ func (n *Nimbus) Input(prompt string, prepopulateBuffer string) string {
 		if char <= -10 {
 			// is control key
 			if char == -11 {
-				// ENTER pressed so echo buffer beyong current position
+				// ENTER pressed so echo buffer beyond current position
 				// one last time and break loop
 				echoBuffer(buffer, bufferPosition)
 				break

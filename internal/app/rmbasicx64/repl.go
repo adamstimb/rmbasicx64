@@ -39,7 +39,12 @@ func repl(g *Game, i *Interpreter) {
 	for {
 		rawInput := g.Input(":", "")
 		code := strings.TrimSpace(rawInput)
-		_ = i.ImmediateInput(code)
+		if !i.g.BreakInterruptDetected {
+			// Don't execute if break detected
+			_ = i.ImmediateInput(code)
+		}
+		// Reset break flag
+		i.g.BreakInterruptDetected = false
 	}
 }
 

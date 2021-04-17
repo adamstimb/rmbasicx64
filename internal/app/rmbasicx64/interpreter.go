@@ -197,6 +197,8 @@ func (i *Interpreter) RunSegment(tokens []token.Token) (ok bool) {
 			return i.RmLoad()
 		case token.EDIT:
 			return i.RmEdit()
+		case token.AUTO:
+			return i.RmAuto()
 		}
 	}
 	i.ErrorCode = syntaxerror.UnknownCommandProcedure
