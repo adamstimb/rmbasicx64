@@ -38,34 +38,35 @@ type StoreItem struct {
 // Nimbus acts as a container for all the components of the Nimbus monitor.  You
 // only need to call the Init() method after declaring a new Nimbus.
 type Nimbus struct {
-	Store                 map[string][]StoreItem
-	Monitor               *ebiten.Image
-	borderImage           *ebiten.Image
-	paper                 *ebiten.Image
-	basicColours          []color.RGBA
-	borderSize            int
-	borderColour          int
-	paperColour           int
-	penColour             int
-	charset               int
-	cursorChar            int
-	defaultHighResPalette []int
-	defaultLowResPalette  []int
-	palette               []int
-	logoImage             *ebiten.Image
-	textBoxes             [10]textBox
-	imageBlocks           [16]*ebiten.Image
-	selectedTextBox       int
-	cursorPosition        colRow
-	cursorMode            int
-	cursorCharset         int
-	cursorFlash           bool
-	charImages0           [256]*ebiten.Image
-	charImages1           [256]*ebiten.Image
-	keyBuffer             []int
-	keyBufferLock         bool
-	ebitenInputChars      []rune
-	ebitenInputCharsLock  bool
+	Store                  map[string][]StoreItem
+	Monitor                *ebiten.Image
+	borderImage            *ebiten.Image
+	paper                  *ebiten.Image
+	basicColours           []color.RGBA
+	borderSize             int
+	borderColour           int
+	paperColour            int
+	penColour              int
+	charset                int
+	cursorChar             int
+	defaultHighResPalette  []int
+	defaultLowResPalette   []int
+	palette                []int
+	logoImage              *ebiten.Image
+	textBoxes              [10]textBox
+	imageBlocks            [16]*ebiten.Image
+	selectedTextBox        int
+	cursorPosition         colRow
+	cursorMode             int
+	cursorCharset          int
+	cursorFlash            bool
+	charImages0            [256]*ebiten.Image
+	charImages1            [256]*ebiten.Image
+	keyBuffer              []int
+	keyBufferLock          bool
+	ebitenInputChars       []rune
+	ebitenInputCharsLock   bool
+	BreakInterruptDetected bool
 }
 
 // Init initializes a new Nimbus.  You must call this method after declaring a
@@ -109,6 +110,10 @@ func (n *Nimbus) Init() {
 	for i := 0; i < 10; i++ {
 		n.textBoxes[i] = textBox{1, 1, 25, 80}
 	}
+
+	// Set break int
+	n.BreakInterruptDetected = false
+
 	// Start flashCursor
 	go n.flashCursor()
 	// Start keyboardMonitor
@@ -227,6 +232,11 @@ func (n *Nimbus) keyboardMonitor() {
 			}
 			if ebiten.IsKeyPressed(ebiten.KeyRight) {
 				lastChar, repeatCount = handleRepeatingChars([]rune{-13}, lastChar, repeatCount)
+				continue
+			}
+			// handle BREAK interrupt (Ctrl+ScrollLock)
+			if ebiten.IsKeyPressed(ebiten.KeyControl) && ebiten.IsKeyPressed(ebiten.KeyScrollLock) {
+				n.BreakInterruptDetected = true
 				continue
 			}
 			// if not control chars then next iteration
