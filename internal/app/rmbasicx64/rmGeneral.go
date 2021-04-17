@@ -12,7 +12,6 @@ import (
 // rmUpdateLine represents a line number being updated in the REPL
 func (i *Interpreter) RmUpdateLine(code string) (ok bool) {
 	// If the code begins with a round number then that's a line number
-	fmt.Println(code)
 	if i.CurrentTokens[0].TokenType == token.NumericalLiteral {
 		val, ok := i.GetValueFromToken(i.CurrentTokens[0], "float64")
 		if ok {
@@ -24,6 +23,9 @@ func (i *Interpreter) RmUpdateLine(code string) (ok bool) {
 				if i.CurrentTokens[1].TokenType == token.EndOfLine {
 					if _, ok := i.Program[int(lineNumber)]; ok {
 						delete(i.Program, int(lineNumber))
+						return true
+					} else {
+						// line to delete does not exist so pass through
 						return true
 					}
 				} else {
@@ -57,13 +59,15 @@ func (i *Interpreter) RmEdit() (ok bool) {
 		if ok {
 			if lineNumber == math.Round(lineNumber) {
 				if _, ok := i.Program[int(lineNumber)]; ok {
-					// edit the line
+					// edit existing line
 					edited := i.g.Input("", fmt.Sprintf("%d %s", int(lineNumber), i.Program[int(lineNumber)]))
 					_ = i.ImmediateInput(edited)
 					return true
 				} else {
-					i.ErrorCode = syntaxerror.LineNumberDoesNotExist
-					return false
+					// create new line
+					edited := i.g.Input("", fmt.Sprintf("%d %s", int(lineNumber), ""))
+					_ = i.ImmediateInput(edited)
+					return true
 				}
 			} else {
 				i.ErrorCode = syntaxerror.LineNumberExpected
