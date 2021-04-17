@@ -198,7 +198,7 @@ func (n *Nimbus) Input(prompt string, prepopulateBuffer string) string {
 	}
 
 	// now loop to received and edit the input string until enter is pressed
-	for {
+	for !n.BreakInterruptDetected {
 		// get most recent keyboard input
 		char := n.Get()
 		if char == -1 {

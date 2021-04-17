@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
 	"github.com/elastic/go-sysinfo"
 )
 
@@ -42,6 +43,9 @@ func repl(g *Game, i *Interpreter) {
 		if !i.g.BreakInterruptDetected {
 			// Don't execute if break detected
 			_ = i.ImmediateInput(code)
+		} else {
+			// Might still have to print a message if <BREAK> occured while interpreter was at rest
+			i.g.Print(syntaxerror.ErrorMessage(syntaxerror.InterruptedByBreakKey))
 		}
 		// Reset break flag
 		i.g.BreakInterruptDetected = false

@@ -245,7 +245,8 @@ func (i *Interpreter) RunLine(code string) (ok bool) {
 			badTokenOffset += len(segments[index-1])
 		}
 		ok := i.RunSegment(segment)
-		if !ok {
+		// Handle syntax error or <BREAK>
+		if i.g.BreakInterruptDetected || !ok {
 			return false
 		}
 	}
@@ -256,37 +257,37 @@ func (i *Interpreter) RunLine(code string) (ok bool) {
 // ImmediateInput receives a string inputted by the REPL user or by the LOAD command, processes it and responds
 // with a message, if any
 func (i *Interpreter) ImmediateInput(code string) (response string) {
-	// reset error status and tokenize code
+	// reset error status, tokenize code and try to execute
 	i.ErrorCode = syntaxerror.Success
 	i.BadTokenIndex = 0
 	i.LineNumber = -1
 	i.Tokenize(code)
-	//// If the code begins with a line number then add it to the program otherwise try to execute it.
-	//if i.CurrentTokens[0].TokenType == token.NumericalLiteral {
-	//	// TODO: This needs its own command-----
-	//	// It starts with some kind of number so check if it's an integer, i.e. line number
-	//	lineNumber, err := strconv.ParseFloat(i.CurrentTokens[0].Literal, 64)
-	//	if err == nil {
-	//		if lineNumber == math.Round(lineNumber) {
-	//			// is a line number so format line and add to program
-	//			i.Program[int(lineNumber)] = i.FormatCode(code, -1, true)
-	//			return response
-	//		}
-	//	}
-	//}
-	// Does not begin with line number so try to execute
 	ok := i.RunLine(code)
 	if !ok {
 		// There was an error so the response should include the error message
+		// But if it was <BREAK> override the error message
+		if i.g.BreakInterruptDetected {
+			i.ErrorCode = syntaxerror.InterruptedByBreakKey
+		}
 		if i.LineNumber == -1 {
 			// immediate-mode syntax error without line number
-			i.g.Print(fmt.Sprintf("Syntax error: %s", syntaxerror.ErrorMessage(i.ErrorCode)))
-			i.g.Print(fmt.Sprintf("  %s", i.FormatCode(code, i.BadTokenIndex, false)))
+			if i.g.BreakInterruptDetected {
+				i.g.Print(syntaxerror.ErrorMessage(i.ErrorCode))
+				i.g.BreakInterruptDetected = false
+			} else {
+				i.g.Print(fmt.Sprintf("Syntax error: %s", syntaxerror.ErrorMessage(i.ErrorCode)))
+				i.g.Print(fmt.Sprintf("  %s", i.FormatCode(code, i.BadTokenIndex, false)))
+			}
 			response = fmt.Sprintf("Syntax error: %s\n  %s", syntaxerror.ErrorMessage(i.ErrorCode), i.FormatCode(code, i.BadTokenIndex, false))
 		} else {
 			// syntax error with line number
-			i.g.Print(fmt.Sprintf("Syntax error in line %d: %s", i.LineNumber, syntaxerror.ErrorMessage(i.ErrorCode)))
-			i.g.Print(fmt.Sprintf("  %d %s", i.LineNumber, i.FormatCode(code, i.BadTokenIndex, false)))
+			if i.g.BreakInterruptDetected {
+				i.g.Print(fmt.Sprintf("%s at line %d", syntaxerror.ErrorMessage(i.ErrorCode), i.LineNumber))
+				i.g.BreakInterruptDetected = false
+			} else {
+				i.g.Print(fmt.Sprintf("Syntax error in line %d: %s", i.LineNumber, syntaxerror.ErrorMessage(i.ErrorCode)))
+				i.g.Print(fmt.Sprintf("  %d %s", i.LineNumber, i.FormatCode(code, i.BadTokenIndex, false)))
+			}
 			response = fmt.Sprintf("Syntax error in line %d: %s\n  %d %s", i.LineNumber, syntaxerror.ErrorMessage(i.ErrorCode), i.LineNumber, i.FormatCode(i.Program[i.LineNumber], i.BadTokenIndex, false))
 		}
 	}
