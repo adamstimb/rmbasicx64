@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
@@ -272,8 +273,9 @@ func (i *Interpreter) ImmediateInput(code string) (response string) {
 		if i.LineNumber == -1 {
 			// immediate-mode syntax error without line number
 			if i.g.BreakInterruptDetected {
-				i.g.Print(syntaxerror.ErrorMessage(i.ErrorCode))
 				i.g.BreakInterruptDetected = false
+				i.g.Print(syntaxerror.ErrorMessage(i.ErrorCode))
+				time.Sleep(100 * time.Millisecond)
 			} else {
 				i.g.Print(fmt.Sprintf("Syntax error: %s", syntaxerror.ErrorMessage(i.ErrorCode)))
 				i.g.Print(fmt.Sprintf("  %s", i.FormatCode(code, i.BadTokenIndex, false)))
@@ -282,8 +284,9 @@ func (i *Interpreter) ImmediateInput(code string) (response string) {
 		} else {
 			// syntax error with line number
 			if i.g.BreakInterruptDetected {
-				i.g.Print(fmt.Sprintf("%s at line %d", syntaxerror.ErrorMessage(i.ErrorCode), i.LineNumber))
 				i.g.BreakInterruptDetected = false
+				i.g.Print(fmt.Sprintf("%s at line %d", syntaxerror.ErrorMessage(i.ErrorCode), i.LineNumber))
+				time.Sleep(100 * time.Millisecond)
 			} else {
 				i.g.Print(fmt.Sprintf("Syntax error in line %d: %s", i.LineNumber, syntaxerror.ErrorMessage(i.ErrorCode)))
 				i.g.Print(fmt.Sprintf("  %d %s", i.LineNumber, i.FormatCode(code, i.BadTokenIndex, false)))
