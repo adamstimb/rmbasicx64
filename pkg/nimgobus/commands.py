@@ -14,7 +14,7 @@ func (n *Nimbus) SetMode(columns int) {
 	}
 	if columns == 40 {
 		// low-resolution, high-colour mode (320x250)
-		n.paper = ebiten.NewImage(320, 250)
+		n.videoImage = ebiten.NewImage(320, 250)
 		n.paperColour = 0
 		n.borderColour = 0
 		n.penColour = 15
@@ -25,7 +25,7 @@ func (n *Nimbus) SetMode(columns int) {
 	}
 	if columns == 80 {
 		// high-resolutions, low-colour mode (640x250)
-		n.paper = ebiten.NewImage(640, 250)
+		n.videoImage = ebiten.NewImage(640, 250)
 		n.palette = n.defaultHighResPalette
 		n.paperColour = 0
 		n.borderColour = 0
@@ -34,8 +34,8 @@ func (n *Nimbus) SetMode(columns int) {
 		n.borderImage = ebiten.NewImage(640+(n.borderSize*2), 500+(n.borderSize*2))
 		n.borderImage.Fill(n.convertColour(n.borderColour))
 	}
-	n.cursorPosition = colRow{1, 1}              // Relocate cursor
-	n.paper.Fill(n.convertColour(n.paperColour)) // Apply paper colour
+	n.cursorPosition = colRow{1, 1} // Relocate cursor
+	//n.paper.Fill(n.convertColour(n.paperColour)) // Apply paper colour
 	// Redefine textboxes, imageBlocks and clear screen
 	for i := 0; i < 10; i++ {
 		n.textBoxes[i] = textBox{1, 1, columns, 25}

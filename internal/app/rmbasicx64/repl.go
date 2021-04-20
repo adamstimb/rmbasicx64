@@ -23,16 +23,22 @@ func welcomeScreen(g *Game) {
 	}
 	memInfo, err := host.Memory()
 	// Draw welcome screen
+	//g.SetBorder(1)
+	//g.SetPaper(2)
+	//g.Cls()
 	g.SetMode(80)
 	g.PlonkLogo(0, 220)
 	g.SetCurpos(1, 5)
-	g.SetCursor(0)
+	//g.SetCursor(0)
 	g.Print("This is a tribute project and is in no way linked to or endorsed by RM plc.")
-	g.Print("")
+	g.Put(13)
+	g.Put(13)
 	g.Print("RM BASICx64 Version 0.01 12th April 2021")
+	g.Put(13)
 	// Generate and print workspace available notification
 	workspaceAvailable := fmt.Sprintf("%dG bytes workspace available.", bToGb(memInfo.Available))
 	g.Print(workspaceAvailable)
+	g.Put(13)
 }
 
 // repl is the REPL that handles input
