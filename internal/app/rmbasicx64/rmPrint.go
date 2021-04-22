@@ -34,10 +34,12 @@ import (
 // and applies the above spacing rules
 // See also WIDTH command.....
 func (i *Interpreter) RmPrint() (ok bool) {
+	var printLines []string
 	// PRINT with no args
 	if len(i.TokenStack) == 1 {
 		//fmt.Println("")
 		i.g.Print("")
+		i.g.Put(13)
 		return true
 	}
 	if len(i.TokenStack) > 1 {
@@ -46,6 +48,7 @@ func (i *Interpreter) RmPrint() (ok bool) {
 			// Also PRINT with no args
 			// fmt.Println("")
 			i.g.Print("")
+			i.g.Put(13)
 			return true
 		}
 		// Handle channel number or writing area option
@@ -72,13 +75,15 @@ func (i *Interpreter) RmPrint() (ok bool) {
 			if i.EndOfTokens() {
 				//fmt.Println("")
 				i.g.Print("")
+				i.g.Put(13)
 				return true
 			}
 		}
 		_ = writingArea // TODO: implement
 		_ = printChannel
+		noCarriageReturn := false // This flag will be set to true if the final expression is ;
 		// Handle expression list
-		if i.IsAnyOfTheseTokens([]int{token.StringLiteral, token.IdentifierLiteral, token.NumericalLiteral, token.Exclamation}) {
+		if i.IsAnyOfTheseTokens([]int{token.StringLiteral, token.IdentifierLiteral, token.NumericalLiteral, token.Exclamation, token.Semicolon, token.Comma}) {
 			// Evaluate all expressions in list, concatenate their results and send to print
 			printString := ""
 			for !i.EndOfTokens() {
@@ -87,18 +92,22 @@ func (i *Interpreter) RmPrint() (ok bool) {
 				case token.Semicolon:
 					// no space, go to next token
 					i.TokenPointer++
+					// set cr flag if it's a terminating ;
+					if i.EndOfTokens() {
+						noCarriageReturn = true
+					}
 				case token.Comma:
 					// should jump to next print zone but for now add a tab
-					printString += "\t"
+					printString += "               "
 					i.TokenPointer++
 				case token.Exclamation:
 					// add new line
-					printString += "\n"
+					printLines = append(printLines, printString)
+					printString = ""
 					i.TokenPointer++
 				default:
 					toPrint, ok := i.EvaluateExpression()
 					if !ok {
-						//i.BadTokenIndex++
 						return false
 					} else {
 						switch GetType(toPrint) {
@@ -112,9 +121,17 @@ func (i *Interpreter) RmPrint() (ok bool) {
 					}
 				}
 			}
-			// Got all expressions so print the final string
-			//fmt.Println(printString)
-			i.g.Print(printString)
+			// Got all expressions so print the final string(s) with a cr between each line
+			printLines = append(printLines, printString)
+			for index, toPrint := range printLines {
+				i.g.Print(toPrint)
+				if index < len(printLines)-1 {
+					i.g.Put(13)
+				}
+			}
+			if !noCarriageReturn {
+				i.g.Put(13)
+			}
 			return true
 		} else {
 			i.ErrorCode = syntaxerror.EndOfInstructionExpected

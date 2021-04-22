@@ -200,6 +200,10 @@ func (i *Interpreter) RunSegment(tokens []token.Token) (ok bool) {
 			return i.RmEdit()
 		case token.AUTO:
 			return i.RmAuto()
+		case token.CLS:
+			return i.RmCls()
+		case token.INPUT:
+			return i.RmInput()
 		}
 	}
 	i.ErrorCode = syntaxerror.UnknownCommandProcedure
@@ -275,10 +279,13 @@ func (i *Interpreter) ImmediateInput(code string) (response string) {
 			if i.g.BreakInterruptDetected {
 				i.g.BreakInterruptDetected = false
 				i.g.Print(syntaxerror.ErrorMessage(i.ErrorCode))
+				i.g.Put(13)
 				time.Sleep(100 * time.Millisecond)
 			} else {
 				i.g.Print(fmt.Sprintf("Syntax error: %s", syntaxerror.ErrorMessage(i.ErrorCode)))
+				i.g.Put(13)
 				i.g.Print(fmt.Sprintf("  %s", i.FormatCode(code, i.BadTokenIndex, false)))
+				i.g.Put(13)
 			}
 			response = fmt.Sprintf("Syntax error: %s\n  %s", syntaxerror.ErrorMessage(i.ErrorCode), i.FormatCode(code, i.BadTokenIndex, false))
 		} else {
@@ -286,10 +293,13 @@ func (i *Interpreter) ImmediateInput(code string) (response string) {
 			if i.g.BreakInterruptDetected {
 				i.g.BreakInterruptDetected = false
 				i.g.Print(fmt.Sprintf("%s at line %d", syntaxerror.ErrorMessage(i.ErrorCode), i.LineNumber))
+				i.g.Put(13)
 				time.Sleep(100 * time.Millisecond)
 			} else {
 				i.g.Print(fmt.Sprintf("Syntax error in line %d: %s", i.LineNumber, syntaxerror.ErrorMessage(i.ErrorCode)))
+				i.g.Put(13)
 				i.g.Print(fmt.Sprintf("  %d %s", i.LineNumber, i.FormatCode(code, i.BadTokenIndex, false)))
+				i.g.Put(13)
 			}
 			response = fmt.Sprintf("Syntax error in line %d: %s\n  %d %s", i.LineNumber, syntaxerror.ErrorMessage(i.ErrorCode), i.LineNumber, i.FormatCode(i.Program[i.LineNumber], i.BadTokenIndex, false))
 		}
