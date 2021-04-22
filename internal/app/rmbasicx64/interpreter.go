@@ -541,7 +541,7 @@ func (i *Interpreter) AcceptAnyOfTheseTokens(acceptableTokens []int) (acceptedTo
 		if tokenType == i.TokenStack[i.TokenPointer].TokenType {
 			// found a match, advanced pointer and return the token type
 			i.TokenPointer++
-			return i.TokenStack[i.TokenPointer], true
+			return i.TokenStack[i.TokenPointer-1], true
 		}
 	}
 	// no matches

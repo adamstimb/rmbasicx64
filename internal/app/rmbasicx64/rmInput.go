@@ -1,6 +1,8 @@
 package rmbasicx64
 
 import (
+	"fmt"
+
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
 )
@@ -37,6 +39,11 @@ import (
 // Example:
 // INPUT "Enter 3 numbers :", A, B, C
 func (i *Interpreter) RmInput() (ok bool) {
+
+	for _, t := range i.TokenStack {
+		token.PrintToken(t)
+	}
+
 	i.TokenPointer++
 	// must have a variable if nothing else
 	if i.EndOfTokens() {
@@ -103,6 +110,8 @@ func (i *Interpreter) RmInput() (ok bool) {
 			i.BadTokenIndex = i.TokenPointer
 			return false
 		} else {
+			// back up the pointer to get literal then advanced it again
+			token.PrintToken(t)
 			variableNames = append(variableNames, t.Literal)
 		}
 		// If in inputLineMode then we can't accept any more parameters
@@ -128,6 +137,7 @@ func (i *Interpreter) RmInput() (ok bool) {
 	}
 	rawInput := i.g.Input("")
 	// Parse input string and assign values to vars
+	fmt.Printf("varNames0=%s\n", variableNames[0])
 	if inputLineMode {
 		// assign var without parsing
 		i.SetVar(variableNames[0], rawInput)
