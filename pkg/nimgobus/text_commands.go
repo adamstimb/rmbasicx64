@@ -1,8 +1,6 @@
 package nimgobus
 
 import (
-	"image"
-
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -95,8 +93,7 @@ func (n *Nimbus) SetMode(columns int) {
 		n.borderImage = ebiten.NewImage(640+(n.borderSize*2), 500+(n.borderSize*2))
 		n.borderImage.Fill(n.basicColours[n.palette[n.borderColour]])
 	}
-	n.cursorPosition = colRow{1, 1}                        // Relocate cursor
-	n.paper.Fill(n.basicColours[n.palette[n.paperColour]]) // Apply paper colour
+	n.cursorPosition = colRow{1, 1} // Relocate cursor
 	// Redefine textboxes, imageBlocks and clear screen
 	for i := 0; i < 10; i++ {
 		n.textBoxes[i] = textBox{1, 1, columns, 25}
@@ -151,26 +148,13 @@ func (n *Nimbus) Put(c int) {
 	}
 	// Pick the textbox
 	box := n.textBoxes[n.selectedTextBox]
-	width := box.col2 - box.col1
-	height := box.row2 - box.row1
-
 	// Get x, y coordinate of cursor and draw the char
 	relCurPos := n.cursorPosition
 	var absCurPos colRow // we need the absolute cursor position
 	absCurPos.col = relCurPos.col + box.col1 - 1
 	absCurPos.row = relCurPos.row + box.row1 - 1
 	curX, curY := n.convertColRow(absCurPos)
-
-	// Draw paper under the char
-	paper := make2dArray(8, 10)
-	for x := 0; x < 8; x++ {
-		for y := 0; y < 10; y++ {
-			paper[y][x] = 1
-		}
-	}
-	n.drawSprite(Sprite{paper, curX, curY, n.paperColour, true})
-
-	// Draw the char (unless CR)
+	// Draw the char (unless CR) and advance the cursor
 	if c != 13 {
 		var charPixels [][]int
 		switch n.charset {
@@ -179,47 +163,23 @@ func (n *Nimbus) Put(c int) {
 		case 1:
 			charPixels = n.charImages1[c]
 		}
-		n.drawSprite(Sprite{charPixels, curX, curY, n.penColour, true})
-		// Update relative cursor position
-		relCurPos.col++
+		// add paper and pen colour to charPixels
+		newCharPixels := make2dArray(8, 10)
+		for x := 0; x < 8; x++ {
+			for y := 0; y < 10; y++ {
+				if charPixels[y][x] == 1 {
+					newCharPixels[y][x] = n.penColour
+				} else {
+					newCharPixels[y][x] = n.paperColour
+				}
+			}
+		}
+		n.drawSprite(Sprite{newCharPixels, curX, curY, -1, true})
+		n.AdvanceCursor(false)
+	} else {
+		// Force carriage return if 13 was passed
+		n.AdvanceCursor(true)
 	}
-
-	// Carriage return?
-	if relCurPos.col > width+1 || c == 13 {
-		// over the edge so carriage return
-		relCurPos.col = 1
-		relCurPos.row++
-	}
-	// Line feed?
-	if relCurPos.row > height+1 {
-		// move cursor up and scroll textbox
-		relCurPos.row--
-		// Scroll up:
-		// Define bounding rectangle for the textbox
-		x1, y1 := n.convertColRowEbiten(colRow{box.col1, box.row1})
-		x2, y2 := n.convertColRowEbiten(colRow{box.col2, box.row2})
-		x2 += 8
-		y2 += 10
-		// We have to manipulate videoImage itself next, so force redraw and get the drawQueue lock
-		n.ForceRedraw()
-		n.muDrawQueue.Lock()
-		// Copy actual textbox image
-		oldTextBoxImg := n.videoImage.SubImage(image.Rect(int(x1), int(y1), int(x2), int(y2))).(*ebiten.Image)
-		// Create a new textbox image and fill it with paper colour
-		newTextBoxImg := ebiten.NewImage(int(x2-x1), int(y2-y1))
-		newTextBoxImg.Fill(n.basicColours[n.palette[n.paperColour]])
-		// Place old textbox image on new image 10 pixels higher
-		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(0, -10)
-		newTextBoxImg.DrawImage(oldTextBoxImg, op)
-		// Redraw the textbox on the paper
-		op = &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(float64(x1), float64(y1))
-		n.paper.DrawImage(newTextBoxImg, op)
-		n.muDrawQueue.Unlock()
-	}
-	// Set new cursor position
-	n.cursorPosition = relCurPos
 }
 
 // Print
@@ -229,7 +189,197 @@ func (n *Nimbus) Print(s string) {
 	}
 }
 
-// Input
-func (n *Nimbus) Input(a, b string) string {
-	return ""
+// Get returns a single character code input from the keyboard.
+// If no key was pressed then -1 is returned.
+func (n *Nimbus) Get() int {
+	return n.popKeyBuffer()
+}
+
+// Input receives keyboard input into a string of up to 256 chars and returns
+// the string when ENTER is pressed.
+// The user can edit the string using the delete key and left and right arrow
+// keys.  A prompt is printed on the screen at the current cursor position and
+// the user's input is echoed to screen after the prompt.  The input buffer can
+// also be pre-populated.
+func (n *Nimbus) Input(prepopulateBuffer string) string {
+
+	// Flush keyBuffer, initialize internal buffer and prepopulate it
+	n.flushKeyBuffer()
+	var buffer []int
+	for _, c := range prepopulateBuffer {
+		n.Put(int(c))
+		buffer = append(buffer, int(c))
+	}
+	bufferPosition := len(buffer)
+	maxBufferSize := 255
+
+	// popBuffer pops a char from the buffer at a given position
+	popBuffer := func(buffer []int, indexToPop int) []int {
+		var newBuffer []int
+		for index, oldValue := range buffer {
+			if index != indexToPop {
+				newBuffer = append(newBuffer, oldValue)
+			}
+		}
+		return newBuffer
+	}
+
+	// pushBuffer pushes a char on to the buffer at a given position
+	pushBuffer := func(buffer []int, indexToPush int, newValue int) []int {
+		var newBuffer []int
+		if len(buffer) == indexToPush {
+			// appending char to end of buffer
+			newBuffer = append(buffer, newValue)
+		} else {
+			// pushing new char before the end of the buffer
+			for index, oldValue := range buffer {
+				if index == indexToPush {
+					newBuffer = append(newBuffer, newValue)
+					newBuffer = append(newBuffer, oldValue)
+				} else {
+					newBuffer = append(newBuffer, oldValue)
+				}
+			}
+		}
+		return newBuffer
+	}
+
+	// echoBuffer prints the chars in the buffer from a given buffer position
+	echoBuffer := func(buffer []int, startIndex int) {
+		for i := startIndex; i < len(buffer); i++ {
+			n.Put(buffer[i])
+		}
+	}
+
+	// moveCursorBack moves the cursor backwards one char along a line
+	// of input that may span more than one line.  If andDelete is true
+	// it will also delete the previous char.
+	moveCursorBack := func(andDelete bool) {
+		// handle deleting from the same line
+		if n.cursorPosition.col > 1 {
+			n.cursorPosition.col--
+			if andDelete {
+				n.Put(32)
+				n.cursorPosition.col--
+			}
+			return
+		}
+		// handle deleting from the line above
+		if n.cursorPosition.col == 1 && n.cursorPosition.row > 1 {
+			// get width of current textbox
+			box := n.textBoxes[n.selectedTextBox]
+			width := box.col2 - box.col1
+			// go up a line and delete end char
+			n.cursorPosition.row--
+			n.cursorPosition.col = width + 1
+			if andDelete {
+				n.Put(32)
+				n.cursorPosition.row--
+				n.cursorPosition.col = width + 1
+			}
+			return
+		}
+	}
+
+	// moveCursorForward moves the cursor forward and if necessary onto the line below
+	moveCursorForward := func() {
+		// get width of current textbox
+		box := n.textBoxes[n.selectedTextBox]
+		width := box.col2 - box.col1
+		// move cursor forward
+		if n.cursorPosition.col < width {
+			// just shift cursor right if we're not at the end of a line
+			n.cursorPosition.col++
+		} else {
+			// otherwise go to line below
+			n.cursorPosition.col = box.col1
+			n.cursorPosition.row++
+		}
+	}
+
+	// Print the buffer before looping to get user input
+	echoBuffer(buffer, 0)
+
+	// now loop to received and edit the input string until enter is pressed
+	for !n.BreakInterruptDetected {
+		// get most recent keyboard input
+		char := n.Get()
+		if char == -1 {
+			// nothing pressed so update vars an skip
+			continue
+		}
+		// handle control keys if any
+		if char <= -10 {
+			// is control key
+			if char == -11 {
+				// ENTER pressed so echo buffer beyond current position
+				// one last time and break loop
+				echoBuffer(buffer, bufferPosition)
+				break
+			}
+			if char == -10 {
+				// BACKSPACE pressed
+				if bufferPosition > 0 {
+					// only delete if not at beginning
+					bufferPosition--
+					buffer = popBuffer(buffer, bufferPosition)
+					// delete char on screen
+					moveCursorBack(true)
+					// if deleting from before the end of the buffer, rewrite
+					// the rest of the buffer and delete the trailing char
+					if bufferPosition < len(buffer) {
+						tempCursorPosition := n.cursorPosition
+						echoBuffer(buffer, bufferPosition)
+						n.Put(32)
+						n.cursorPosition = tempCursorPosition
+					}
+				}
+			}
+			if char == -12 {
+				// LEFT ARROW pressed
+				if bufferPosition > 1 {
+					// only move left if not at beginning
+					bufferPosition--
+					moveCursorBack(false)
+				}
+			}
+			if char == -13 {
+				// RIGHT ARROW pressed
+				if bufferPosition < len(buffer) {
+					// only move right if not at end of buffer
+					bufferPosition++
+					moveCursorForward()
+				}
+			}
+		} else {
+			// is printable char
+			// only accept it if we have space
+			if bufferPosition <= maxBufferSize {
+				// push new char into buffer
+				buffer = pushBuffer(buffer, bufferPosition, char)
+				// if new char added before end of buffer, rewrite rest of buffer
+				// otherwise simply put the last char in the buffer
+				if bufferPosition < len(buffer) {
+					tempCursorPosition := n.cursorPosition
+					echoBuffer(buffer, bufferPosition)
+					n.cursorPosition = tempCursorPosition
+					moveCursorForward()
+				} else {
+					n.Put(buffer[len(buffer)-1])
+				}
+				bufferPosition++
+			}
+		}
+	}
+
+	// Enter was pressed so carriage return
+	n.Put(13)
+	_ = n.popKeyBuffer()
+	// Put inputBuffer into a string
+	var returnString string
+	for _, c := range buffer {
+		returnString += string(rune(c))
+	}
+	// And return it
+	return returnString
 }

@@ -28,6 +28,7 @@ type textBox struct {
 	row2 int
 }
 
+// Sprite defines a sprite that contains a 2d image array, a screen co-ordinate, colour and overwrite (XOR) mode
 type Sprite struct {
 	pixels [][]int
 	x, y   int
@@ -35,47 +36,52 @@ type Sprite struct {
 	over   bool
 }
 
+// repeatingChar is used to store and count repeating chars for dynamically limiting repeating key presses
+type repeatingChar struct {
+	char    int
+	counter int
+}
+
 // Nimbus acts as a container for all the components of the Nimbus monitor.  You
 // only need to call the Init() method after declaring a new Nimbus.
 type Nimbus struct {
-	Monitor               *ebiten.Image
-	videoMemory           [250][640]int //[height][width]
-	videoImage            *ebiten.Image
-	muDrawQueue           sync.Mutex
-	drawQueue             []Sprite
-	muBorderImage         sync.Mutex
-	borderImage           *ebiten.Image
-	paper                 *ebiten.Image
-	basicColours          []color.RGBA
-	borderSize            int
-	borderColour          int
-	paperColour           int
-	penColour             int
-	charset               int
-	cursorChar            int
-	defaultHighResPalette []int
-	defaultLowResPalette  []int
-	palette               []int
-	logoImage             [][]int
-	textBoxes             [10]textBox
-	imageBlocks           [16]*ebiten.Image
-	selectedTextBox       int
-	cursorPosition        colRow
-	cursorMode            int
-	cursorCharset         int
-	muCursorFlash         sync.Mutex
-	cursorFlash           bool
-	cursorFlashEnabled    bool
-	cursorIsVisible       bool
-	charImages0           [256][][]int
-	charImages1           [256][][]int
-	//charImages0            [256]*ebiten.Image
-	//charImages1            [256]*ebiten.Image
-	keyBuffer              []int
-	keyBufferLock          bool
-	ebitenInputChars       []rune
-	ebitenInputCharsLock   bool
-	BreakInterruptDetected bool
+	Monitor                *ebiten.Image     // The Monitor image including background
+	muVideoMemory          sync.Mutex        //
+	videoMemory            [250][640]int     // Represents the video memory, basically a 640x250 array of integers represents the Nimbus colour index of each pixel
+	muVideoMemoryOverlay   sync.Mutex        //
+	videoMemoryOverlay     [250][640]int     // A copy of the video memory where temporal things like cursors can be drawn
+	videoImage             *ebiten.Image     // An ebiten image derived from videoMemoryOverlay
+	muDrawQueue            sync.Mutex        //
+	drawQueue              []Sprite          // A queue of sprites to be written to videoMemory
+	redrawComplete         bool              // Flag to indicate if nimgobus is working on the drawQueue
+	muBorderImage          sync.Mutex        //
+	borderImage            *ebiten.Image     // An ebiten image representing the Nimbus monitor's background
+	basicColours           []color.RGBA      // An array of the Nimbus's 16 built-in colours
+	textBoxes              [10]textBox       // All defined textboxes
+	imageBlocks            [16]*ebiten.Image // Images loaded into memory as "blocks"
+	logoImage              [][]int           // The "RM Nimbus" branding image
+	charImages0            [256][][]int      // An array of 2d arrays for each char in this charset
+	charImages1            [256][][]int      // as above
+	borderSize             int               // The width of the border in pixels
+	borderColour           int               // The current border colour
+	paperColour            int               // The current paper colour
+	penColour              int               // The current pen colour
+	charset                int               // The current char set (0 or 1)
+	cursorCharset          int               // The current cursor char set (0 or 1)
+	cursorChar             int               // The current cursor char
+	selectedTextBox        int               // The current textbox
+	defaultHighResPalette  []int             // The default palette for high-res (mode 80)
+	defaultLowResPalette   []int             // The default palette for low-res (mode 40)
+	palette                []int             // The current palette
+	cursorPosition         colRow            // The current cursor position
+	cursorMode             int               // The current cursor mode
+	muCursorFlash          sync.Mutex        //
+	cursorFlash            bool              // Cursor flash flag: Everytime this changes the cursor with flash if enabled
+	cursorFlashEnabled     bool              // Flag to indicate if cursor flash is enabled
+	muKeyBuffer            sync.Mutex        //
+	keyBuffer              []int             // Nimgobus needs it's own key buffer since ebiten's only deals with printable chars
+	charRepeat             repeatingChar     // Used by the keyBuffer to dynamically limit key presses
+	BreakInterruptDetected bool              // Flag is set to true if user makes a <BREAK>
 }
 
 // Init initializes a new Nimbus.  You must call this method after declaring a
@@ -96,8 +102,8 @@ func (n *Nimbus) Init() {
 	n.borderImage = ebiten.NewImage(640+(n.borderSize*2), 500+(n.borderSize*2))
 	n.Monitor = ebiten.NewImage(640+(n.borderSize*2), 500+(n.borderSize*2))
 	n.drawQueue = []Sprite{}
+	n.redrawComplete = true
 	n.videoImage = ebiten.NewImage(640, 250)
-	n.paper = ebiten.NewImage(640, 250)
 	n.basicColours = basicColours
 	n.defaultHighResPalette = defaultHighResPalette
 	n.defaultLowResPalette = defaultLowResPalette
@@ -114,12 +120,9 @@ func (n *Nimbus) Init() {
 	n.cursorFlash = false
 	n.muCursorFlash.Unlock()
 	n.cursorFlashEnabled = true
-	n.cursorIsVisible = true
 	n.selectedTextBox = 0
 	n.keyBuffer = []int{}
-	n.keyBufferLock = false
-	n.ebitenInputChars = []rune{}
-	n.ebitenInputCharsLock = true
+	n.charRepeat = repeatingChar{0, 0}
 	n.muBorderImage.Lock()
 	n.borderImage.Fill(n.basicColours[n.palette[n.borderColour]])
 	n.muBorderImage.Unlock()
@@ -136,27 +139,86 @@ func (n *Nimbus) Init() {
 	go n.cursorFlashTicker()
 }
 
-// Update redraws the Nimbus monitor image and checks input buffers
+// Update is called by every Draw() call from ebiten
 func (n *Nimbus) Update() {
-
-	if n.cursorFlashEnabled && n.cursorFlash {
-		n.drawCursor()
-	}
-	// If there's anything in the drawQueue then update video
-	if len(n.drawQueue) > 0 {
-		n.muDrawQueue.Lock()
-		n.updateVideoMemory()
-		n.redraw()
-		n.muDrawQueue.Unlock()
-	}
+	n.updateKeyBuffer()
+	n.updateVideoMemory()
+	n.redraw()
 }
 
-// cursorFlashTicker switches the cursorFlash flag to true every n seconds
+// flushKeyBuffer empties the keyBuffer
+func (n *Nimbus) flushKeyBuffer() {
+	n.muKeyBuffer.Lock()
+	n.keyBuffer = []int{}
+	n.muKeyBuffer.Unlock()
+}
+
+// updateKeyBuffer updates nimgobus's key buffer
+func (n *Nimbus) updateKeyBuffer() {
+
+	// acceptRepeatingChar prevents unprintable chars that aren't controlled by ebiten's
+	// keyboard buffer bombing nimgobus' buffer.
+	acceptRepeatingChar := func(char int) {
+		if char != n.charRepeat.char {
+			// not the same as last char so add it and reset counter
+			n.charRepeat.char = char
+			n.charRepeat.counter = 0
+			n.keyBuffer = append(n.keyBuffer, char)
+		} else {
+			// is the same char so only add if repeated 20 times or more than 20 times and a multiple of 5
+			if n.charRepeat.counter == 40 || (n.charRepeat.counter > 40 && n.charRepeat.counter%5 == 0) {
+				n.keyBuffer = append(n.keyBuffer, char)
+				n.charRepeat.counter++
+			} else {
+				n.charRepeat.counter++
+			}
+		}
+	}
+
+	n.muKeyBuffer.Lock()
+	inputChars := ebiten.InputChars()
+	for _, r := range inputChars {
+		// Copy printable keys from ebiten's InputChars
+		n.keyBuffer = append(n.keyBuffer, int(r))
+	}
+	// Evaluate control keys
+	// handle BREAK interrupt first (Ctrl+ScrollLock)
+	if ebiten.IsKeyPressed(ebiten.KeyControl) && ebiten.IsKeyPressed(ebiten.KeyScrollLock) {
+		n.BreakInterruptDetected = true
+		n.muKeyBuffer.Unlock()
+		return
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyEnter) || ebiten.IsKeyPressed(ebiten.KeyKPEnter) {
+		acceptRepeatingChar(-11)
+		n.muKeyBuffer.Unlock()
+		return
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyBackspace) {
+		acceptRepeatingChar(-10)
+		n.muKeyBuffer.Unlock()
+		return
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
+		acceptRepeatingChar(-12)
+		n.muKeyBuffer.Unlock()
+		return
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyRight) {
+		acceptRepeatingChar(-13)
+		n.muKeyBuffer.Unlock()
+		return
+	}
+	n.charRepeat.char = 0
+	n.charRepeat.counter = 0
+	n.muKeyBuffer.Unlock()
+}
+
+// cursorFlashTicker flips the cursorFlash flag every 500 ms
 func (n *Nimbus) cursorFlashTicker() {
 	for {
 		if n.cursorFlashEnabled {
 			n.muCursorFlash.Lock()
-			n.cursorFlash = true
+			n.cursorFlash = !n.cursorFlash
 			n.muCursorFlash.Unlock()
 		}
 		time.Sleep(500 * time.Millisecond)
@@ -276,4 +338,26 @@ func (n *Nimbus) charImageSelecta(img [][]int, c int) [][]int {
 		charImgArrayX++
 	}
 	return charImgArray
+}
+
+// popKeyBuffer pops the oldest char in the buffer
+// If the buffer is empty -1 is returned.
+func (n *Nimbus) popKeyBuffer() int {
+	// check if buffer is empty and return -1 if so
+	if len(n.keyBuffer) == 0 {
+		// is empty
+		return -1
+	}
+	// Otherwise pop the buffer
+	n.muKeyBuffer.Lock()
+	char := n.keyBuffer[0]
+	// if buffer only has one char re-initialize it otherwise shorten it by 1 element
+	if len(n.keyBuffer) <= 1 {
+		n.keyBuffer = []int{}
+	} else {
+		n.keyBuffer = n.keyBuffer[1:]
+	}
+	// all done
+	n.muKeyBuffer.Unlock()
+	return char
 }

@@ -29,6 +29,7 @@ const (
 	UnableToOpenNamedFile
 	CommaSeparatorIsNeeded
 	InterruptedByBreakKey
+	VariableNameIsNeeded
 )
 
 // ErrorMessage returns the template error message for a given error code
@@ -60,7 +61,8 @@ func ErrorMessage(errorCode int) string {
 		FileOperationFailure:                         "File operation failure",      //93
 		UnableToOpenNamedFile:                        "Unable to open named file",   //42
 		CommaSeparatorIsNeeded:                       "Comma separator is needed",   //1
-		InterruptedByBreakKey:                        "Interrupted by BREAK key",    // 76
+		InterruptedByBreakKey:                        "Interrupted by BREAK key",
+		VariableNameIsNeeded:                         "Variable name is needed", // 6
 	}
 	return errorMessages[errorCode]
 }

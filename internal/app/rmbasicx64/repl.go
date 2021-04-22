@@ -45,7 +45,8 @@ func welcomeScreen(g *Game) {
 func repl(g *Game, i *Interpreter) {
 	i.Init(g)
 	for {
-		rawInput := g.Input(":", "")
+		g.Print(":")
+		rawInput := g.Input("")
 		code := strings.TrimSpace(rawInput)
 		if !i.g.BreakInterruptDetected {
 			// Don't execute if break detected
@@ -53,7 +54,8 @@ func repl(g *Game, i *Interpreter) {
 		} else {
 			// Might still have to print a message if <BREAK> occurred while interpreter was at rest
 			i.g.Print(syntaxerror.ErrorMessage(syntaxerror.InterruptedByBreakKey))
-			time.Sleep(100 * time.Millisecond)
+			i.g.Put(13)
+			time.Sleep(150 * time.Millisecond)
 		}
 		// Reset break flag
 		i.g.BreakInterruptDetected = false
