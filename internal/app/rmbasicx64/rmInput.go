@@ -105,6 +105,12 @@ func (i *Interpreter) RmInput() (ok bool) {
 		} else {
 			variableNames = append(variableNames, t.Literal)
 		}
+		// If in inputLineMode then we can't accept any more parameters
+		if inputLineMode && !i.EndOfTokens() {
+			i.ErrorCode = syntaxerror.EndOfInstructionExpected
+			i.BadTokenIndex = i.TokenPointer
+			return false
+		}
 		// If there are more variables then a comma separator is needed
 		if !i.EndOfTokens() {
 			_, ok := i.AcceptAnyOfTheseTokens([]int{token.Comma})
@@ -121,17 +127,14 @@ func (i *Interpreter) RmInput() (ok bool) {
 		i.g.Print("?")
 	}
 	rawInput := i.g.Input("")
-	// TODO: Parse input string and assign values to vars
+	// Parse input string and assign values to vars
 	if inputLineMode {
-		parseLineModeInput(rawInput)
+		// assign var without parsing
+		i.SetVar(variableNames[0], rawInput)
 	} else {
 		parseInput(rawInput)
 	}
 	return true
-}
-
-func parseLineModeInput(rawInput string) {
-
 }
 
 func parseInput(rawInput string) {

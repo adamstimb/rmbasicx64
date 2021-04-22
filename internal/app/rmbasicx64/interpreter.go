@@ -384,6 +384,7 @@ func (i *Interpreter) SetVar(variableName string, value interface{}) bool {
 		// set string variable
 		if GetType(value) == "float64" {
 			// cast float value to string and store
+			// TODO: Use same rule as printing floats
 			i.Store[variableName] = fmt.Sprintf("%e", value.(float64))
 		} else {
 			// store float value directly
