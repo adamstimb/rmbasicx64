@@ -1,6 +1,11 @@
 package rmbasicx64
 
 import (
+	"fmt"
+	"math"
+	"strconv"
+	"strings"
+
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
 )
@@ -37,6 +42,11 @@ import (
 // Example:
 // INPUT "Enter 3 numbers :", A, B, C
 func (i *Interpreter) RmInput() (ok bool) {
+
+	for _, t := range i.TokenStack {
+		token.PrintToken(t)
+	}
+
 	i.TokenPointer++
 	// must have a variable if nothing else
 	if i.EndOfTokens() {
@@ -103,6 +113,8 @@ func (i *Interpreter) RmInput() (ok bool) {
 			i.BadTokenIndex = i.TokenPointer
 			return false
 		} else {
+			// back up the pointer to get literal then advanced it again
+			token.PrintToken(t)
 			variableNames = append(variableNames, t.Literal)
 		}
 		// If in inputLineMode then we can't accept any more parameters
@@ -132,11 +144,88 @@ func (i *Interpreter) RmInput() (ok bool) {
 		// assign var without parsing
 		i.SetVar(variableNames[0], rawInput)
 	} else {
-		parseInput(rawInput)
+		parseInput(i, rawInput, variableNames)
 	}
 	return true
 }
 
-func parseInput(rawInput string) {
+// Applies the parsing rules given in the manual to raw input
+func parseInput(i *Interpreter, rawInput string, variableNames []string) {
+	// Make a sequence of data types we expect to find in the raw input
+	var sequence []int
+	numericType := 0
+	stringType := 1
+	for _, variableName := range variableNames {
+		fmt.Println(variableName)
+		if IsStringVar(token.Token{token.IdentifierLiteral, variableName}) {
+			fmt.Println("seq: string")
+			sequence = append(sequence, stringType)
+			continue
+		}
+		if IsFloatVar(token.Token{token.IdentifierLiteral, variableName}) || IsIntVar(token.Token{token.IdentifierLiteral, variableName}) {
+			fmt.Println("seq: numeric")
+			sequence = append(sequence, numericType)
+			continue
+		}
+	}
+	// QND parser: split the raw input by spaces, then re-assemble according
+	// to the sequence
+	segments := strings.Fields(rawInput)
 
+	fmt.Println("Segments:")
+	for _, s := range segments {
+		fmt.Println(s)
+	}
+	fmt.Println("end")
+
+	collectString := ""
+	segmentIndex := 0
+	maxIndex := 0
+	for index, expectedType := range sequence {
+		maxIndex++
+		if segmentIndex >= len(segments) {
+			break
+		}
+		fmt.Printf("%d, %d\n", index, expectedType)
+		switch expectedType {
+		case stringType:
+			for {
+				collectString += segments[segmentIndex]
+				segmentIndex++
+				if collectString[len(collectString)-1:] == "," || segmentIndex == len(segments) {
+					fmt.Printf("collectString done: %s\n", collectString)
+					break
+				}
+			}
+			fmt.Println("break")
+			// finished collecting string - remove trailing comma if present
+			// then set var and wipe collectString
+			if collectString[len(collectString)-1:] == "," {
+				collectString = collectString[:len(collectString)-1]
+			}
+			i.SetVar(variableNames[index], collectString)
+			collectString = ""
+		case numericType:
+			val := segments[segmentIndex]
+			if val[len(val)-1:] == "," {
+				// delete optional comma
+				val = val[:len(val)-1]
+				if valfloat64, err := strconv.ParseFloat(val, 64); err == nil {
+					// Round if variable is integer type
+					if IsIntVar(token.Token{token.IdentifierLiteral, variableNames[index]}) {
+						valfloat64 = math.Round(valfloat64)
+					}
+					i.SetVar(variableNames[index], valfloat64)
+				}
+			}
+			segmentIndex++
+		}
+	}
+	// Print ?? if not enough data was entered
+	fmt.Println(maxIndex)
+	if maxIndex < len(sequence)-1 {
+		fmt.Println("??")
+		i.g.Print("??")
+		i.g.Put(13)
+	}
 }
