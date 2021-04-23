@@ -357,12 +357,12 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 		pos = 0
 		for {
 			sc++
-			if sc > width {
+			if sc > width+1 {
 				sc = 1
 				sr++
 			}
 			if sc > n.cursorPosition.col && sr == n.cursorPosition.row {
-				fmt.Println("break")
+				pos++
 				break
 			} else {
 				pos++
