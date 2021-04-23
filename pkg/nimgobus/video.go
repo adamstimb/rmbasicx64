@@ -230,7 +230,10 @@ func (n *Nimbus) updateVideoMemory() {
 	for y := 0; y < 250; y++ {
 		n.videoMemoryOverlay[y] = n.videoMemory[y]
 	}
-	n.drawCursor()
+	// draw cursor on overlay if enabled
+	if n.cursorFlashEnabled {
+		n.drawCursor()
+	}
 	// and update videoImage
 	n.updateVideoImage()
 	n.muDrawQueue.Unlock()

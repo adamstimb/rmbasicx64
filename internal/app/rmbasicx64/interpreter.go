@@ -13,6 +13,19 @@ import (
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
 )
 
+// forStackItem is used to represent a FOR/NEXT loop
+type forStackItem struct {
+	startProgramPointer int     // The index of the line number of the start of the loop
+	controlVarName      string  // The name of the control variable
+	targetVal           float64 // The value of the control var that must be exceeded to break the loop
+	step                float64 // The amount the control var is incremented by the NEXT statement
+}
+
+// repeatStackItem is used to represent a REPEAT/UNTIL loop
+type repeatStackItem struct {
+	startProgramPointer int // The index of the line number of the start of the loop
+}
+
 // Interpreter is the BASIC interpreter itself and behaves as a state machine that
 // can receive, store and interpret BASIC code and execute the code to update its
 // own state.
@@ -23,9 +36,13 @@ type Interpreter struct {
 	ErrorCode      int                    // The current errorCode
 	LineNumber     int                    // The current line number being executed (-1 indicates immediate-mode, therefore no line number)
 	BadTokenIndex  int                    // If there was an error, the index of the token that raised the error is stored here
-	ProgramPointer int
-	TokenStack     []token.Token
-	TokenPointer   int
+	ProgramPointer int                    // The index of the line number currently being executed
+	TokenStack     []token.Token          // The tokens of the current segment being executed
+	TokenPointer   int                    // The index of the current token being evaluated in a segment
+	forStack       []forStackItem         // forStack is used for stacking 'n tracking FOR/NEXT loops
+	repeatStack    []repeatStackItem      // repeatStack is used for stacking 'n tracking REPEAT/UNTIL loops
+	programData    []interface{}
+	collectingData bool
 	g              *Game
 }
 
@@ -39,6 +56,10 @@ func (i *Interpreter) Init(g *Game) {
 	i.BadTokenIndex = -1
 	i.ProgramPointer = 0
 	i.TokenStack = []token.Token{}
+	i.forStack = []forStackItem{}
+	i.repeatStack = []repeatStackItem{}
+	i.programData = make([]interface{}, 0)
+	i.collectingData = false
 	i.g = g
 }
 
@@ -204,6 +225,45 @@ func (i *Interpreter) RunSegment(tokens []token.Token) (ok bool) {
 			return i.RmCls()
 		case token.INPUT:
 			return i.RmInput()
+		case token.NEW:
+			return i.RmNew()
+		case token.FOR:
+			return i.RmFor()
+		case token.NEXT:
+			return i.RmNext()
+		case token.REPEAT:
+			return i.RmRepeat()
+		case token.UNTIL:
+			return i.RmUntil()
+		case token.DATA:
+			return i.RmData(i.TokenStack)
+		case token.RESTORE:
+			return i.RmRestore()
+		case token.SET:
+			if IsKeyword(tokens[1]) {
+				switch tokens[1].TokenType {
+				case token.PAPER:
+					return i.RmSetPaper()
+				case token.BORDER:
+					return i.RmSetBorder()
+				case token.PEN:
+					return i.RmSetPen()
+				case token.MODE:
+					return i.RmSetMode()
+				case token.CURPOS:
+					return i.RmSetCurpos()
+				case token.CURSOR:
+					return i.RmSetCursor()
+				default:
+					i.ErrorCode = syntaxerror.WrongSetAskAttribute
+					i.BadTokenIndex = 1
+					return false
+				}
+			} else {
+				i.ErrorCode = syntaxerror.UnknownSetAskAttribute
+				i.BadTokenIndex = 1
+				return false
+			}
 		}
 	}
 	i.ErrorCode = syntaxerror.UnknownCommandProcedure
@@ -567,7 +627,7 @@ func (i *Interpreter) ExtractExpression() (expressionTokens []token.Token) {
 	tokenStackSlice := i.TokenStack[i.TokenPointer:]
 	for index, t := range tokenStackSlice {
 		// The following tokens can delimit an expression
-		if t.TokenType == token.Comma || t.TokenType == token.Semicolon || t.TokenType == token.EndOfLine || t.TokenType == token.Exclamation || t.TokenType == token.TO {
+		if t.TokenType == token.Comma || t.TokenType == token.Semicolon || t.TokenType == token.EndOfLine || t.TokenType == token.Exclamation || t.TokenType == token.TO || t.TokenType == token.STEP {
 			break
 		}
 		// An expression is also delimited if one operand follows another directly

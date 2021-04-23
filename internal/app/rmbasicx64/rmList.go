@@ -100,6 +100,7 @@ func (i *Interpreter) RmList() (ok bool) {
 		}
 		if inRange {
 			i.g.Print(fmt.Sprintf("%d %s", lineNumber, i.Program[lineNumber]))
+			i.g.Put(13)
 		}
 		if inRange && lineNumber == line2 {
 			inRange = false

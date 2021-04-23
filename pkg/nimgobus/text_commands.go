@@ -49,6 +49,11 @@ func (n *Nimbus) SetPaper(c int) {
 	n.paperColour = c
 }
 
+// SetPen sets penColour
+func (n *Nimbus) SetPen(c int) {
+	n.penColour = c
+}
+
 // SetBorder sets the borderColour
 func (n *Nimbus) SetBorder(c int) {
 	// Repaint border image with new colour and force redraw
@@ -140,6 +145,42 @@ func (n *Nimbus) SetCurpos(col, row int) {
 	n.cursorPosition = colRow{col, row}
 }
 
+// SetCursor changes the cursor state.  Between 1 and 3 parameters can be passed. The
+// first parameter sets the cursor mode (< 0 for invisible cursor, 0 for flashing
+// cursor, > 0 for visible cursor without flashing), the second parameter sets the ASCII
+// code of the cursor char, the third parameter sets the charset of the cursor char.
+func (n *Nimbus) SetCursor(p ...int) {
+	// Validate
+	if len(p) < 1 || len(p) > 3 {
+		panic("SetCursor requires 1 to 3 parameters")
+	}
+	// Set cursor mode
+	if p[0] == 0 {
+		n.cursorFlashEnabled = false
+	}
+	if p[0] == 1 {
+		n.cursorFlashEnabled = true
+	}
+	// TODO: support > 1 for none-flashing cursor
+	// If 2 parameters, set cursor char as well
+	if len(p) > 1 {
+		// Validate char
+		if p[1] < 0 || p[1] > 255 {
+			panic("Invalid cursor char")
+		}
+		// Set it
+		n.cursorChar = p[1]
+	}
+	if len(p) > 2 {
+		// Validate charset
+		if p[2] != 0 && p[2] != 1 {
+			panic("Invalid charset")
+		}
+		// Set it
+		n.cursorCharset = p[2]
+	}
+}
+
 // Put draws an ASCII char at the cursor position
 func (n *Nimbus) Put(c int) {
 	// Validate c
@@ -207,7 +248,6 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 	n.flushKeyBuffer()
 	var buffer []int
 	for _, c := range prepopulateBuffer {
-		n.Put(int(c))
 		buffer = append(buffer, int(c))
 	}
 	bufferPosition := len(buffer)

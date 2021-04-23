@@ -12,13 +12,26 @@ In progress: This is a minimal feature set alpha release.
 - Float-type variables
 - Variable assignment
 - Expression evaluation
-- RUN command
-- GOTO command
-- PRINT command
-- LIST command
-- LOAD command
-- SAVE command
-- EDIT command
-- AUTO command
+- BYE
+- RUN 
+- GOTO 
+- PRINT 
+- LIST 
+- LOAD 
+- SAVE 
+- EDIT 
+- AUTO 
+- INPUT 
+- NEW
+- GOTO
+- FOR/NEXT
+- REPEAT/UNTIL
+- DATA/READ/RESTORE
+- SET BORDER
+- SET PAPER
+- SET PEN
+- SET CURSOR
+- SET CURPOS
+- SET MODE
 - Windows installer
 

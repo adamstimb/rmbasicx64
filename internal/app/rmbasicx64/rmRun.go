@@ -13,6 +13,7 @@ func (i *Interpreter) RmRun() (ok bool) {
 	if len(i.Program) == 0 {
 		return true
 	}
+	i.GetData() // Scan for DATA statements and programData stack
 	i.ProgramPointer = 0
 	lineOrder := i.GetLineOrder()
 	// Check for optional startFrom parameter
