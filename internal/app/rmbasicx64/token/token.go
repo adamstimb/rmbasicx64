@@ -231,6 +231,7 @@ const (
 	WRITING
 	XOR
 	SET
+	STEP
 )
 
 // KeywordsMap returns a map of keyword symbols to token ids
@@ -414,6 +415,7 @@ func KeywordMap() map[string]int {
 		"WRITING":    WRITING,
 		"XOR":        XOR,
 		"SET":        SET,
+		"STEP":       STEP,
 	}
 }
 

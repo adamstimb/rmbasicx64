@@ -30,6 +30,11 @@ const (
 	CommaSeparatorIsNeeded
 	InterruptedByBreakKey
 	VariableNameIsNeeded
+	UnknownSetAskAttribute
+	WrongSetAskAttribute
+	NumericVariableNeeded
+	NextWithoutMatchingFor
+	UntilWithoutAnyRepeat
 )
 
 // ErrorMessage returns the template error message for a given error code
@@ -62,7 +67,12 @@ func ErrorMessage(errorCode int) string {
 		UnableToOpenNamedFile:                        "Unable to open named file",   //42
 		CommaSeparatorIsNeeded:                       "Comma separator is needed",   //1
 		InterruptedByBreakKey:                        "Interrupted by BREAK key",
-		VariableNameIsNeeded:                         "Variable name is needed", // 6
+		VariableNameIsNeeded:                         "Variable name is needed",   // 6
+		UnknownSetAskAttribute:                       "Unknown SET/ASK attribute", // 33
+		WrongSetAskAttribute:                         "Wrong SET/ASK attribute",   // 34
+		NumericVariableNeeded:                        "Numeric variable needed",   // 8
+		NextWithoutMatchingFor:                       "NEXT without matching FOR", //31
+		UntilWithoutAnyRepeat:                        "UNTIL without any REPEAT",  // 30
 	}
 	return errorMessages[errorCode]
 }
