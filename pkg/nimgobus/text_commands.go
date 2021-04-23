@@ -1,6 +1,8 @@
 package nimgobus
 
 import (
+	"fmt"
+
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -252,6 +254,8 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 	}
 	bufferPosition := len(buffer)
 	maxBufferSize := 255
+	startPos := n.cursorPosition
+	endPos := n.cursorPosition
 
 	// popBuffer pops a char from the buffer at a given position
 	popBuffer := func(buffer []int, indexToPop int) []int {
@@ -289,6 +293,7 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 		for i := startIndex; i < len(buffer); i++ {
 			n.Put(buffer[i])
 		}
+		endPos = n.cursorPosition
 	}
 
 	// moveCursorBack moves the cursor backwards one char along a line
@@ -296,6 +301,7 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 	// it will also delete the previous char.
 	moveCursorBack := func(andDelete bool) {
 		// handle deleting from the same line
+		fmt.Println(n.cursorPosition.col)
 		if n.cursorPosition.col > 1 {
 			n.cursorPosition.col--
 			if andDelete {
@@ -335,6 +341,36 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 			n.cursorPosition.col = box.col1
 			n.cursorPosition.row++
 		}
+	}
+
+	// getBufferPosFromCursor infers the buffer position from curpos
+	getBufferPosFromCursor := func(startPos colRow) (pos int) {
+		pos = 0
+		// get width of current textbox
+		box := n.textBoxes[n.selectedTextBox]
+		width := box.col2 - box.col1
+
+		sc := startPos.col
+		sr := startPos.row
+		fmt.Printf("start %d, %d\n", startPos.col, startPos.row)
+		fmt.Printf("current %d, %d\n", n.cursorPosition.col, n.cursorPosition.row)
+		pos = 0
+		for {
+			sc++
+			if sc > width {
+				sc = 1
+				sr++
+			}
+			if sc > n.cursorPosition.col && sr == n.cursorPosition.row {
+				fmt.Println("break")
+				break
+			} else {
+				pos++
+			}
+		}
+
+		fmt.Printf("getbufferpos = %d\n", pos)
+		return pos
 	}
 
 	// Print the buffer before looping to get user input
@@ -377,7 +413,7 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 			}
 			if char == -12 {
 				// LEFT ARROW pressed
-				if bufferPosition > 1 {
+				if bufferPosition > 0 {
 					// only move left if not at beginning
 					bufferPosition--
 					moveCursorBack(false)
@@ -391,9 +427,32 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 					moveCursorForward()
 				}
 			}
+			if char == -14 {
+				// UP ARROW pressed
+				if n.cursorPosition.row > startPos.row {
+					if n.cursorPosition.col > startPos.col {
+						n.SetCurpos(n.cursorPosition.col, n.cursorPosition.row-1)
+					} else {
+						n.SetCurpos(startPos.col, n.cursorPosition.row-1)
+					}
+					bufferPosition = getBufferPosFromCursor(startPos)
+				}
+			}
+			if char == -15 {
+				// DOWN ARROW pressed
+				if n.cursorPosition.row < endPos.row {
+					if n.cursorPosition.col < endPos.col {
+						n.SetCurpos(n.cursorPosition.col, n.cursorPosition.row+1)
+					} else {
+						n.SetCurpos(endPos.col, n.cursorPosition.row+1)
+					}
+					bufferPosition = getBufferPosFromCursor(startPos)
+				}
+			}
 		} else {
 			// is printable char
 			// only accept it if we have space
+			fmt.Printf("buffer len = %d", len(buffer))
 			if bufferPosition <= maxBufferSize {
 				// push new char into buffer
 				buffer = pushBuffer(buffer, bufferPosition, char)
