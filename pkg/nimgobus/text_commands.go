@@ -387,7 +387,7 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 			}
 			if char == -13 {
 				// RIGHT ARROW pressed
-				if bufferPosition < len(buffer)-1 {
+				if bufferPosition < len(buffer) {
 					// only move right if not at end of buffer
 					bufferPosition++
 					moveCursorForward()
@@ -407,7 +407,7 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 			if char == -15 {
 				// DOWN ARROW pressed
 				lastCol := n.cursorPosition.col
-				for bufferPosition < len(buffer)-1 {
+				for bufferPosition < len(buffer) {
 					moveCursorForward()
 					bufferPosition++
 					if n.cursorPosition.col == lastCol {
