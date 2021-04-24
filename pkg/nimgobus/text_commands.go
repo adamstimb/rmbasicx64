@@ -252,6 +252,8 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 	}
 	bufferPosition := len(buffer)
 	maxBufferSize := 255
+	//startPos := n.cursorPosition
+	//endPos := n.cursorPosition
 
 	// popBuffer pops a char from the buffer at a given position
 	popBuffer := func(buffer []int, indexToPop int) []int {
@@ -311,11 +313,11 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 			width := box.col2 - box.col1
 			// go up a line and delete end char
 			n.cursorPosition.row--
-			n.cursorPosition.col = width + 1
+			n.cursorPosition.col = width // + 1
 			if andDelete {
 				n.Put(32)
 				n.cursorPosition.row--
-				n.cursorPosition.col = width + 1
+				n.cursorPosition.col = width // + 1
 			}
 			return
 		}
@@ -377,7 +379,7 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 			}
 			if char == -12 {
 				// LEFT ARROW pressed
-				if bufferPosition > 1 {
+				if bufferPosition > 0 {
 					// only move left if not at beginning
 					bufferPosition--
 					moveCursorBack(false)
@@ -389,6 +391,28 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 					// only move right if not at end of buffer
 					bufferPosition++
 					moveCursorForward()
+				}
+			}
+			if char == -14 {
+				// UP ARROW pressed
+				lastCol := n.cursorPosition.col
+				for bufferPosition > 0 {
+					moveCursorBack(false)
+					bufferPosition--
+					if n.cursorPosition.col == lastCol {
+						break
+					}
+				}
+			}
+			if char == -15 {
+				// DOWN ARROW pressed
+				lastCol := n.cursorPosition.col
+				for bufferPosition < len(buffer) {
+					moveCursorForward()
+					bufferPosition++
+					if n.cursorPosition.col == lastCol {
+						break
+					}
 				}
 			}
 		} else {

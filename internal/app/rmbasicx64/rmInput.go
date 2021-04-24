@@ -1,7 +1,6 @@
 package rmbasicx64
 
 import (
-	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -156,14 +155,11 @@ func parseInput(i *Interpreter, rawInput string, variableNames []string) {
 	numericType := 0
 	stringType := 1
 	for _, variableName := range variableNames {
-		fmt.Println(variableName)
 		if IsStringVar(token.Token{token.IdentifierLiteral, variableName}) {
-			fmt.Println("seq: string")
 			sequence = append(sequence, stringType)
 			continue
 		}
 		if IsFloatVar(token.Token{token.IdentifierLiteral, variableName}) || IsIntVar(token.Token{token.IdentifierLiteral, variableName}) {
-			fmt.Println("seq: numeric")
 			sequence = append(sequence, numericType)
 			continue
 		}
@@ -171,13 +167,6 @@ func parseInput(i *Interpreter, rawInput string, variableNames []string) {
 	// QND parser: split the raw input by spaces, then re-assemble according
 	// to the sequence
 	segments := strings.Fields(rawInput)
-
-	fmt.Println("Segments:")
-	for _, s := range segments {
-		fmt.Println(s)
-	}
-	fmt.Println("end")
-
 	collectString := ""
 	segmentIndex := 0
 	maxIndex := 0
@@ -186,18 +175,15 @@ func parseInput(i *Interpreter, rawInput string, variableNames []string) {
 		if segmentIndex >= len(segments) {
 			break
 		}
-		fmt.Printf("%d, %d\n", index, expectedType)
 		switch expectedType {
 		case stringType:
 			for {
 				collectString += segments[segmentIndex]
 				segmentIndex++
 				if collectString[len(collectString)-1:] == "," || segmentIndex == len(segments) {
-					fmt.Printf("collectString done: %s\n", collectString)
 					break
 				}
 			}
-			fmt.Println("break")
 			// finished collecting string - remove trailing comma if present
 			// then set var and wipe collectString
 			if collectString[len(collectString)-1:] == "," {
@@ -222,9 +208,7 @@ func parseInput(i *Interpreter, rawInput string, variableNames []string) {
 		}
 	}
 	// Print ?? if not enough data was entered
-	fmt.Println(maxIndex)
 	if maxIndex < len(sequence)-1 {
-		fmt.Println("??")
 		i.g.Print("??")
 		i.g.Put(13)
 	}
