@@ -78,6 +78,8 @@ type Nimbus struct {
 	muCursorFlash          sync.Mutex        //
 	cursorFlash            bool              // Cursor flash flag: Everytime this changes the cursor with flash if enabled
 	cursorFlashEnabled     bool              // Flag to indicate if cursor flash is enabled
+	deleteMode             bool              // true if delete mode selected
+	deleteModeCursorImage  [][]int           // The special cursor for delete mode
 	muKeyBuffer            sync.Mutex        //
 	keyBuffer              []int             // Nimgobus needs it's own key buffer since ebiten's only deals with printable chars
 	charRepeat             repeatingChar     // Used by the keyBuffer to dynamically limit key presses
@@ -120,12 +122,21 @@ func (n *Nimbus) Init() {
 	n.cursorFlash = false
 	n.muCursorFlash.Unlock()
 	n.cursorFlashEnabled = true
+	n.deleteMode = false
 	n.selectedTextBox = 0
 	n.keyBuffer = []int{}
 	n.charRepeat = repeatingChar{0, 0}
 	n.muBorderImage.Lock()
 	n.borderImage.Fill(n.basicColours[n.palette[n.borderColour]])
 	n.muBorderImage.Unlock()
+
+	// Draw delete mode cursor
+	n.deleteModeCursorImage = make2dArray(8, 10)
+	for x := 0; x < 8; x++ {
+		for y := 0; y < 10; y++ {
+			n.deleteModeCursorImage[y][x] = 1
+		}
+	}
 
 	// Initialize with mode 80 textboxes
 	for i := 0; i < 10; i++ {
@@ -235,6 +246,16 @@ func (n *Nimbus) updateKeyBuffer() {
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyPageDown) {
 		acceptRepeatingChar(-19)
+		n.muKeyBuffer.Unlock()
+		return
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyDelete) {
+		acceptRepeatingChar(-20)
+		n.muKeyBuffer.Unlock()
+		return
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyInsert) {
+		acceptRepeatingChar(-21)
 		n.muKeyBuffer.Unlock()
 		return
 	}

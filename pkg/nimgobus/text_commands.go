@@ -361,6 +361,8 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 			}
 			if char == -10 {
 				// BACKSPACE pressed
+				// First switch delete mode off
+				n.deleteMode = false
 				if bufferPosition > 0 {
 					// only delete if not at beginning
 					bufferPosition--
@@ -460,6 +462,14 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 					moveCursorForward()
 					bufferPosition++
 				}
+			}
+			if char == -20 {
+				// DEL pressed - don't move but switch delete mode on
+				n.deleteMode = true
+			}
+			if char == -21 {
+				// INS pressed - don't move but switch delete mode off
+				n.deleteMode = false
 			}
 		} else {
 			// is printable char
