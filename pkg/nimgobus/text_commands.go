@@ -254,8 +254,8 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 	}
 	bufferPosition := len(buffer)
 	maxBufferSize := 255
-	startPos := n.cursorPosition
-	endPos := n.cursorPosition
+	//startPos := n.cursorPosition
+	//endPos := n.cursorPosition
 
 	// popBuffer pops a char from the buffer at a given position
 	popBuffer := func(buffer []int, indexToPop int) []int {
@@ -293,7 +293,6 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 		for i := startIndex; i < len(buffer); i++ {
 			n.Put(buffer[i])
 		}
-		endPos = n.cursorPosition
 	}
 
 	// moveCursorBack moves the cursor backwards one char along a line
@@ -341,36 +340,6 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 			n.cursorPosition.col = box.col1
 			n.cursorPosition.row++
 		}
-	}
-
-	// getBufferPosFromCursor infers the buffer position from curpos
-	getBufferPosFromCursor := func(startPos colRow) (pos int) {
-		pos = 0
-		// get width of current textbox
-		box := n.textBoxes[n.selectedTextBox]
-		width := box.col2 - box.col1
-
-		sc := startPos.col
-		sr := startPos.row
-		fmt.Printf("start %d, %d\n", startPos.col, startPos.row)
-		fmt.Printf("current %d, %d\n", n.cursorPosition.col, n.cursorPosition.row)
-		pos = 0
-		for {
-			sc++
-			if sc > width+1 {
-				sc = 1
-				sr++
-			}
-			if sc > n.cursorPosition.col && sr == n.cursorPosition.row {
-				pos++
-				break
-			} else {
-				pos++
-			}
-		}
-
-		fmt.Printf("getbufferpos = %d\n", pos)
-		return pos
 	}
 
 	// Print the buffer before looping to get user input
@@ -429,24 +398,24 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 			}
 			if char == -14 {
 				// UP ARROW pressed
-				if n.cursorPosition.row > startPos.row {
-					if n.cursorPosition.col > startPos.col {
-						n.SetCurpos(n.cursorPosition.col, n.cursorPosition.row-1)
-					} else {
-						n.SetCurpos(startPos.col, n.cursorPosition.row-1)
+				lastCol := n.cursorPosition.col
+				for bufferPosition > 0 {
+					moveCursorBack(false)
+					bufferPosition--
+					if n.cursorPosition.col == lastCol {
+						break
 					}
-					bufferPosition = getBufferPosFromCursor(startPos)
 				}
 			}
 			if char == -15 {
 				// DOWN ARROW pressed
-				if n.cursorPosition.row < endPos.row {
-					if n.cursorPosition.col < endPos.col {
-						n.SetCurpos(n.cursorPosition.col, n.cursorPosition.row+1)
-					} else {
-						n.SetCurpos(endPos.col, n.cursorPosition.row+1)
+				lastCol := n.cursorPosition.col
+				for bufferPosition < len(buffer)-1 {
+					moveCursorForward()
+					bufferPosition++
+					if n.cursorPosition.col == lastCol {
+						break
 					}
-					bufferPosition = getBufferPosFromCursor(startPos)
 				}
 			}
 		} else {
