@@ -415,6 +415,52 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 					}
 				}
 			}
+			if char == -16 {
+				// HOME pressed
+				for bufferPosition > 0 {
+					moveCursorBack(false)
+					bufferPosition--
+				}
+			}
+			if char == -17 {
+				// END pressed
+				for bufferPosition < len(buffer) {
+					moveCursorForward()
+					bufferPosition++
+				}
+			}
+			if char == -18 {
+				// PG UP pressed
+				inWord := false
+				for bufferPosition > 0 {
+					moveCursorBack(false)
+					bufferPosition--
+					if buffer[bufferPosition] != 32 {
+						inWord = true
+					}
+					if inWord && buffer[bufferPosition] == 32 {
+						break
+					}
+				}
+			}
+			if char == -19 {
+				// PG DOWN pressed
+				inWord := false
+				for bufferPosition < len(buffer)-1 {
+					moveCursorForward()
+					bufferPosition++
+					if buffer[bufferPosition] != 32 {
+						inWord = true
+					}
+					if inWord && buffer[bufferPosition] == 32 {
+						break
+					}
+				}
+				if bufferPosition == len(buffer)-1 {
+					moveCursorForward()
+					bufferPosition++
+				}
+			}
 		} else {
 			// is printable char
 			// only accept it if we have space

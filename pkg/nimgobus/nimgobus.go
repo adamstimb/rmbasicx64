@@ -218,6 +218,26 @@ func (n *Nimbus) updateKeyBuffer() {
 		n.muKeyBuffer.Unlock()
 		return
 	}
+	if ebiten.IsKeyPressed(ebiten.KeyHome) {
+		acceptRepeatingChar(-16)
+		n.muKeyBuffer.Unlock()
+		return
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyEnd) {
+		acceptRepeatingChar(-17)
+		n.muKeyBuffer.Unlock()
+		return
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyPageUp) {
+		acceptRepeatingChar(-18)
+		n.muKeyBuffer.Unlock()
+		return
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyPageDown) {
+		acceptRepeatingChar(-19)
+		n.muKeyBuffer.Unlock()
+		return
+	}
 	n.charRepeat.char = 0
 	n.charRepeat.counter = 0
 	n.muKeyBuffer.Unlock()
