@@ -1,8 +1,6 @@
 package nimgobus
 
 import (
-	"fmt"
-
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -300,7 +298,6 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 	// it will also delete the previous char.
 	moveCursorBack := func(andDelete bool) {
 		// handle deleting from the same line
-		fmt.Println(n.cursorPosition.col)
 		if n.cursorPosition.col > 1 {
 			n.cursorPosition.col--
 			if andDelete {
@@ -316,11 +313,11 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 			width := box.col2 - box.col1
 			// go up a line and delete end char
 			n.cursorPosition.row--
-			n.cursorPosition.col = width + 1
+			n.cursorPosition.col = width // + 1
 			if andDelete {
 				n.Put(32)
 				n.cursorPosition.row--
-				n.cursorPosition.col = width + 1
+				n.cursorPosition.col = width // + 1
 			}
 			return
 		}
@@ -390,7 +387,7 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 			}
 			if char == -13 {
 				// RIGHT ARROW pressed
-				if bufferPosition < len(buffer) {
+				if bufferPosition < len(buffer)-1 {
 					// only move right if not at end of buffer
 					bufferPosition++
 					moveCursorForward()
@@ -421,7 +418,6 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 		} else {
 			// is printable char
 			// only accept it if we have space
-			fmt.Printf("buffer len = %d", len(buffer))
 			if bufferPosition <= maxBufferSize {
 				// push new char into buffer
 				buffer = pushBuffer(buffer, bufferPosition, char)
