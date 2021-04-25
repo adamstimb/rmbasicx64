@@ -443,7 +443,18 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 				// DOWN ARROW pressed
 				switch n.deleteMode {
 				case true:
-					//
+					tempCursorPosition := n.cursorPosition
+					for bufferPosition < len(buffer) {
+						buffer = popBuffer(buffer, bufferPosition)
+						echoBuffer(buffer, bufferPosition)
+						endCol := n.cursorPosition.col
+						n.Put(32)
+						n.Put(32)
+						n.cursorPosition = tempCursorPosition
+						if endCol == tempCursorPosition.col {
+							break
+						}
+					}
 				case false:
 					lastCol := n.cursorPosition.col
 					for bufferPosition < len(buffer) {
@@ -457,16 +468,50 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 			}
 			if char == -16 {
 				// HOME pressed
-				for bufferPosition > 0 {
-					moveCursorBack(false)
-					bufferPosition--
+				switch n.deleteMode {
+				case false:
+					for bufferPosition > 0 {
+						moveCursorBack(false)
+						bufferPosition--
+					}
+				case true:
+					for bufferPosition > 0 {
+						// only delete if not at beginning
+						bufferPosition--
+						buffer = popBuffer(buffer, bufferPosition)
+						// delete char on screen
+						moveCursorBack(true)
+						// if deleting from before the end of the buffer, rewrite
+						// the rest of the buffer and delete the trailing char
+						if bufferPosition < len(buffer) {
+							tempCursorPosition := n.cursorPosition
+							echoBuffer(buffer, bufferPosition)
+							n.Put(32)
+							n.cursorPosition = tempCursorPosition
+						}
+					}
+					moveCursorBack(true)
+					bufferPosition = 0
+					buffer = popBuffer(buffer, bufferPosition)
 				}
 			}
 			if char == -17 {
 				// END pressed
-				for bufferPosition < len(buffer) {
-					moveCursorForward()
-					bufferPosition++
+				switch n.deleteMode {
+				case true:
+					tempCursorPosition := n.cursorPosition
+					for bufferPosition < len(buffer) {
+						buffer = popBuffer(buffer, bufferPosition)
+						echoBuffer(buffer, bufferPosition)
+						n.Put(32)
+						n.Put(32)
+						n.cursorPosition = tempCursorPosition
+					}
+				case false:
+					for bufferPosition < len(buffer) {
+						moveCursorForward()
+						bufferPosition++
+					}
 				}
 			}
 			if char == -18 {
