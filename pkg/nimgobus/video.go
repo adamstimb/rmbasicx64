@@ -149,7 +149,17 @@ func (n *Nimbus) writeSpriteToOverlay(thisSprite Sprite) {
 		spriteX := 0
 		for x := spriteOffsetX; x < xLimit; x++ {
 			spriteY := 0
+			// don't draw if it's off the left-hand side
+			if x < 0 {
+				spriteX++
+				continue
+			}
 			for y := spriteOffsetY; y < yLimit; y++ {
+				// don't draw if it's below the screen
+				if y < 0 {
+					spriteY++
+					continue
+				}
 				if thisSprite.pixels[spriteY][spriteX] == 1 {
 					n.videoMemoryOverlay[y][x] = n.videoMemoryOverlay[y][x] ^ thisSprite.colour
 				}

@@ -4,11 +4,15 @@ package nimgobus
 func (n *Nimbus) drawCursor() {
 	// Set up cursor
 	var charPixels [][]int
-	switch n.cursorCharset {
-	case 0:
-		charPixels = n.charImages0[n.cursorChar]
-	case 1:
-		charPixels = n.charImages1[n.cursorChar]
+	if n.deleteMode {
+		charPixels = n.deleteModeCursorImage
+	} else {
+		switch n.cursorCharset {
+		case 0:
+			charPixels = n.charImages0[n.cursorChar]
+		case 1:
+			charPixels = n.charImages1[n.cursorChar]
+		}
 	}
 	// Pick the textbox, get x, y coordinate of cursor and draw the char
 	box := n.textBoxes[n.selectedTextBox]

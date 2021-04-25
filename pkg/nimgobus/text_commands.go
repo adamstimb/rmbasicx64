@@ -311,14 +311,13 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 			// get width of current textbox
 			box := n.textBoxes[n.selectedTextBox]
 			width := box.col2 - box.col1
-			// go up a line and delete end char
-			n.cursorPosition.row--
-			n.cursorPosition.col = width // + 1
+			// Delete this char and go up a line
 			if andDelete {
 				n.Put(32)
-				n.cursorPosition.row--
-				n.cursorPosition.col = width // + 1
+				n.cursorPosition.col--
 			}
+			n.cursorPosition.row--
+			n.cursorPosition.col = width + 1
 			return
 		}
 	}
@@ -361,6 +360,8 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 			}
 			if char == -10 {
 				// BACKSPACE pressed
+				// First switch delete mode off
+				n.deleteMode = false
 				if bufferPosition > 0 {
 					// only delete if not at beginning
 					bufferPosition--
@@ -379,41 +380,179 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 			}
 			if char == -12 {
 				// LEFT ARROW pressed
+				// only move left if not at beginning
 				if bufferPosition > 0 {
-					// only move left if not at beginning
-					bufferPosition--
-					moveCursorBack(false)
+					switch n.deleteMode {
+					case true:
+						bufferPosition--
+						moveCursorBack(true)
+						tempCursorPosition := n.cursorPosition
+						buffer = popBuffer(buffer, bufferPosition)
+						echoBuffer(buffer, bufferPosition)
+						n.Put(32)
+						n.cursorPosition = tempCursorPosition
+					case false:
+						bufferPosition--
+						moveCursorBack(false)
+					}
 				}
 			}
 			if char == -13 {
 				// RIGHT ARROW pressed
+				// only move/delete right if not at end of buffer
 				if bufferPosition < len(buffer) {
-					// only move right if not at end of buffer
-					bufferPosition++
-					moveCursorForward()
+					switch n.deleteMode {
+					case true:
+						tempCursorPosition := n.cursorPosition
+						buffer = popBuffer(buffer, bufferPosition)
+						echoBuffer(buffer, bufferPosition)
+						n.Put(32)
+						n.cursorPosition = tempCursorPosition
+					case false:
+						bufferPosition++
+						moveCursorForward()
+					}
 				}
 			}
 			if char == -14 {
 				// UP ARROW pressed
-				lastCol := n.cursorPosition.col
-				for bufferPosition > 0 {
-					moveCursorBack(false)
-					bufferPosition--
-					if n.cursorPosition.col == lastCol {
-						break
+				switch n.deleteMode {
+				case true:
+					lastCol := n.cursorPosition.col
+					for bufferPosition > 0 {
+						bufferPosition--
+						buffer = popBuffer(buffer, bufferPosition)
+						// delete char on screen
+						moveCursorBack(true)
+						if n.cursorPosition.col == lastCol {
+							break
+						}
+					}
+				case false:
+					lastCol := n.cursorPosition.col
+					for bufferPosition > 0 {
+						moveCursorBack(false)
+						bufferPosition--
+						if n.cursorPosition.col == lastCol {
+							break
+						}
 					}
 				}
 			}
 			if char == -15 {
 				// DOWN ARROW pressed
-				lastCol := n.cursorPosition.col
-				for bufferPosition < len(buffer) {
-					moveCursorForward()
-					bufferPosition++
-					if n.cursorPosition.col == lastCol {
+				switch n.deleteMode {
+				case true:
+					tempCursorPosition := n.cursorPosition
+					for bufferPosition < len(buffer) {
+						buffer = popBuffer(buffer, bufferPosition)
+						echoBuffer(buffer, bufferPosition)
+						endCol := n.cursorPosition.col
+						n.Put(32)
+						n.Put(32)
+						n.cursorPosition = tempCursorPosition
+						if endCol == tempCursorPosition.col {
+							break
+						}
+					}
+				case false:
+					lastCol := n.cursorPosition.col
+					for bufferPosition < len(buffer) {
+						moveCursorForward()
+						bufferPosition++
+						if n.cursorPosition.col == lastCol {
+							break
+						}
+					}
+				}
+			}
+			if char == -16 {
+				// HOME pressed
+				switch n.deleteMode {
+				case false:
+					for bufferPosition > 0 {
+						moveCursorBack(false)
+						bufferPosition--
+					}
+				case true:
+					for bufferPosition > 0 {
+						// only delete if not at beginning
+						bufferPosition--
+						buffer = popBuffer(buffer, bufferPosition)
+						// delete char on screen
+						moveCursorBack(true)
+						// if deleting from before the end of the buffer, rewrite
+						// the rest of the buffer and delete the trailing char
+						if bufferPosition < len(buffer) {
+							tempCursorPosition := n.cursorPosition
+							echoBuffer(buffer, bufferPosition)
+							n.Put(32)
+							n.cursorPosition = tempCursorPosition
+						}
+					}
+					moveCursorBack(true)
+					bufferPosition = 0
+					buffer = popBuffer(buffer, bufferPosition)
+				}
+			}
+			if char == -17 {
+				// END pressed
+				switch n.deleteMode {
+				case true:
+					tempCursorPosition := n.cursorPosition
+					for bufferPosition < len(buffer) {
+						buffer = popBuffer(buffer, bufferPosition)
+						echoBuffer(buffer, bufferPosition)
+						n.Put(32)
+						n.Put(32)
+						n.cursorPosition = tempCursorPosition
+					}
+				case false:
+					for bufferPosition < len(buffer) {
+						moveCursorForward()
+						bufferPosition++
+					}
+				}
+			}
+			if char == -18 {
+				// PG UP pressed
+				inWord := false
+				for bufferPosition > 0 {
+					moveCursorBack(false)
+					bufferPosition--
+					if buffer[bufferPosition] != 32 {
+						inWord = true
+					}
+					if inWord && buffer[bufferPosition] == 32 {
 						break
 					}
 				}
+			}
+			if char == -19 {
+				// PG DOWN pressed
+				inWord := false
+				for bufferPosition < len(buffer)-1 {
+					moveCursorForward()
+					bufferPosition++
+					if buffer[bufferPosition] != 32 {
+						inWord = true
+					}
+					if inWord && buffer[bufferPosition] == 32 {
+						break
+					}
+				}
+				if bufferPosition == len(buffer)-1 {
+					moveCursorForward()
+					bufferPosition++
+				}
+			}
+			if char == -20 {
+				// DEL pressed - don't move but switch delete mode on
+				n.deleteMode = true
+			}
+			if char == -21 {
+				// INS pressed - don't move but switch delete mode off
+				n.deleteMode = false
 			}
 		} else {
 			// is printable char
