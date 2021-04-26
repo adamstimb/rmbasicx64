@@ -111,13 +111,31 @@ func (s *Scanner) getHexLiteral(firstRune rune) {
 	s.addToken(token.HexLiteral, strings.ToUpper(string(hexVal)))
 }
 
-// getNumber extracts a numerical literal from the source code
+// getNumber extracts a numerical literal from the source code.  It also
+// recognises scientific notation, e.g. 4e+7
 func (s *Scanner) getNumber(firstRune rune) {
 	// collect first rune
 	stringVal := []rune{}
 	stringVal = append(stringVal, firstRune)
 	// then collect the rest of the literal
+	gotExp := false     // ... if we've collected an(exponent symbol (e/E)
+	gotExpSign := false // ... if we've collected the sign of the exponent (+/-)
 	for {
+		// accept only ONE e/E followed by ONE optional -/+
+		if !gotExp && (s.peek() == 'e' || s.peek() == 'E') {
+			// consume e/E
+			gotExp = true
+			stringVal = append(stringVal, s.advance())
+			continue
+		}
+		// accept only ONE +/- immediately after e/E
+		lastChar := stringVal[len(stringVal)-1]
+		if !gotExpSign && gotExp && (lastChar == 'e' || lastChar == 'E') && (s.peek() == '+' || s.peek() == '-') {
+			// cosume +/-
+			gotExpSign = true
+			stringVal = append(stringVal, s.advance())
+			continue
+		}
 		if unicode.IsDigit(s.peek()) {
 			// consume this digit
 			stringVal = append(stringVal, s.advance())

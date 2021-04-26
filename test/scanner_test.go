@@ -208,6 +208,22 @@ func TestScanner(t *testing.T) {
 				{token.EndOfLine, ""},
 			},
 		},
+		{
+			Source: "PRINT 2.34E+4",
+			ExpectedTokens: []token.Token{
+				{token.PRINT, "PRINT"},
+				{token.NumericalLiteral, "2.34E+4"},
+				{token.EndOfLine, ""},
+			},
+		},
+		{
+			Source: "PRINT 1.344E-4.32",
+			ExpectedTokens: []token.Token{
+				{token.PRINT, "PRINT"},
+				{token.NumericalLiteral, "1.344E-4.32"},
+				{token.EndOfLine, ""},
+			},
+		},
 	}
 
 	// test that we always get expected tokens

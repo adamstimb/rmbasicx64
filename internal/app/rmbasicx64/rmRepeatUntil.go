@@ -8,10 +8,8 @@ import (
 // REPEAT
 func (i *Interpreter) RmRepeat() (ok bool) {
 	i.TokenPointer++
-	// Ensure no parameters passed
-	if !i.EndOfTokens() {
-		i.ErrorCode = syntaxerror.EndOfInstructionExpected
-		i.BadTokenIndex = i.TokenPointer
+	// No params
+	if !i.OnSegmentEnd() {
 		return false
 	}
 	// Execute
@@ -34,23 +32,17 @@ func (i *Interpreter) RmUntil() (ok bool) {
 	// Ensure there is a repeat to go back to
 	if len(i.repeatStack) == 0 {
 		i.ErrorCode = syntaxerror.UntilWithoutAnyRepeat
-		i.BadTokenIndex = 0
 		return false
 	}
 	// Get required expression e
-	if i.EndOfTokens() {
-		i.ErrorCode = syntaxerror.NumericExpressionNeeded
-		i.BadTokenIndex = i.TokenPointer
-		return false
-	}
-	val, ok := i.AcceptAnyNumber()
+	val, ok := i.OnExpression("numeric")
 	if !ok {
 		return false
 	}
 	// If result is true then pop the stack and pass through, otherwise go back
 	// to top of loop
 	thisItem := i.repeatStack[0]
-	if IsTrue(val) {
+	if IsTrue(val.(float64)) {
 		// pop
 		i.repeatStack = i.repeatStack[1:]
 		return true

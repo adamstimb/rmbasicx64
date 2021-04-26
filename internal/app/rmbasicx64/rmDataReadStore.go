@@ -62,9 +62,7 @@ func (i *Interpreter) GetData() (ok bool) {
 func (i *Interpreter) RmRestore() (ok bool) {
 	i.TokenPointer++
 	// TODO: Accept optional line number
-	if !i.EndOfTokens() {
-		i.ErrorCode = syntaxerror.EndOfInstructionExpected
-		i.BadTokenIndex = i.TokenPointer
+	if !i.OnSegmentEnd() {
 		return false
 	}
 	// Pass thru if not in a program otherwise execute
@@ -131,7 +129,6 @@ func (i *Interpreter) RmData(tokens []token.Token) (ok bool) {
 		tokenPointer++
 		if !ok {
 			i.ErrorCode = syntaxerror.CommaSeparatorIsNeeded
-			i.BadTokenIndex = tokenPointer
 			return false
 		}
 		// Get value if present --- can/should we handle this better?

@@ -4,34 +4,32 @@ import (
 	"math"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
-	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
 )
 
 // rmRun represents the RUN command
 func (i *Interpreter) RmRun() (ok bool) {
-	// pass thru is no program
-	if len(i.Program) == 0 {
-		return true
-	}
+	i.TokenPointer++
 	i.GetData() // Scan for DATA statements and programData stack
 	i.ProgramPointer = 0
 	lineOrder := i.GetLineOrder()
 	// Check for optional startFrom parameter
 	startFrom := lineOrder[i.ProgramPointer]
-	if len(i.TokenStack) > 2 {
-		i.TokenPointer++
-		_, ok := i.AcceptAnyOfTheseTokens([]int{token.NumericalLiteral, token.IdentifierLiteral})
-		if ok {
-			i.TokenPointer--
-			val, ok := i.AcceptAnyNumber()
-			if ok {
-				startFrom = int(math.Round(val))
-			} else {
-				return false
-			}
-		} else {
+	if !i.OnSegmentEnd() {
+		// Get startFrom
+		val, ok := i.OnExpression("numeric")
+		if !ok {
 			return false
 		}
+		startFrom = int(math.Round(val.(float64)))
+	}
+	// No more params
+	if !i.OnSegmentEnd() {
+		return false
+	}
+	// Execute
+	// pass thru if no program
+	if len(i.Program) == 0 {
+		return true
 	}
 	// Run the program and if startFrom was passed scan ahead to it before executing
 	scanAhead := true
@@ -53,7 +51,7 @@ func (i *Interpreter) RmRun() (ok bool) {
 	// Catch line number not found
 	if scanAhead {
 		i.ErrorCode = syntaxerror.SpecifiedLineNotFound
-		i.BadTokenIndex = 1
+		i.TokenPointer = 1
 		i.LineNumber = -1
 		return false
 	}

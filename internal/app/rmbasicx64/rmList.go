@@ -3,9 +3,6 @@ package rmbasicx64
 import (
 	"fmt"
 	"math"
-
-	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
-	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
 )
 
 // rmList represents the LIST command
@@ -23,63 +20,43 @@ func (i *Interpreter) RmList() (ok bool) {
 	i.TokenPointer++
 	line1 := -1
 	line2 := -1
-	if !i.EndOfTokens() {
-		// Get line1 and line2
-		if i.IsAnyOfTheseTokens([]int{token.NumericalLiteral, token.IdentifierLiteral, token.TO}) {
-			switch i.TokenStack[i.TokenPointer].TokenType {
-			case token.TO:
-				i.TokenPointer++
-				if i.EndOfTokens() {
-					i.ErrorCode = syntaxerror.LineNumberExpected
-					i.BadTokenIndex = i.TokenPointer
+	if !i.OnSegmentEnd() {
+		// Get either "TO line2" or "line1"
+		if i.OnTo() {
+			// Get TO, must now get line 2
+			val, ok := i.OnExpression("numeric")
+			if !ok {
+				return false
+			}
+			line2 = int(math.Round(val.(float64)))
+		} else {
+			// Didn't get TO, must now get line1
+			val, ok := i.OnExpression("numeric")
+			if !ok {
+				return false
+			}
+			line1 = int(math.Round(val.(float64)))
+			// If there're more parameters we need a TO
+			if !i.OnSegmentEnd() {
+				if !i.OnTo() {
 					return false
 				}
-				val, ok := i.AcceptAnyNumber()
-				if ok {
-					// round val and store as line2
-					line2 = int(math.Round(val))
-				} else {
-					return false
-				}
-			default:
-				val, ok := i.AcceptAnyNumber()
-				if ok {
-					// round val and store as line1 and set line2 to the same value in case
-					// user wants to list only one line
-					line1 = int(math.Round(val))
-					line2 = line1
-				} else {
-					return false
-				}
-				if !i.EndOfTokens() {
-					// Must be followed by TO
-					_, ok := i.AcceptAnyOfTheseTokens([]int{token.TO})
-					if ok {
-						val, ok := i.AcceptAnyNumber()
-						if ok {
-							// get line2 and accept no further parameters
-							line2 = int(math.Round(val))
-							if !i.EndOfTokens() {
-								i.ErrorCode = syntaxerror.EndOfInstructionExpected
-								i.BadTokenIndex = i.TokenPointer
-								return false
-							}
-						} else {
-							return false
-						}
-					} else {
-						i.ErrorCode = syntaxerror.EndOfInstructionExpected
-						i.BadTokenIndex = i.TokenPointer - 1
+				// If there're more parameters it has to be line2
+				if !i.OnSegmentEnd() {
+					val, ok := i.OnExpression("numeric")
+					if !ok {
 						return false
 					}
+					line2 = int(math.Round(val.(float64)))
 				}
 			}
-		} else {
-			i.ErrorCode = syntaxerror.EndOfInstructionExpected
-			i.BadTokenIndex = i.TokenPointer
-			return false
 		}
 	}
+	// No more params
+	if !i.OnSegmentEnd() {
+		return false
+	}
+	// Execute
 	// Pass through if no program
 	if len(i.Program) == 0 {
 		return true
