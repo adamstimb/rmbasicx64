@@ -11,19 +11,14 @@ import (
 // RmLoad represents the LOAD command
 func (i *Interpreter) RmLoad() (ok bool) {
 	i.TokenPointer++
-	if i.EndOfTokens() {
-		// No filename passed
-		i.ErrorCode = syntaxerror.StringExpressionNeeded
-		i.BadTokenIndex = 1
-		return false
-	}
-	// Get filename
-	filename, ok := i.AcceptAnyString()
+	// Get required filename
+	filename := ""
+	val, ok := i.OnExpression("string")
 	if ok {
+		filename = val.(string)
 		// Don't accept wildcards
 		if strings.Contains(filename, "*") {
 			i.ErrorCode = syntaxerror.ExactFilenameIsNeeded
-			i.BadTokenIndex = 1
 			return false
 		}
 		// If it doesn't have .BAS extension then add it
@@ -35,23 +30,20 @@ func (i *Interpreter) RmLoad() (ok bool) {
 		if !os.IsNotExist(err) {
 			if info.IsDir() {
 				i.ErrorCode = syntaxerror.FilenameIsADirectory
-				i.BadTokenIndex = 1
 				return false
 			}
 		} else {
 			i.ErrorCode = syntaxerror.UnableToOpenNamedFile
-			i.BadTokenIndex = 1
 			return false
 		}
 	} else {
-		i.BadTokenIndex = 1
 		return false
 	}
 	// Load program using ImmediateInput
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
 		i.ErrorCode = syntaxerror.FileOperationFailure
-		i.BadTokenIndex = 0
+		i.TokenPointer = 1
 		i.g.Print("Badness")
 		return false
 	}
@@ -62,6 +54,5 @@ func (i *Interpreter) RmLoad() (ok bool) {
 			return false
 		}
 	}
-
 	return true
 }

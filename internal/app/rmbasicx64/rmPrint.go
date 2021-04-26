@@ -5,7 +5,6 @@ import (
 	"math"
 	"strings"
 
-	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
 )
 
@@ -34,114 +33,97 @@ import (
 // and applies the above spacing rules
 // See also WIDTH command.....
 func (i *Interpreter) RmPrint() (ok bool) {
-	var printLines []string
-	// PRINT with no args
-	if len(i.TokenStack) == 1 {
-		//fmt.Println("")
+	i.TokenPointer++
+	if i.OnSegmentEnd() {
+		// PRINT with no args
 		i.g.Print("")
 		i.g.Put(13)
 		return true
 	}
-	if len(i.TokenStack) > 1 {
-		i.TokenPointer++
-		if i.TokenStack[i.TokenPointer].TokenType == token.EndOfLine {
-			// Also PRINT with no args
-			// fmt.Println("")
-			i.g.Print("")
-			i.g.Put(13)
-			return true
-		}
-		// Handle channel number or writing area option
-		tildeOrHash, ok := i.AcceptAnyOfTheseTokens([]int{token.Tilde, token.Hash})
-		writingArea := 0
-		printChannel := 0
-		if ok {
-			var optionVal float64
-			optionVal, ok = i.AcceptAnyNumber()
-			if !ok {
-				// excepted a number
-				return false
-			} else {
-				switch tildeOrHash.TokenType {
-				case token.Tilde:
-					// select writing area
-					writingArea = int(math.Round(optionVal))
-				case token.Hash:
-					// select print channel
-					printChannel = int(math.Round(optionVal))
-				}
-			}
-			// Handle no further args
-			if i.EndOfTokens() {
-				//fmt.Println("")
-				i.g.Print("")
-				i.g.Put(13)
-				return true
-			}
-		}
-		_ = writingArea // TODO: implement
-		_ = printChannel
-		noCarriageReturn := false // This flag will be set to true if the final expression is ;
-		// Handle expression list
-		if i.IsAnyOfTheseTokens([]int{token.StringLiteral, token.IdentifierLiteral, token.NumericalLiteral, token.Exclamation, token.Semicolon, token.Comma}) {
-			// Evaluate all expressions in list, concatenate their results and send to print
-			printString := ""
-			for !i.EndOfTokens() {
-				// Handle list punctuation
-				switch i.TokenStack[i.TokenPointer].TokenType {
-				case token.Semicolon:
-					// no space, go to next token
-					i.TokenPointer++
-					// set cr flag if it's a terminating ;
-					if i.EndOfTokens() {
-						noCarriageReturn = true
-					}
-				case token.Comma:
-					// should jump to next print zone but for now add a tab
-					printString += "               "
-					i.TokenPointer++
-				case token.Exclamation:
-					// add new line
-					printLines = append(printLines, printString)
-					printString = ""
-					i.TokenPointer++
-				default:
-					toPrint, ok := i.EvaluateExpression()
-					if !ok {
-						return false
-					} else {
-						switch GetType(toPrint) {
-						case "string":
-							printString += toPrint.(string)
-							continue
-						case "float64":
-							printString += RenderNumberAsString(toPrint.(float64))
-							continue
-						}
-					}
-				}
-			}
-			// Got all expressions so print the final string(s) with a cr between each line
-			printLines = append(printLines, printString)
-			for index, toPrint := range printLines {
-				i.g.Print(toPrint)
-				if index < len(printLines)-1 {
-					i.g.Put(13)
-				}
-			}
-			if !noCarriageReturn {
-				i.g.Put(13)
-			}
-			return true
-		} else {
-			i.ErrorCode = syntaxerror.EndOfInstructionExpected
-			i.BadTokenIndex = i.TokenPointer
+	var printLines []string
+	writingArea := 0
+	printChannel := 0
+	// Optional tilde or hash
+	t, ok := i.OnToken([]int{token.Tilde, token.Hash})
+	if ok {
+		// Got tilde or hash so must now get a numeric value
+		val, ok := i.OnExpression("numeric")
+		if !ok {
 			return false
+		} else {
+			switch t.TokenType {
+			case token.Tilde:
+				// select writing area
+				writingArea = int(math.Round(val.(float64)))
+			case token.Hash:
+				// select print channel
+				printChannel = int(math.Round(val.(float64)))
+			}
 		}
 	}
-	i.ErrorCode = syntaxerror.EndOfInstructionExpected
-	i.BadTokenIndex = i.TokenPointer
-	return false
+	// Handle no further args
+	if i.OnSegmentEnd() {
+		i.g.Print("")
+		i.g.Put(13)
+		return true
+	}
+	_ = writingArea // TODO: implement
+	_ = printChannel
+	noCarriageReturn := false // This flag will be set to true if the final expression is ;
+	// Handle expression list
+	// Evaluate all expressions in list, concatenate their results and send to print
+	printString := ""
+	for !i.OnSegmentEnd() {
+		// Handle list punctuation
+		// ;
+		if i.OnSemicolon() {
+			// no space
+			if i.OnSegmentEnd() {
+				noCarriageReturn = true
+			}
+			continue
+		}
+		// ,
+		if i.OnComma() {
+			// should jump to next print zone but for now add 15 char space
+			printString += "               "
+			continue
+		}
+		// !
+		_, ok = i.OnToken([]int{token.Exclamation})
+		if ok {
+			// add new line
+			printLines = append(printLines, printString)
+			printString = ""
+			continue
+		}
+		// expression
+		toPrint, ok := i.OnExpression("any")
+		if !ok {
+			return false
+		} else {
+			switch HasType(toPrint) {
+			case "string":
+				printString += toPrint.(string)
+				continue
+			case "numeric":
+				printString += RenderNumberAsString(toPrint.(float64))
+				continue
+			}
+		}
+	}
+	// Got all expressions so print the final string(s) with a cr between each line
+	printLines = append(printLines, printString)
+	for index, toPrint := range printLines {
+		i.g.Print(toPrint)
+		if index < len(printLines)-1 {
+			i.g.Put(13)
+		}
+	}
+	if !noCarriageReturn {
+		i.g.Put(13)
+	}
+	return true
 }
 
 // RenderNumberAsString receives a float64 type ad applies RM Basic's print rules for numbers
@@ -152,6 +134,10 @@ func RenderNumberAsString(value float64) (result string) {
 		result = fmt.Sprintf("%.5e", value)
 	} else {
 		result = fmt.Sprintf("%f", value)
+	}
+	// Special case of 0
+	if value == 0 {
+		return "0"
 	}
 	// remove trailing zeros
 	return strings.TrimRight(strings.TrimRight(result, "0"), ".")

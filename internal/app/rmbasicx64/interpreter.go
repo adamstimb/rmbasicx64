@@ -30,17 +30,17 @@ type repeatStackItem struct {
 // can receive, store and interpret BASIC code and execute the code to update its
 // own state.
 type Interpreter struct {
-	Store          map[string]interface{} // A map for storing variables and array (the key is the variable name)
-	Program        map[int]string         // A map for storing a program (the key is the line number)
-	CurrentTokens  []token.Token          // A line of tokens for immediate execution
-	ErrorCode      int                    // The current errorCode
-	LineNumber     int                    // The current line number being executed (-1 indicates immediate-mode, therefore no line number)
-	BadTokenIndex  int                    // If there was an error, the index of the token that raised the error is stored here
-	ProgramPointer int                    // The index of the line number currently being executed
-	TokenStack     []token.Token          // The tokens of the current segment being executed
-	TokenPointer   int                    // The index of the current token being evaluated in a segment
-	forStack       []forStackItem         // forStack is used for stacking 'n tracking FOR/NEXT loops
-	repeatStack    []repeatStackItem      // repeatStack is used for stacking 'n tracking REPEAT/UNTIL loops
+	Store         map[string]interface{} // A map for storing variables and array (the key is the variable name)
+	Program       map[int]string         // A map for storing a program (the key is the line number)
+	CurrentTokens []token.Token          // A line of tokens for immediate execution
+	ErrorCode     int                    // The current errorCode
+	LineNumber    int                    // The current line number being executed (-1 indicates immediate-mode, therefore no line number)
+	//BadTokenIndex  int                    // If there was an error, the index of the token that raised the error is stored here
+	ProgramPointer int               // The index of the line number currently being executed
+	TokenStack     []token.Token     // The tokens of the current segment being executed
+	TokenPointer   int               // The index of the current token being evaluated in a segment
+	forStack       []forStackItem    // forStack is used for stacking 'n tracking FOR/NEXT loops
+	repeatStack    []repeatStackItem // repeatStack is used for stacking 'n tracking REPEAT/UNTIL loops
 	programData    []interface{}
 	collectingData bool
 	g              *Game
@@ -53,7 +53,7 @@ func (i *Interpreter) Init(g *Game) {
 	i.CurrentTokens = []token.Token{}
 	i.ErrorCode = syntaxerror.Success
 	i.LineNumber = -1
-	i.BadTokenIndex = -1
+	//i.BadTokenIndex = -1
 	i.ProgramPointer = 0
 	i.TokenStack = []token.Token{}
 	i.forStack = []forStackItem{}
@@ -239,6 +239,10 @@ func (i *Interpreter) RunSegment(tokens []token.Token) (ok bool) {
 			return i.RmData(i.TokenStack)
 		case token.RESTORE:
 			return i.RmRestore()
+		case token.LET:
+			return i.RmAssign()
+		case token.IF:
+			return i.RmIfThenElse()
 		case token.SET:
 			if IsKeyword(tokens[1]) {
 				switch tokens[1].TokenType {
@@ -256,18 +260,17 @@ func (i *Interpreter) RunSegment(tokens []token.Token) (ok bool) {
 					return i.RmSetCursor()
 				default:
 					i.ErrorCode = syntaxerror.WrongSetAskAttribute
-					i.BadTokenIndex = 1
+					i.TokenPointer++
 					return false
 				}
 			} else {
 				i.ErrorCode = syntaxerror.UnknownSetAskAttribute
-				i.BadTokenIndex = 1
+				i.TokenPointer++
 				return false
 			}
 		}
 	}
 	i.ErrorCode = syntaxerror.UnknownCommandProcedure
-	i.BadTokenIndex = 0
 	return false
 }
 
@@ -283,7 +286,7 @@ func (i *Interpreter) RunLine(code string) (ok bool) {
 	for index, t := range i.CurrentTokens {
 		if t.TokenType == token.Illegal {
 			i.ErrorCode = syntaxerror.EndOfInstructionExpected
-			i.BadTokenIndex = index
+			i.TokenPointer = index
 			return false
 		}
 	}
@@ -324,7 +327,6 @@ func (i *Interpreter) RunLine(code string) (ok bool) {
 func (i *Interpreter) ImmediateInput(code string) (response string) {
 	// reset error status, tokenize code and try to execute
 	i.ErrorCode = syntaxerror.Success
-	i.BadTokenIndex = 0
 	i.LineNumber = -1
 	i.Tokenize(code)
 	ok := i.RunLine(code)
@@ -344,10 +346,10 @@ func (i *Interpreter) ImmediateInput(code string) (response string) {
 			} else {
 				i.g.Print(fmt.Sprintf("Syntax error: %s", syntaxerror.ErrorMessage(i.ErrorCode)))
 				i.g.Put(13)
-				i.g.Print(fmt.Sprintf("  %s", i.FormatCode(code, i.BadTokenIndex, false)))
+				i.g.Print(fmt.Sprintf("  %s", i.FormatCode(code, i.TokenPointer, false)))
 				i.g.Put(13)
 			}
-			response = fmt.Sprintf("Syntax error: %s\n  %s", syntaxerror.ErrorMessage(i.ErrorCode), i.FormatCode(code, i.BadTokenIndex, false))
+			response = fmt.Sprintf("Syntax error: %s\n  %s", syntaxerror.ErrorMessage(i.ErrorCode), i.FormatCode(code, i.TokenPointer, false))
 		} else {
 			// syntax error with line number
 			if i.g.BreakInterruptDetected {
@@ -358,10 +360,10 @@ func (i *Interpreter) ImmediateInput(code string) (response string) {
 			} else {
 				i.g.Print(fmt.Sprintf("Syntax error in line %d: %s", i.LineNumber, syntaxerror.ErrorMessage(i.ErrorCode)))
 				i.g.Put(13)
-				i.g.Print(fmt.Sprintf("  %d %s", i.LineNumber, i.FormatCode(code, i.BadTokenIndex, false)))
+				i.g.Print(fmt.Sprintf("  %d %s", i.LineNumber, i.FormatCode(code, i.TokenPointer, false)))
 				i.g.Put(13)
 			}
-			response = fmt.Sprintf("Syntax error in line %d: %s\n  %d %s", i.LineNumber, syntaxerror.ErrorMessage(i.ErrorCode), i.LineNumber, i.FormatCode(i.Program[i.LineNumber], i.BadTokenIndex, false))
+			response = fmt.Sprintf("Syntax error in line %d: %s\n  %d %s", i.LineNumber, syntaxerror.ErrorMessage(i.ErrorCode), i.LineNumber, i.FormatCode(i.Program[i.LineNumber], i.TokenPointer, false))
 		}
 	}
 	return response
@@ -552,7 +554,7 @@ func (i *Interpreter) GetValueFromToken(t token.Token, castTo string) (value int
 	return 0, false
 }
 
-// AcceptAnyFloat checks if the current token represents a number and returns the value.  If
+// AcceptAnyNumber checks if the current token represents a number and returns the value.  If
 // it does not represent a number then the tokenPointer is reset to its original position.
 func (i *Interpreter) AcceptAnyNumber() (acceptedValue float64, acceptOk bool) {
 	originalPosition := i.TokenPointer
@@ -626,8 +628,7 @@ func (i *Interpreter) IsAnyOfTheseTokens(acceptableTokens []int) bool {
 func (i *Interpreter) ExtractExpression() (expressionTokens []token.Token) {
 	tokenStackSlice := i.TokenStack[i.TokenPointer:]
 	for index, t := range tokenStackSlice {
-		// The following tokens can delimit an expression
-		if t.TokenType == token.Comma || t.TokenType == token.Semicolon || t.TokenType == token.EndOfLine || t.TokenType == token.Exclamation || t.TokenType == token.TO || t.TokenType == token.STEP {
+		if IsExpressionTerminator(t) {
 			break
 		}
 		// An expression is also delimited if one operand follows another directly
@@ -641,6 +642,7 @@ func (i *Interpreter) ExtractExpression() (expressionTokens []token.Token) {
 		expressionTokens = append(expressionTokens, t)
 		i.TokenPointer++
 	}
+	fmt.Printf("got expression of %d tokens\n", len(expressionTokens))
 	return expressionTokens
 }
 
@@ -652,5 +654,176 @@ func (i *Interpreter) EndOfTokens() bool {
 	if i.TokenStack[i.TokenPointer].TokenType == token.EndOfLine {
 		return true
 	}
+	return false
+}
+
+// New functions for accepting tokens -----------------------------
+// ----------------------------------------------------------------
+
+// HasType returns "string" if an interface has the string type, or "numeric" if
+// it has the float64 type.
+func HasType(v interface{}) string {
+	ok := false
+	_, ok = v.(float64)
+	if ok {
+		return "numeric"
+	}
+	_, ok = v.(string)
+	if ok {
+		return "string"
+	}
+	return ""
+}
+
+// OnExpression returns the value and true of an expression if it's valid and matches
+// the type passed in expType.  expType accepts "any", "string", or "numeric" as types.
+// The returned value type is interface{} if "any" is selected, string if "string" is
+// selected, or "float64" if float is selected.  If anything breaks the ErrorCode is
+// set and false is returned for ok.
+func (i *Interpreter) OnExpression(expType string) (value interface{}, ok bool) {
+	// Protect against trying to evaluate EndOfLine token
+	if i.OnSegmentEnd() {
+		switch expType {
+		case "any":
+			i.ErrorCode = syntaxerror.NumericOrStringExpressionNeeded
+			return nil, false
+		case "string":
+			i.ErrorCode = syntaxerror.StringExpressionNeeded
+			return nil, false
+		case "numeric":
+			i.ErrorCode = syntaxerror.NumericExpressionNeeded
+			return nil, false
+		default:
+			// Internal error
+			log.Fatalf("Internal error: Interpreter.OnExpression does not accept \"%s\" for expType.\n", expType)
+		}
+	}
+	// Try to evaluate expression and raise error if it fails
+	originalPosition := i.TokenPointer
+	val, ok := i.EvaluateExpression()
+	if !ok {
+		// broken expression so reset pointer and return false
+		i.TokenPointer = originalPosition
+		return nil, false
+	}
+	// Evaluated ok, so get type and raise error if type mismatch
+	switch expType {
+	case "any":
+		return val, true
+	case "string":
+		if HasType(val) == "string" {
+			return val, true
+		} else {
+			i.ErrorCode = syntaxerror.StringExpressionNeeded
+			i.TokenPointer = originalPosition
+			return nil, false
+		}
+	case "numeric":
+		if HasType(val) == "numeric" {
+			return val, true
+		} else {
+			i.ErrorCode = syntaxerror.NumericExpressionNeeded
+			i.TokenPointer = originalPosition
+			return nil, false
+		}
+	default:
+		// Internal error
+		log.Fatalf("Internal error: Interpreter.OnExpression does not accept \"%s\" for expType.\n", expType)
+	}
+	// Never happens:
+	return nil, true
+}
+
+// OnComma returns true if the current token is a comma otherwise it sets ErrorCode to
+// CommaSeparatorIsNeeded and returns false.
+func (i *Interpreter) OnComma() bool {
+	if i.TokenStack[i.TokenPointer].TokenType == token.Comma {
+		i.TokenPointer++
+		return true
+	} else {
+		i.ErrorCode = syntaxerror.CommaSeparatorIsNeeded
+		return false
+	}
+}
+
+// OnSemicolon returns true if the current token is a semicolon otherwise it sets ErrorCode to
+// SemicolonSeparatorIsNeeded and returns false.
+func (i *Interpreter) OnSemicolon() bool {
+	if i.TokenStack[i.TokenPointer].TokenType == token.Semicolon {
+		i.TokenPointer++
+		return true
+	} else {
+		i.ErrorCode = syntaxerror.SemicolonSeparatorIsNeeded
+		return false
+	}
+}
+
+// OnTo returns true if the current token is a TO otherwise it sets ErrorCode to
+// InvalidExpressionFound and returns false.
+func (i *Interpreter) OnTo() bool {
+	if i.TokenStack[i.TokenPointer].TokenType == token.TO {
+		i.TokenPointer++
+		return true
+	} else {
+		i.ErrorCode = syntaxerror.InvalidExpressionFound
+		return false
+	}
+}
+
+// OnVariableName returns the current token and true it's a variable name
+// otherwise sets ErrorCode to VariableNameIsExpected and returns false.
+func (i *Interpreter) OnVariableName() (t token.Token, ok bool) {
+	if i.TokenStack[i.TokenPointer].TokenType == token.IdentifierLiteral {
+		i.TokenPointer++
+		return i.TokenStack[i.TokenPointer], true
+	} else {
+		return token.Token{0, ""}, false
+	}
+}
+
+// OnToken returns the token and true if the current token matches any of the token types
+// passed in tokenTypes.
+func (i *Interpreter) OnToken(tokenTypes []int) (t token.Token, ok bool) {
+	for _, tokenType := range tokenTypes {
+		if i.TokenStack[i.TokenPointer].TokenType == tokenType {
+			i.TokenPointer++
+			return i.TokenStack[i.TokenPointer], true
+		}
+	}
+	return token.Token{0, ""}, false
+}
+
+// OnSegmentEnd returns true if the current token represents the end of a line or segment,
+// otherwise it sets the ErrorCode to EndOfInstructionExpected and returns false.  In either
+// case it does not advance the TokenPointer.
+func (i *Interpreter) OnSegmentEnd() bool {
+	if i.TokenStack[i.TokenPointer].TokenType == token.EndOfLine {
+		return true
+	}
+	i.ErrorCode = syntaxerror.EndOfInstructionExpected
+	return false
+}
+
+// IsExpressionTerminator returns true if the current token will terminate an expression
+func IsExpressionTerminator(t token.Token) bool {
+
+	terminators := []int{
+		token.Comma,
+		token.Semicolon,
+		token.EndOfLine,
+		token.Exclamation,
+		token.TO,
+		token.STEP,
+		token.PRINT,
+		token.THEN,
+		token.ELSE,
+	}
+
+	for _, tokenType := range terminators {
+		if tokenType == t.TokenType {
+			return true
+		}
+	}
+
 	return false
 }

@@ -41,97 +41,80 @@ import (
 // Example:
 // INPUT "Enter 3 numbers :", A, B, C
 func (i *Interpreter) RmInput() (ok bool) {
-
-	for _, t := range i.TokenStack {
-		token.PrintToken(t)
-	}
-
 	i.TokenPointer++
 	// must have a variable if nothing else
-	if i.EndOfTokens() {
+	if !i.OnSegmentEnd() {
 		i.ErrorCode = syntaxerror.VariableNameIsNeeded
-		i.BadTokenIndex = 1
 		return false
 	}
 	// Optional LINE keyword to set INPUT LINE mode
 	inputLineMode := false
-	_, ok = i.AcceptAnyOfTheseTokens([]int{token.LINE})
+	_, ok = i.OnToken([]int{token.LINE})
 	if ok {
 		inputLineMode = true
 	}
 	// Optional channel number - default is 0
 	// var channel int
-	if i.IsAnyOfTheseTokens([]int{token.Hash}) {
-		// consume token then must have channel number
-		i.TokenPointer++
-		_, ok := i.AcceptAnyNumber() // channel, ok := ...
-		if !ok {
-			i.ErrorCode = syntaxerror.NumericExpressionNeeded
-			i.BadTokenIndex = i.TokenPointer
-			return false
+	_, ok = i.OnToken([]int{token.Hash})
+	if ok {
+		// # must be followed be channel number
+		_, ok := i.OnExpression("numeric") // val, ok := ...
+		if ok {
+			// channel = int(math.Round(val.(float64)))
 		} else {
-			// channel = 0
+			return false
 		}
 	}
 	// Optional prompt - default is ""
 	hasPrompt := false
-	prompt, ok := i.AcceptAnyString()
+	prompt := ""
+	val, ok := i.OnExpression("string")
 	if !ok {
 		prompt = ""
 	} else {
+		prompt = val.(string)
 		hasPrompt = true
 	}
 	// Optional semicolon
 	promptWithQuestionMark := false
-	_, ok = i.AcceptAnyOfTheseTokens([]int{token.Semicolon})
+	_, ok = i.OnToken([]int{token.Semicolon})
 	if ok {
 		promptWithQuestionMark = true
 	}
 	// If a prompt was passed and no semicolon came after it then we need a
 	// comma separator here
 	if hasPrompt && !promptWithQuestionMark {
-		_, ok = i.AcceptAnyOfTheseTokens([]int{token.Comma})
-		if !ok {
-			i.ErrorCode = syntaxerror.CommaSeparatorIsNeeded
-			i.BadTokenIndex = i.TokenPointer
+		if !i.OnComma() {
 			return false
 		}
 	}
-	// Must have at last one variable
-	if i.EndOfTokens() {
-		i.ErrorCode = syntaxerror.VariableNameIsNeeded
-		i.BadTokenIndex = i.TokenPointer
+	// Get required first variable name
+	variableName, ok := i.OnVariableName()
+	if !ok {
 		return false
 	}
-	// Collect one or more variable names
 	variableNames := make([]string, 0)
-	for !i.EndOfTokens() {
-		t, ok := i.AcceptAnyOfTheseTokens([]int{token.IdentifierLiteral})
+	variableNames = append(variableNames, variableName.Literal)
+	// INPUT LINE mode can't accept more variables
+	if inputLineMode && !i.OnSegmentEnd() {
+		return false
+	}
+	// Collect more variable names
+	for !i.OnSegmentEnd() {
+		variableName, ok := i.OnVariableName()
 		if !ok {
-			i.ErrorCode = syntaxerror.VariableNameIsNeeded
-			i.BadTokenIndex = i.TokenPointer
 			return false
 		} else {
-			// back up the pointer to get literal then advanced it again
-			token.PrintToken(t)
-			variableNames = append(variableNames, t.Literal)
-		}
-		// If in inputLineMode then we can't accept any more parameters
-		if inputLineMode && !i.EndOfTokens() {
-			i.ErrorCode = syntaxerror.EndOfInstructionExpected
-			i.BadTokenIndex = i.TokenPointer
-			return false
+			variableNames = append(variableNames, variableName.Literal)
 		}
 		// If there are more variables then a comma separator is needed
-		if !i.EndOfTokens() {
-			_, ok := i.AcceptAnyOfTheseTokens([]int{token.Comma})
-			if !ok {
-				i.ErrorCode = syntaxerror.CommaSeparatorIsNeeded
-				i.BadTokenIndex = i.TokenPointer
+		if !i.OnSegmentEnd() {
+			if !i.OnComma() {
 				return false
 			}
 		}
 	}
+	// Execute
 	// Prompt and get input string
 	i.g.Print(prompt)
 	if promptWithQuestionMark {

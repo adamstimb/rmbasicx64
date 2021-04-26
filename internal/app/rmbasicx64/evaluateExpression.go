@@ -27,7 +27,6 @@ func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
 			var val interface{}
 			val, ok = i.GetVar(tokens[0].Literal)
 			if !ok {
-				i.BadTokenIndex = 0 + i.TokenPointer
 				return 0, false
 			} else {
 				return val, true
@@ -72,7 +71,7 @@ func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
 			continue
 		}
 		i.ErrorCode = syntaxerror.InvalidExpressionFound
-		i.BadTokenIndex = index
+		i.TokenPointer += index
 		return 0, false
 	}
 	for len(operatorStack) > 0 {
@@ -115,7 +114,6 @@ func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
 				} else {
 					// Variable not defined
 					i.ErrorCode = syntaxerror.HasNotBeenDefined
-					i.BadTokenIndex = 0
 					return 0, false
 				}
 			}
@@ -137,7 +135,6 @@ func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
 					//}
 				} else {
 					i.ErrorCode = syntaxerror.NumericExpressionNeeded
-					i.BadTokenIndex = 0
 					return 0, false
 				}
 			}
@@ -234,7 +231,6 @@ func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
 					}
 				default:
 					i.ErrorCode = syntaxerror.InvalidExpressionFound
-					i.BadTokenIndex = 0
 					return 0, false
 				}
 			} else {
@@ -251,14 +247,12 @@ func (i *Interpreter) EvaluateExpression() (result interface{}, ok bool) {
 				case token.ForwardSlash:
 					if op2 == float64(0) {
 						i.ErrorCode = syntaxerror.TryingToDivideByZero
-						i.BadTokenIndex = 0
 						return 0, false
 					}
 					result = op1 / op2
 				case token.BackSlash:
 					if op2 == float64(0) {
 						i.ErrorCode = syntaxerror.TryingToDivideByZero
-						i.BadTokenIndex = 0
 						return 0, false
 					}
 					result = float64(int(op1) / int(op2))

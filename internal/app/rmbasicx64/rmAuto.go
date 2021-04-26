@@ -3,9 +3,6 @@ package rmbasicx64
 import (
 	"fmt"
 	"math"
-
-	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
-	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
 )
 
 // rmAuto represents the AUTO command
@@ -28,41 +25,32 @@ func (i *Interpreter) RmAuto() (ok bool) {
 	// Default parameters
 	startLine := 10
 	increment := 10
-	// Try to collect parameters, if any
-	if !i.EndOfTokens() {
-		if i.TokenStack[1].TokenType == token.NumericalLiteral || i.TokenStack[1].TokenType == token.IdentifierLiteral {
-			// Consume startLine
-			val, ok := i.AcceptAnyNumber()
-			if !ok {
+	// Collect optional startLine and following optional increment
+	if !i.OnSegmentEnd() {
+		// Collect startLine
+		val, ok := i.OnExpression("numeric")
+		if !ok {
+			return false
+		} else {
+			startLine = int(math.Round(val.(float64)))
+		}
+		if !i.OnSegmentEnd() {
+			// Collect comma
+			if !i.OnComma() {
 				return false
 			}
-			startLine = int(math.Round(val))
-			if !i.EndOfTokens() {
-				// Consume comma
-				_, ok := i.AcceptAnyOfTheseTokens([]int{token.Comma})
-				if !ok {
-					i.ErrorCode = syntaxerror.CommaSeparatorIsNeeded
-					i.BadTokenIndex = i.TokenPointer
-					return false
-				}
-				// Consume increment
-				val, ok := i.AcceptAnyNumber()
-				if !ok {
-					return false
-				}
-				increment = int(math.Round(val))
-				// End of expression
-				if !i.EndOfTokens() {
-					i.ErrorCode = syntaxerror.EndOfInstructionExpected
-					i.BadTokenIndex = i.TokenPointer
-					return false
-				}
+			// Collect increment
+			val, ok := i.OnExpression("numeric")
+			if !ok {
+				return false
+			} else {
+				increment = int(math.Round(val.(float64)))
 			}
-		} else {
-			i.ErrorCode = syntaxerror.LineNumberExpected
-			i.BadTokenIndex = i.TokenPointer
-			return false
 		}
+	}
+	// No more params
+	if !i.OnSegmentEnd() {
+		return false
 	}
 	// Execute
 	autoLineNumber := startLine

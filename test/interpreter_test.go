@@ -4,126 +4,7 @@ import (
 	"testing"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64"
-	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
 )
-
-func TestInterpreterTokenize(t *testing.T) {
-
-	// test data
-	type test struct {
-		Source         string
-		ExpectedTokens []token.Token
-	}
-	tests := []test{
-		{
-			Source: "print \"Hello!\"",
-			ExpectedTokens: []token.Token{
-				{token.PRINT, "PRINT"},
-				{token.StringLiteral, "Hello!"},
-				{token.EndOfLine, ""},
-			},
-		},
-		{
-			Source: "Print \"Illegal char\" {",
-			ExpectedTokens: []token.Token{
-				{token.PRINT, "PRINT"},
-				{token.StringLiteral, "Illegal char"},
-				{token.Illegal, "{"},
-				{token.EndOfLine, ""},
-			},
-		},
-		{
-			Source: "Print \"So-called \"\"test\"\" this is\"",
-			ExpectedTokens: []token.Token{
-				{token.PRINT, "PRINT"},
-				{token.StringLiteral, "So-called \"\"test\"\" this is"},
-				{token.EndOfLine, ""},
-			},
-		},
-		{
-			Source: "Rem This is a comment",
-			ExpectedTokens: []token.Token{
-				{token.REM, "REM"},
-				{token.Comment, "This is a comment"},
-				{token.EndOfLine, ""},
-			},
-		},
-		{
-			Source: "let x = 5",
-			ExpectedTokens: []token.Token{
-				{token.LET, "LET"},
-				{token.IdentifierLiteral, "X"},
-				{token.Equal, "="},
-				{token.NumericalLiteral, "5"},
-				{token.EndOfLine, ""},
-			},
-		},
-		{
-			Source: "&554a3d2c",
-			ExpectedTokens: []token.Token{
-				{token.HexLiteral, "&554A3D2C"},
-				{token.EndOfLine, ""},
-			},
-		},
-		{
-			Source: "let y = &5d",
-			ExpectedTokens: []token.Token{
-				{token.LET, "LET"},
-				{token.IdentifierLiteral, "Y"},
-				{token.Equal, "="},
-				{token.HexLiteral, "&5D"},
-				{token.EndOfLine, ""},
-			},
-		},
-		{
-			Source: "rM_baSic_HAD_thiS_Weird_camel_case_tHING_GoInG_On$",
-			ExpectedTokens: []token.Token{
-				{token.IdentifierLiteral, "Rm_Basic_Had_This_Weird_Camel_Case_Thing_Going_On$"},
-				{token.EndOfLine, ""},
-			},
-		},
-		{
-			Source: "this% :=that$+ meh - 5.1234",
-			ExpectedTokens: []token.Token{
-				{token.IdentifierLiteral, "This%"},
-				{token.Assign, ":="},
-				{token.IdentifierLiteral, "That$"},
-				{token.Plus, "+"},
-				{token.IdentifierLiteral, "Meh"},
-				{token.Minus, "-"},
-				{token.NumericalLiteral, "5.1234"},
-				{token.EndOfLine, ""},
-			},
-		},
-		{
-			Source: "my_var% := yet_more_var% + foo_var",
-			ExpectedTokens: []token.Token{
-				{token.IdentifierLiteral, "My_Var%"},
-				{token.Assign, ":="},
-				{token.IdentifierLiteral, "Yet_More_Var%"},
-				{token.Plus, "+"},
-				{token.IdentifierLiteral, "Foo_Var"},
-				{token.EndOfLine, ""},
-			},
-		},
-	}
-
-	// test that we always get expected tokens
-	interp := &rmbasicx64.Interpreter{}
-	for i, test := range tests {
-		game := rmbasicx64.NewGame()
-		interp.Init(game)
-		interp.Tokenize(test.Source)
-		for j, token := range interp.CurrentTokens {
-			if token.TokenType != test.ExpectedTokens[j].TokenType {
-				t.Fatalf("Token [%d]: TokenType [%d] expected, got [%d] from source [%q]", i, test.ExpectedTokens[j].TokenType, token.TokenType, test.Source)
-			}
-			if token.Literal != test.ExpectedTokens[j].Literal {
-				t.Fatalf("Token [%d]: Literal [%q] expected, got [%q] from source [%q]", i, test.ExpectedTokens[j].Literal, token.Literal, test.Source)
-			}
-		}
-	}
-}
 
 func TestInterpreterEvaluateExpression(t *testing.T) {
 
@@ -454,59 +335,59 @@ func TestInterpreterWeighString(t *testing.T) {
 	}
 }
 
-func TestImmediateInput(t *testing.T) {
-
-	// test data
-	type test struct {
-		Source          string
-		ExpectedProgram map[int]string
-	}
-	tests := []test{
-		{
-			Source: "10 set  mode  40",
-			ExpectedProgram: map[int]string{
-				10: "SET MODE 40",
-			},
-		},
-		{
-			Source: "20 print \"Just testing\"",
-			ExpectedProgram: map[int]string{
-				10: "SET MODE 40",
-				20: "PRINT \"Just testing\"",
-			},
-		},
-		{
-			Source: "5 cls",
-			ExpectedProgram: map[int]string{
-				5:  "CLS",
-				10: "SET MODE 40",
-				20: "PRINT \"Just testing\"",
-			},
-		},
-		{
-			Source: "run",
-			ExpectedProgram: map[int]string{
-				5:  "CLS",
-				10: "SET MODE 40",
-				20: "PRINT \"Just testing\"",
-			},
-		},
-	}
-
-	// This test simulates a user manually keying in a program
-	interp := &rmbasicx64.Interpreter{}
-	game := rmbasicx64.NewGame()
-	interp.Init(game)
-	for _, test := range tests {
-		interp.ImmediateInput(test.Source)
-		for lineNumber, expectedCode := range test.ExpectedProgram {
-			actualCode, ok := interp.Program[lineNumber]
-			if !ok {
-				t.Fatalf("Could not find line %d in program", lineNumber)
-			}
-			if actualCode != expectedCode {
-				t.Fatalf("Expected [%s] but got [%s] in line %d", expectedCode, actualCode, lineNumber)
-			}
-		}
-	}
-}
+//func TestImmediateInput(t *testing.T) {
+//
+//	// test data
+//	type test struct {
+//		Source          string
+//		ExpectedProgram map[int]string
+//	}
+//	tests := []test{
+//		{
+//			Source: "10 set  mode  40",
+//			ExpectedProgram: map[int]string{
+//				10: "SET MODE 40",
+//			},
+//		},
+//		{
+//			Source: "20 print \"Just testing\"",
+//			ExpectedProgram: map[int]string{
+//				10: "SET MODE 40",
+//				20: "PRINT \"Just testing\"",
+//			},
+//		},
+//		{
+//			Source: "5 cls",
+//			ExpectedProgram: map[int]string{
+//				5:  "CLS",
+//				10: "SET MODE 40",
+//				20: "PRINT \"Just testing\"",
+//			},
+//		},
+//		{
+//			Source: "run",
+//			ExpectedProgram: map[int]string{
+//				5:  "CLS",
+//				10: "SET MODE 40",
+//				20: "PRINT \"Just testing\"",
+//			},
+//		},
+//	}
+//
+//	// This test simulates a user manually keying in a program
+//	interp := &rmbasicx64.Interpreter{}
+//	game := rmbasicx64.NewGame()
+//	interp.Init(game)
+//	for _, test := range tests {
+//		interp.ImmediateInput(test.Source)
+//		for lineNumber, expectedCode := range test.ExpectedProgram {
+//			actualCode, ok := interp.Program[lineNumber]
+//			if !ok {
+//				t.Fatalf("Could not find line %d in program", lineNumber)
+//			}
+//			if actualCode != expectedCode {
+//				t.Fatalf("Expected [%s] but got [%s] in line %d", expectedCode, actualCode, lineNumber)
+//			}
+//		}
+//	}
+//}

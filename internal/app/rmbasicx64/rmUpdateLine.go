@@ -32,12 +32,12 @@ func (i *Interpreter) RmUpdateLine(code string) (ok bool) {
 				}
 			} else {
 				i.ErrorCode = syntaxerror.LineNumberExpected
-				i.BadTokenIndex = 0
+				i.TokenPointer = 0
 				return false
 			}
 		}
 	}
 	i.ErrorCode = syntaxerror.LineNumberExpected
-	i.BadTokenIndex = 0
+	i.TokenPointer = 0
 	return false
 }

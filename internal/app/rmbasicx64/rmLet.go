@@ -6,21 +6,22 @@ import (
 )
 
 // rmAssign represents a variable assignment (var = expr or var := expr)
-// TODO: Also allow instruction to begin with optional LET
 func (i *Interpreter) RmAssign() (ok bool) {
+	// Consume optional LET
+	_, _ = i.OnToken([]int{token.LET})
 	// Catch case where a keyword has been used as a variable name to assign to
-	if IsKeyword(i.TokenStack[0]) &&
-		(i.TokenStack[1].TokenType == token.Equal || i.TokenStack[1].TokenType == token.Assign) {
+	if IsKeyword(i.TokenStack[i.TokenPointer]) &&
+		(i.TokenStack[i.TokenPointer+1].TokenType == token.Equal || i.TokenStack[i.TokenPointer+1].TokenType == token.Assign) {
 		i.ErrorCode = syntaxerror.InvalidExpressionFound
-		i.BadTokenIndex = 0
 		return false
 	}
+	varNamePosition := i.TokenPointer
 	// advance token point, extract expression, evaluate result then store
 	i.TokenPointer += 2
 	result, ok := i.EvaluateExpression()
 	if ok {
 		// Evaluation was successful so check data type and store
-		if i.SetVar(i.TokenStack[0].Literal, result) {
+		if i.SetVar(i.TokenStack[varNamePosition].Literal, result) {
 			return true
 		} else {
 			return false

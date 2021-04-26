@@ -35,6 +35,9 @@ const (
 	NumericVariableNeeded
 	NextWithoutMatchingFor
 	UntilWithoutAnyRepeat
+	ThenExpected
+	NumericOrStringExpressionNeeded
+	SemicolonSeparatorIsNeeded
 )
 
 // ErrorMessage returns the template error message for a given error code
@@ -73,6 +76,9 @@ func ErrorMessage(errorCode int) string {
 		NumericVariableNeeded:                        "Numeric variable needed",   // 8
 		NextWithoutMatchingFor:                       "NEXT without matching FOR", //31
 		UntilWithoutAnyRepeat:                        "UNTIL without any REPEAT",  // 30
+		ThenExpected:                                 "THEN expected",
+		NumericOrStringExpressionNeeded:              "Numeric or string expression needed",
+		SemicolonSeparatorIsNeeded:                   "Semicolon separator is needed",
 	}
 	return errorMessages[errorCode]
 }
