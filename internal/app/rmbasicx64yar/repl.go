@@ -1,16 +1,16 @@
-package rmbasicx64yar
+package rmbasicx64
 
 import (
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/evaluator"
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/game"
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/lexer"
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/object"
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/parser"
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/syntaxerror"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/evaluator"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/game"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/lexer"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/object"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/parser"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
 	"github.com/elastic/go-sysinfo"
 )
 

@@ -5,10 +5,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/ast"
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/game"
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/object"
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/syntaxerror"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/game"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/object"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
 )
 
 // Because null and boolean values never change we can reference them instead of

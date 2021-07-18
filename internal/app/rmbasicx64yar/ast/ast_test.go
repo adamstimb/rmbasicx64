@@ -3,7 +3,7 @@ package ast
 import (
 	"testing"
 
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/token"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
 )
 
 func TestString(t *testing.T) {

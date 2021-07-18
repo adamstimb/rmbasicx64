@@ -5,10 +5,10 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/ast"
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/lexer"
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/syntaxerror"
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/token"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/lexer"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
 )
 
 const (

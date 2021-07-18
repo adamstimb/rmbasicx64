@@ -1,7 +1,7 @@
 package game
 
 import (
-	"github.com/adamstimb/rmbasicx64yar/pkg/nimgobus"
+	"github.com/adamstimb/rmbasicx64/pkg/nimgobus"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 

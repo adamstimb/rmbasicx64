@@ -1,4 +1,4 @@
-package rmbasicx64yar
+package rmbasicx64
 
 import (
 	"fmt"

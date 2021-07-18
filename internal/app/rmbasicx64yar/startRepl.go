@@ -1,11 +1,11 @@
-package rmbasicx64yar
+package rmbasicx64
 
 import (
 	_ "image/png"
 	"log"
 	"os"
 
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/game"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/game"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 

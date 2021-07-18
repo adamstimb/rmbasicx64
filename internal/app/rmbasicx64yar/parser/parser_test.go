@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/ast"
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/lexer"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/lexer"
 )
 
 func TestLine(t *testing.T) {

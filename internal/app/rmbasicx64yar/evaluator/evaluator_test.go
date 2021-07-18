@@ -4,10 +4,10 @@ import (
 	"log"
 	"testing"
 
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/game"
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/lexer"
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/object"
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/parser"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/game"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/lexer"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/object"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/parser"
 )
 
 func TestEvalNumericExpression(t *testing.T) {

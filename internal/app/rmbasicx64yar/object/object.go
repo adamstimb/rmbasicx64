@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/ast"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
 )
 
 const (

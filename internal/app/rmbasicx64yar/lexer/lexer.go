@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/token"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
 )
 
 // Lexer describes a type with methods for lexing a line of source code and generating

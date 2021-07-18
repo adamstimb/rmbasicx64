@@ -1,7 +1,7 @@
 package evaluator
 
 import (
-	"github.com/adamstimb/rmbasicx64yar/internal/app/rmbasicx64yar/object"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/object"
 )
 
 // don't forget to add builtins to the map in lexer as well (better solution?)
