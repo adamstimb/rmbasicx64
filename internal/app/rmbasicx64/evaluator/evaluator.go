@@ -134,7 +134,7 @@ func applyFunction(env *object.Environment, g *game.Game, fn object.Object, args
 	case *object.Builtin:
 		// If the builtin is a trig function and env.Degrees is true we need to
 		// convert the passed angle from degrees to radians,
-		if fn == builtins["ATN"] || fn == builtins["COS"] || fn == builtins["SIN"] {
+		if fn == builtins["ATN"] || fn == builtins["COS"] || fn == builtins["SIN"] || fn == builtins["TAN"] {
 			if env.Degrees {
 				args[0].(*object.Numeric).Value *= (math.Pi / 180)
 			}

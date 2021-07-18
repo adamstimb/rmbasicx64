@@ -226,4 +226,36 @@ var builtins = map[string]*object.Builtin{
 			}
 		},
 	},
+	"TAN": &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
+			}
+
+			switch arg := args[0].(type) {
+			case *object.Numeric:
+				return &object.Numeric{
+					Value: math.Tan(arg.Value),
+				}
+			default:
+				return newError("argument to `TAN` not supported, got %s", args[0].Type())
+			}
+		},
+	},
+	//"STR$": &object.Builtin{
+	//	Fn: func(args ...object.Object) object.Object {
+	//		if len(args) != 1 {
+	//			return newError("wrong number of arguments, got %d, want %d", len(args), 1)
+	//		}
+	//
+	//		switch arg := args[0].(type) {
+	//		case *object.Numeric:
+	//			return &object.String{
+	//				Value: fmt.Sprintf("%g", arg.Value),
+	//			}
+	//		default:
+	//			return newError("argument to `STR$` not supported, got %s", args[0].Type())
+	//		}
+	//	},
+	//},
 }
