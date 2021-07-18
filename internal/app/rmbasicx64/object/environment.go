@@ -1,8 +1,9 @@
 package object
 
 type Environment struct {
-	store map[string]Object
-	outer *Environment
+	store   map[string]Object
+	Degrees bool
+	outer   *Environment
 }
 
 func (e *Environment) Get(name string) (Object, bool) {
@@ -33,8 +34,9 @@ func (e *Environment) Set(name string, val Object) Object {
 func NewEnvironment() *Environment {
 	s := make(map[string]Object)
 	return &Environment{
-		store: s,
-		outer: nil,
+		store:   s,
+		Degrees: true,
+		outer:   nil,
 	}
 }
 
