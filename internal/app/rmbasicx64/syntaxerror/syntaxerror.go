@@ -38,6 +38,11 @@ const (
 	ThenExpected
 	NumericOrStringExpressionNeeded
 	SemicolonSeparatorIsNeeded
+	OpeningBracketIsNeeded
+	ClosingBracketIsNeeded
+	WrongNumberOfSubscripts
+	ArrayAlreadyDimensioned
+	ArraySubscriptIsWrong
 )
 
 // ErrorMessage returns the template error message for a given error code
@@ -78,7 +83,12 @@ func ErrorMessage(errorCode int) string {
 		UntilWithoutAnyRepeat:                        "UNTIL without any REPEAT",  // 30
 		ThenExpected:                                 "THEN expected",
 		NumericOrStringExpressionNeeded:              "Numeric or string expression needed",
-		SemicolonSeparatorIsNeeded:                   "Semicolon separator is needed",
+		SemicolonSeparatorIsNeeded:                   "Semicolon separator is needed", // 4
+		OpeningBracketIsNeeded:                       "Opening bracket is needed",     // 2
+		ClosingBracketIsNeeded:                       "Closing bracket is needed",     // 3
+		WrongNumberOfSubscripts:                      "Wrong number of subscripts",    // 15
+		ArrayAlreadyDimensioned:                      "Array already dimensioned",     // 16
+		ArraySubscriptIsWrong:                        "Array subscript is wrong",      // 73
 	}
 	return errorMessages[errorCode]
 }

@@ -1,4 +1,4 @@
-package rmbasicx64
+package lexer
 
 import (
 	"regexp"
@@ -8,30 +8,31 @@ import (
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
 )
 
-// Scanner describes a type with methods for scanning a line of source code and generating
+// Lexer describes a type with methods for lexing a line of source code and generating
 // tokens.  To tokenize a line of source code all we do is this:
 // 		s := &Scanner{}
 //		tokens := s.ScanTokens(source)
-type Scanner struct {
-	Source          string
-	Tokens          []token.Token
-	CurrentPosition int
+type Lexer struct {
+	Source               string        // source code string
+	Tokens               []token.Token // buffer of tokens created by Scan()
+	CurrentPosition      int           // position in the string
+	currentTokenPosition int           // position of the buffer
 }
 
 // isAtEnd returns true if the offset is at the end of the source code
-func (s *Scanner) isAtEnd() bool {
+func (s *Lexer) isAtEnd() bool {
 	return s.CurrentPosition >= len(s.Source)
 }
 
 // advanced consumes the rune at the current position and moves the current position forward
-func (s *Scanner) advance() rune {
+func (s *Lexer) advance() rune {
 	s.CurrentPosition++
 	return rune(s.Source[s.CurrentPosition-1])
 }
 
 // peek returns the current rune but does not consume it.  If we're at the end of the source
 // then newline \n is returned instead.
-func (s *Scanner) peek() rune {
+func (s *Lexer) peek() rune {
 	if s.isAtEnd() {
 		return rune('\n')
 	} else {
@@ -41,7 +42,7 @@ func (s *Scanner) peek() rune {
 
 // peekNext returns the next rune but does not consume it. If we're at the end of the source
 // then newline \n is returned instead.
-func (s *Scanner) peekNext() rune {
+func (s *Lexer) peekNext() rune {
 	if s.CurrentPosition+1 >= len(s.Source) {
 		return rune('\n')
 	} else {
@@ -51,7 +52,7 @@ func (s *Scanner) peekNext() rune {
 
 // match checks if a particular rune is next in the source code, returning true and consuming
 // the rune if so
-func (s *Scanner) match(r rune) bool {
+func (s *Lexer) match(r rune) bool {
 	if s.isAtEnd() {
 		return false
 	}
@@ -63,12 +64,12 @@ func (s *Scanner) match(r rune) bool {
 }
 
 // addToken creates a new token and adds it the slice of tokens
-func (s *Scanner) addToken(TokenType int, literal string) {
-	s.Tokens = append(s.Tokens, token.Token{TokenType, literal})
+func (s *Lexer) addToken(TokenType string, literal string) {
+	s.Tokens = append(s.Tokens, token.Token{TokenType: TokenType, Literal: literal})
 }
 
 // getString extracts a string literal from the source code
-func (s *Scanner) getString() {
+func (s *Lexer) getString() {
 	stringVal := []rune{}
 	for !s.isAtEnd() {
 		// handle literal double-double quote "" or terminating double quote "
@@ -94,7 +95,7 @@ func (s *Scanner) getString() {
 }
 
 // getHexLiteral extracts a hex literal from the source code
-func (s *Scanner) getHexLiteral(firstRune rune) {
+func (s *Lexer) getHexLiteral(firstRune rune) {
 	hexVal := []rune{}
 	hexVal = append(hexVal, firstRune)
 	for {
@@ -111,9 +112,9 @@ func (s *Scanner) getHexLiteral(firstRune rune) {
 	s.addToken(token.HexLiteral, strings.ToUpper(string(hexVal)))
 }
 
-// getNumber extracts a numerical literal from the source code.  It also
+// getNumber extracts a numeric literal from the source code.  It also
 // recognises scientific notation, e.g. 4e+7
-func (s *Scanner) getNumber(firstRune rune) {
+func (s *Lexer) getNumber(firstRune rune) {
 	// collect first rune
 	stringVal := []rune{}
 	stringVal = append(stringVal, firstRune)
@@ -147,14 +148,19 @@ func (s *Scanner) getNumber(firstRune rune) {
 			stringVal = append(stringVal, s.advance())
 			continue
 		}
-		// not a valid rune for numerical literal so stop collecting
+		// not a valid rune for numeric literal so stop collecting
 		break
 	}
-	s.addToken(token.NumericalLiteral, string(stringVal))
+	s.addToken(token.NumericLiteral, string(stringVal))
+}
+
+// This is a bit hacky:
+var builtins = map[string]string{
+	"LEN": "LEN",
 }
 
 // getIdentifier extracts an identifier (keyword, variable, etc) from the source code
-func (s *Scanner) getIdentifier(firstRune rune) {
+func (s *Lexer) getIdentifier(firstRune rune) {
 	// collect first rune
 	stringVal := []rune{}
 	stringVal = append(stringVal, firstRune)
@@ -166,12 +172,19 @@ func (s *Scanner) getIdentifier(firstRune rune) {
 	// keyword add token with the token type identifying the keyword, otherwise add
 	// a variable (which in RM Basic then requires checking for a trailing $ or % to
 	// get the type, if any)
-	keywords := token.KeywordMap()
-	if t, found := keywords[strings.ToUpper(string(stringVal))]; found {
-		// is a keyword
-		s.addToken(t, strings.ToUpper(string(stringVal)))
+	if token.IsKeyword(strings.ToUpper(string(stringVal))) {
+		// is a keyword but if it corresponds to a built-in function we have to
+		// bump it to identifier literal
+		_, ok := builtins[strings.ToUpper(string(stringVal))]
+		if ok {
+			// is built-in
+			s.addToken(token.IdentifierLiteral, strings.ToUpper(string(stringVal)))
+		} else {
+			// is keyword --- maybe we'll have to accept them all as identifiers...?
+			s.addToken(strings.ToUpper(string(stringVal)), strings.ToUpper(string(stringVal)))
+		}
 		// Handle special case of REM (comment)
-		if t == token.REM {
+		if strings.ToUpper(string(stringVal)) == token.REM {
 			s.getComment()
 		}
 	} else {
@@ -200,7 +213,7 @@ func (s *Scanner) getIdentifier(firstRune rune) {
 }
 
 // getComment assumes all remaining code is a comment, and puts it into a final token
-func (s *Scanner) getComment() {
+func (s *Lexer) getComment() {
 	stringVal := s.Source[s.CurrentPosition+1:]
 	s.advance()
 	s.addToken(token.Comment, stringVal)
@@ -208,9 +221,11 @@ func (s *Scanner) getComment() {
 }
 
 // scanToken generates a token for the current rune
-func (s *Scanner) scanToken() {
+func (s *Lexer) scanToken() {
 	switch r := s.advance(); r {
-	// ignore whitespace
+	case '\n':
+		s.addToken(token.NewLine, "\n")
+		// ignore whitespace
 	case ' ':
 		return
 	// one- and two-character tokens
@@ -222,10 +237,6 @@ func (s *Scanner) scanToken() {
 		s.addToken(token.Colon, ":")
 		return
 	case '/':
-		if s.match('/') {
-			s.addToken(token.IntegerDivision, "//")
-			return
-		}
 		s.addToken(token.ForwardSlash, "/")
 		return
 	case '<':
@@ -287,7 +298,7 @@ func (s *Scanner) scanToken() {
 			s.getNumber(r)
 			return
 		}
-		if len(s.Tokens) >= 1 && (IsOperator(s.Tokens[len(s.Tokens)-1]) || s.Tokens[len(s.Tokens)-1].TokenType == token.LeftParen) {
+		if len(s.Tokens) >= 1 && (token.IsOperator(s.Tokens[len(s.Tokens)-1]) || s.Tokens[len(s.Tokens)-1].TokenType == token.LeftParen) {
 			s.getNumber(r)
 			return
 		} else {
@@ -320,6 +331,10 @@ func (s *Scanner) scanToken() {
 		s.addToken(token.LeftSquareBrace, "[")
 	case ']':
 		s.addToken(token.RightSquareBrace, "]")
+	case '{':
+		s.addToken(token.LeftCurlyBrace, "{")
+	case '}':
+		s.addToken(token.RightCurlyBrace, "}")
 	// string literal
 	case '"':
 		s.getString()
@@ -333,7 +348,7 @@ func (s *Scanner) scanToken() {
 			s.getHexLiteral(r)
 		}
 	default:
-		// numerical literal
+		// numeric literal
 		if unicode.IsDigit(r) {
 			s.getNumber(r)
 			return
@@ -349,7 +364,7 @@ func (s *Scanner) scanToken() {
 }
 
 // Scan scans the source code and returns a slice of tokens
-func (s *Scanner) Scan(source string) []token.Token {
+func (s *Lexer) Scan(source string) []token.Token {
 	s.Source = source
 	s.Tokens = []token.Token{}
 	s.CurrentPosition = 0
@@ -362,6 +377,25 @@ func (s *Scanner) Scan(source string) []token.Token {
 		}
 	}
 	// All done - add end of line token and return
-	s.addToken(token.EndOfLine, "")
+	//s.addToken(token.EndOfInstruction, token.EndOfInstruction)
+	s.addToken(token.EOF, token.EOF)
+	s.currentTokenPosition = 0
 	return s.Tokens
+}
+
+// PeekToken returns the token at the current tokenPosition in the buffer
+// but does not consume it.
+func (s *Lexer) PeekToken() token.Token {
+	return s.Tokens[s.currentTokenPosition]
+}
+
+// NextToken returns the token at the current tokenPosition in the buffer
+// and consumes it, moving to the next token
+func (s *Lexer) NextToken() token.Token {
+	if s.currentTokenPosition >= len(s.Tokens) {
+		s.currentTokenPosition = len(s.Tokens) - 1
+		return s.Tokens[s.currentTokenPosition]
+	}
+	s.currentTokenPosition++
+	return s.Tokens[s.currentTokenPosition-1]
 }
