@@ -137,7 +137,7 @@ func applyFunction(env *object.Environment, g *game.Game, fn object.Object, args
 		// to deg if env.Degrees is true
 		if env.Degrees {
 			// check if trig and convert radians to deg
-			if fn == builtins["ATN"] {
+			if fn == builtins["ATN"] || fn == builtins["COS"] {
 				val.(*object.Numeric).Value *= (180 / math.Pi)
 			}
 		}

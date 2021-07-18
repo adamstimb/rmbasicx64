@@ -56,4 +56,36 @@ var builtins = map[string]*object.Builtin{
 			}
 		},
 	},
+	"COS": &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
+			}
+
+			switch arg := args[0].(type) {
+			case *object.Numeric:
+				return &object.Numeric{
+					Value: math.Cos(arg.Value),
+				}
+			default:
+				return newError("argument to `COS` not supported, got %s", args[0].Type())
+			}
+		},
+	},
+	"EXP": &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
+			}
+
+			switch arg := args[0].(type) {
+			case *object.Numeric:
+				return &object.Numeric{
+					Value: math.Exp(arg.Value),
+				}
+			default:
+				return newError("argument to `EXP` not supported, got %s", args[0].Type())
+			}
+		},
+	},
 }
