@@ -2,6 +2,7 @@ package evaluator
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"strings"
 
@@ -119,19 +120,28 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		if len(args) == 1 && isError(args[0]) {
 			return args[0]
 		}
-		return applyFunction(g, function, args)
+		return applyFunction(env, g, function, args)
 	}
 	return nil
 }
 
-func applyFunction(g *game.Game, fn object.Object, args []object.Object) object.Object {
+func applyFunction(env *object.Environment, g *game.Game, fn object.Object, args []object.Object) object.Object {
 	switch fn := fn.(type) {
 	case *object.Function:
 		extendedEnv := extendFunctionEnv(fn, args)
 		evaluated := Eval(g, fn.Body, extendedEnv)
 		return unwrapReturnValue(evaluated)
 	case *object.Builtin:
-		return fn.Fn(args...)
+		// If the builtin is a trig function and env.Degrees is true we need to
+		// convert the passed angle from degrees to radians,
+		if fn == builtins["ATN"] || fn == builtins["COS"] || fn == builtins["SIN"] || fn == builtins["TAN"] {
+			if env.Degrees {
+				args[0].(*object.Numeric).Value *= (math.Pi / 180)
+			}
+			return fn.Fn(args...)
+		} else {
+			return fn.Fn(args...)
+		}
 	default:
 		return newError("not a function: %s", fn.Type())
 	}

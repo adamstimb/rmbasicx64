@@ -157,6 +157,18 @@ func (s *Lexer) getNumber(firstRune rune) {
 // This is a bit hacky:
 var builtins = map[string]string{
 	"LEN": "LEN",
+	"ABS": "ABS",
+	"ATN": "ATN",
+	"COS": "COS",
+	"EXP": "EXP",
+	"INT": "INT",
+	"LN":  "LN",
+	"LOG": "LOG",
+	"RND": "RND",
+	"SGN": "SGN",
+	"SIN": "SIN",
+	"SQR": "SQR",
+	"TAN": "TAN",
 }
 
 // getIdentifier extracts an identifier (keyword, variable, etc) from the source code
