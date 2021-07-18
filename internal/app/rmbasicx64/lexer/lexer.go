@@ -163,6 +163,8 @@ var builtins = map[string]string{
 	"EXP": "EXP",
 	"INT": "INT",
 	"LN":  "LN",
+	"LOG": "LOG",
+	"RND": "RND",
 }
 
 // getIdentifier extracts an identifier (keyword, variable, etc) from the source code

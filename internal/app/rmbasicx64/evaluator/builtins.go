@@ -2,6 +2,8 @@ package evaluator
 
 import (
 	"math"
+	"math/rand"
+	"time"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/object"
 )
@@ -117,6 +119,53 @@ var builtins = map[string]*object.Builtin{
 				}
 			default:
 				return newError("argument to `LN` not supported, got %s", args[0].Type())
+			}
+		},
+	},
+	"LOG": &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
+			}
+
+			switch arg := args[0].(type) {
+			case *object.Numeric:
+				return &object.Numeric{
+					Value: math.Log10(arg.Value),
+				}
+			default:
+				return newError("argument to `LOG` not supported, got %s", args[0].Type())
+			}
+		},
+	},
+	"RND": &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
+			}
+
+			switch arg := args[0].(type) {
+			case *object.Numeric:
+				// In RM Basic, any negative number reseeds the random number generator
+				retValue := float64(0)
+				if arg.Value < 0 {
+					rand.Seed(time.Now().UnixNano())
+					retValue = 0
+				} else {
+					if arg.Value <= 1.0 {
+						// generate random float between 0 and 1
+						retValue = rand.Float64()
+					} else {
+						// generate random integer between 0 and arg.Value
+						retValue = float64(rand.Intn(int(arg.Value)))
+					}
+				}
+
+				return &object.Numeric{
+					Value: retValue,
+				}
+			default:
+				return newError("argument to `RND` not supported, got %s", args[0].Type())
 			}
 		},
 	},
