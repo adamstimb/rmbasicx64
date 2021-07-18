@@ -1,4 +1,4 @@
-# ![RM BASICx64](https://github.com/adamstimb/rmbasicx64/blob/main/docs/branding/rmbasicx64BannerLarge.png)
+# RM BASICx64
 
 _RM BASICx64 is a tribute project and is in no way linked to or endorsed by RM plc._
 
@@ -6,51 +6,57 @@ _RM BASICx64 is a tribute project and is in no way linked to or endorsed by RM p
 
 RM BASICx64 is a re-implementation of RM Basic, a dialect of BASIC developed by Research Machines in 1985 for the [RM Nimbus PC186](https://en.wikipedia.org/wiki/RM_Nimbus), targeting 64-bit Windows and Linux operating systems.  It is written in Go and uses the [Nimbgobus](https://github.com/adamstimb/nimgobus) extension for [ebiten game engine](https://ebiten.org) to simulate the inputs and outputs of the RM Nimbus.
 
-High-level goals:
-
-- Backwards compatibility without the severe resource limitations of the original platform
-- Recreate the original RM Basic user interface
-- Extend the dialect to handle http requests
-
-
 ## Status
 
-An alpha release is in the works featuring the original RM Basic user interface, just enough commands to write simple programs, and an installer for Windows.  See the [release notes](https://github.com/adamstimb/rmbasicx64/blob/main/docs/releaseNotes.md) for details.
+An preliminary release is in the works featuring the original RM Basic user interface, expression evaluation and some simple text commands.  Click the "Watch" button on the top right to get notifications of new releases!
 
 ## I want it now!
 
-Ok, but don't say I didn't warn you.  Following the alpha release a Windows installer will be available.  In the meantime here's how to build and run the application on Windows:
+Ok, but don't say I didn't warn you.  Here's how to build RM BASICx64 from source on Windows or Linux:
 
 ### Prerequisites
 
 - Latest version of [Go](https://golang.org/doc/install)
-- [Git for Windows](https://gitforwindows.org/) (GITBASH)
+- [Git for Windows](https://gitforwindows.org/) (GITBASH) (if using Windows)
 
 ### Build
 
-Open GITBASH and clone this repository:
+Open (GIT)BASH and clone this repository:
 
 ```bash
 git clone https://github.com/adamstimb/rmbasicx64.git
 ```
 
-Change directory and run the test and build scripts:
+Change directory and run the build script for your operating system:
 
 ```bash
-cd rmbasicx64/scripts
-./test.sh
-./build.sh
+cd rmbasicx64
+cd scripts
+./build-linux.sh    # To build a Linux executable, or...
+./build-windows.sh  # ... to build a Windows .exe
 ```
 
-All being well a file called `rmbasic.exe` will appear in the `build\` folder.
+If you're running Linux, you can run the executable straight away:
+
+```bash
+../build/rmbasic
+```
+
+If you're running Windows a file called `rmbasic.exe` will appear in the `build\` folder.
 
 Use File Explorer to make a new folder called `rmbasicx64` in `C:\Program Files` and move the `rmbasic.exe` file into it.  Double-click `rmbasic.exe` to run.
 
 If you get a message saying "Windows protected your PC" click "More info" then "Run anyway".
 
-## Screenshot
+## Screenshots
 
-![editor](https://github.com/adamstimb/rmbasicx64/blob/main/docs/screenshots/editor-screenshot.png)
+![RM BASICx64 running on Ubuntu](https://github.com/adamstimb/rmbasicx64/blob/main/docs/screenshots/interpreter-loaded.png)
+
+RM BASICx64 running on Ubuntu
+
+![Some lyrics from "Bike" by The Pink Floyd printed with string evaluation](https://github.com/adamstimb/rmbasicx64/blob/main/docs/screenshots/bike-lyrics.png)
+
+Some lyrics from "Bike" by The Pink Floyd printed with string evaluation
 
 ## Links
 
