@@ -88,4 +88,36 @@ var builtins = map[string]*object.Builtin{
 			}
 		},
 	},
+	"INT": &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
+			}
+
+			switch arg := args[0].(type) {
+			case *object.Numeric:
+				return &object.Numeric{
+					Value: float64(int64(arg.Value)), // RM Basic truncated numbers down, rather than round them up
+				}
+			default:
+				return newError("argument to `INT` not supported, got %s", args[0].Type())
+			}
+		},
+	},
+	"LN": &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
+			}
+
+			switch arg := args[0].(type) {
+			case *object.Numeric:
+				return &object.Numeric{
+					Value: math.Log(arg.Value),
+				}
+			default:
+				return newError("argument to `LN` not supported, got %s", args[0].Type())
+			}
+		},
+	},
 }
