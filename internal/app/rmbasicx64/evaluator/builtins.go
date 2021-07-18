@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"log"
 	"math"
 	"math/rand"
 	"time"
@@ -71,6 +72,23 @@ var builtins = map[string]*object.Builtin{
 				}
 			default:
 				return newError("argument to `COS` not supported, got %s", args[0].Type())
+			}
+		},
+	},
+	"SIN": &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
+			}
+
+			switch arg := args[0].(type) {
+			case *object.Numeric:
+				log.Printf("SIN(%g)\n", arg.Value)
+				return &object.Numeric{
+					Value: math.Sin(arg.Value),
+				}
+			default:
+				return newError("argument to `SIN` not supported, got %s", args[0].Type())
 			}
 		},
 	},
@@ -166,6 +184,45 @@ var builtins = map[string]*object.Builtin{
 				}
 			default:
 				return newError("argument to `RND` not supported, got %s", args[0].Type())
+			}
+		},
+	},
+	"SGN": &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
+			}
+
+			switch arg := args[0].(type) {
+			case *object.Numeric:
+				retValue := 0.0
+				if arg.Value < 0 {
+					retValue = -1.0
+				}
+				if arg.Value > 0 {
+					retValue = 1.0
+				}
+				return &object.Numeric{
+					Value: retValue,
+				}
+			default:
+				return newError("argument to `SGN` not supported, got %s", args[0].Type())
+			}
+		},
+	},
+	"SQR": &object.Builtin{
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
+			}
+
+			switch arg := args[0].(type) {
+			case *object.Numeric:
+				return &object.Numeric{
+					Value: math.Sqrt(arg.Value),
+				}
+			default:
+				return newError("argument to `SQR` not supported, got %s", args[0].Type())
 			}
 		},
 	},

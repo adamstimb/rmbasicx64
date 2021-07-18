@@ -132,16 +132,16 @@ func applyFunction(env *object.Environment, g *game.Game, fn object.Object, args
 		evaluated := Eval(g, fn.Body, extendedEnv)
 		return unwrapReturnValue(evaluated)
 	case *object.Builtin:
-		val := fn.Fn(args...)
-		// If the builtin is a trig function we need to catch the result and convert
-		// to deg if env.Degrees is true
-		if env.Degrees {
-			// check if trig and convert radians to deg
-			if fn == builtins["ATN"] || fn == builtins["COS"] {
-				val.(*object.Numeric).Value *= (180 / math.Pi)
+		// If the builtin is a trig function and env.Degrees is true we need to
+		// convert the passed angle from degrees to radians,
+		if fn == builtins["ATN"] || fn == builtins["COS"] || fn == builtins["SIN"] {
+			if env.Degrees {
+				args[0].(*object.Numeric).Value *= (math.Pi / 180)
 			}
+			return fn.Fn(args...)
+		} else {
+			return fn.Fn(args...)
 		}
-		return val
 	default:
 		return newError("not a function: %s", fn.Type())
 	}
