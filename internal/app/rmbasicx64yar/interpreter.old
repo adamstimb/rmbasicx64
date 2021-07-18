@@ -1,0 +1,919 @@
+package rmbasicx64yar
+
+import (
+	"fmt"
+	"log"
+	"math"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
+)
+
+
+
+
+// Interpreter is the BASIC interpreter itself and behaves as a state machine that
+// can receive, store and interpret BASIC code and execute the code to update its
+// own state.
+type Interpreter struct {
+	Store          map[string]interface{} // A map for storing variables (the key is the variable name)
+	ArrayStore     map[string]arrayItem   // A map for storing arrays (the key is the variable name)
+	Program        map[int]string         // A map for storing a program (the key is the line number)
+	CurrentTokens  []token.Token          // A line of tokens for immediate execution
+	ErrorCode      int                    // The current errorCode
+	LineNumber     int                    // The current line number being executed (-1 indicates immediate-mode, therefore no line number)
+	ProgramPointer int                    // The index of the line number currently being executed
+	TokenStack     []token.Token          // The tokens of the current segment being executed
+	TokenPointer   int                    // The index of the current token being evaluated in a segment
+	forStack       []forStackItem         // forStack is used for stacking 'n tracking FOR/NEXT loops
+	repeatStack    []repeatStackItem      // repeatStack is used for stacking 'n tracking REPEAT/UNTIL loops
+	programData    []interface{}          // Values from DATA statements are stored here
+	collectingData bool                   // This flag is true when the interpreter is scanning for DATA but not executing the program
+	g              *Game
+}
+
+// Init initializes the Interpreter.
+func (i *Interpreter) Init(g *Game) {
+	i.Store = make(map[string]interface{})
+	i.ArrayStore = make(map[string]arrayItem)
+	i.Program = make(map[int]string)
+	i.CurrentTokens = []token.Token{}
+	i.ErrorCode = syntaxerror.Success
+	i.LineNumber = -1
+	i.ProgramPointer = 0
+	i.TokenStack = []token.Token{}
+	i.forStack = []forStackItem{}
+	i.repeatStack = []repeatStackItem{}
+	i.programData = make([]interface{}, 0)
+	i.collectingData = false
+	i.g = g
+}
+
+// Tokenize receives a line of code, generates tokens and stores them in currentTokens.
+func (i *Interpreter) Tokenize(code string) {
+	s := &Scanner{}
+	i.CurrentTokens = s.Scan(code)
+}
+
+// IsOperator receives a token and returns true if the token represents an operator
+// otherwise false
+func IsOperator(t token.Token) bool {
+	operators := []int{token.Minus, token.Plus, token.ForwardSlash, token.Star, token.Exponential,
+		token.BackSlash, token.Equal, token.InterestinglyEqual, token.LessThan,
+		token.GreaterThan, token.LessThanEqualTo1, token.LessThanEqualTo2, token.GreaterThanEqualTo1,
+		token.GreaterThanEqualTo2, token.Inequality1, token.Inequality2,
+		token.AND, token.OR, token.XOR, token.NOT}
+	for _, op := range operators {
+		if op == t.TokenType {
+			return true
+		}
+	}
+	return false
+}
+
+// IsOperand receives a token and returns true if the token represents an operand
+// otherwise false
+func IsOperand(t token.Token) bool {
+	operands := []int{token.NumericalLiteral, token.IdentifierLiteral, token.StringLiteral}
+	for _, op := range operands {
+		if op == t.TokenType {
+			return true
+		}
+	}
+	return false
+}
+
+// IsKeyword receives a token and returns true if the token's literal is a keyword
+// otherwise false
+func IsKeyword(t token.Token) bool {
+	km := token.KeywordMap()
+	if _, ok := km[t.Literal]; ok {
+		// is a keyword
+		return true
+	}
+	return false
+}
+
+// Precedence returns the precedence of a token representing an operator
+func Precedence(t token.Token) int {
+	// As defined in the BASIC book p57
+	precedences := map[int]int{}
+	precedences[token.XOR] = 0
+	precedences[token.OR] = 1
+	precedences[token.AND] = 2
+	precedences[token.NOT] = 3
+	precedences[token.LessThan] = 4
+	precedences[token.GreaterThan] = 4
+	precedences[token.Inequality1] = 4
+	precedences[token.Inequality2] = 4
+	precedences[token.LessThanEqualTo1] = 4
+	precedences[token.LessThanEqualTo2] = 4
+	precedences[token.GreaterThanEqualTo1] = 4
+	precedences[token.GreaterThanEqualTo2] = 4
+	precedences[token.InterestinglyEqual] = 4
+	precedences[token.Equal] = 4
+	precedences[token.Plus] = 5
+	precedences[token.Minus] = 5
+	precedences[token.Star] = 6
+	precedences[token.ForwardSlash] = 6
+	precedences[token.BackSlash] = 6
+	precedences[token.MOD] = 6
+	precedences[token.Exponential] = 7
+	return precedences[t.TokenType]
+}
+
+// GetType receives an arbitrary interface and returns the data type as a string if it is one of float64, int64, string or token.Token.
+// If the type is not recognized it returns ""
+func GetType(interfaceToTest interface{}) (dataType string) {
+	ok := false
+	_, ok = interfaceToTest.(float64)
+	if ok {
+		return "float64"
+	}
+	_, ok = interfaceToTest.(int64)
+	if ok {
+		return "int64"
+	}
+	_, ok = interfaceToTest.(string)
+	if ok {
+		return "string"
+	}
+	_, ok = interfaceToTest.(token.Token)
+	if ok {
+		return "token"
+	}
+	return ""
+}
+
+// IsTrue receives a float value and returns true if that value can represent the boolean true
+// otherwise it returns false
+func IsTrue(val float64) (result bool) {
+	if val == math.Round(val) && math.Round(val) == -1 {
+		return true
+	} else {
+		return false
+	}
+}
+
+// WeighString receives a string and returns the sum of the ascii codes for each char
+func WeighString(s string) (weight int) {
+	// convert string to runs
+	r := []rune(s)
+	// add the codes and return total
+	for _, val := range r {
+		weight += int(val)
+	}
+	return weight
+}
+
+// RunSegment attempts to execute a segment of tokens and replies with an error code, the index
+// of the token where parsing failed, and a message, or something.
+func (i *Interpreter) RunSegment(tokens []token.Token) (ok bool) {
+	// Load tokens onto the stack
+	i.TokenStack = tokens
+	i.TokenPointer = 0
+	// 1. Pass if empty line
+	if len(tokens) == 0 {
+		return true
+	}
+	if tokens[0].TokenType == token.EndOfLine {
+		return true
+	}
+	// 2. Any statement beginning with a variable or array must be an assignment
+	if tokens[0].TokenType == token.IdentifierLiteral {
+		return i.RmAssign()
+	}
+	// 3. Try built-in / keywords functions.
+	if IsKeyword(tokens[0]) {
+		switch tokens[0].TokenType {
+		case token.REM:
+			return true
+		case token.PRINT:
+			return i.RmPrint()
+		case token.GOTO:
+			return i.RmGoto()
+		case token.RUN:
+			return i.RmRun()
+		case token.BYE:
+			return i.RmBye()
+		case token.LIST:
+			return i.RmList()
+		case token.SAVE:
+			return i.RmSave()
+		case token.LOAD:
+			return i.RmLoad()
+		case token.EDIT:
+			return i.RmEdit()
+		case token.AUTO:
+			return i.RmAuto()
+		case token.CLS:
+			return i.RmCls()
+		case token.INPUT:
+			return i.RmInput()
+		case token.NEW:
+			return i.RmNew()
+		case token.FOR:
+			return i.RmFor()
+		case token.NEXT:
+			return i.RmNext()
+		case token.REPEAT:
+			return i.RmRepeat()
+		case token.UNTIL:
+			return i.RmUntil()
+		case token.DATA:
+			return i.RmData(i.TokenStack)
+		case token.RESTORE:
+			return i.RmRestore()
+		case token.LET:
+			return i.RmAssign()
+		case token.IF:
+			return i.RmIfThenElse()
+		case token.DIM:
+			return i.RmDim()
+		case token.SET:
+			if IsKeyword(tokens[1]) {
+				switch tokens[1].TokenType {
+				case token.PAPER:
+					return i.RmSetPaper()
+				case token.BORDER:
+					return i.RmSetBorder()
+				case token.PEN:
+					return i.RmSetPen()
+				case token.MODE:
+					return i.RmSetMode()
+				case token.CURPOS:
+					return i.RmSetCurpos()
+				case token.CURSOR:
+					return i.RmSetCursor()
+				default:
+					i.ErrorCode = syntaxerror.WrongSetAskAttribute
+					i.TokenPointer++
+					return false
+				}
+			} else {
+				i.ErrorCode = syntaxerror.UnknownSetAskAttribute
+				i.TokenPointer++
+				return false
+			}
+		}
+	}
+	i.ErrorCode = syntaxerror.UnknownCommandProcedure
+	return false
+}
+
+// RunLine attempts to run a line of BASIC code.
+func (i *Interpreter) RunLine(code string) (ok bool) {
+	// tokenize the code
+	i.Tokenize(code)
+	// Handle update program line
+	if i.CurrentTokens[0].TokenType == token.NumericalLiteral {
+		return i.RmUpdateLine(code)
+	}
+	// ensure no illegal chars
+	for index, t := range i.CurrentTokens {
+		if t.TokenType == token.Illegal {
+			i.ErrorCode = syntaxerror.EndOfInstructionExpected
+			i.TokenPointer = index
+			return false
+		}
+	}
+	// split the tokens into executable segments for each : token found
+	segments := make([][]token.Token, 0)
+	this_segment := make([]token.Token, 0)
+	for _, t := range i.CurrentTokens {
+		if t.TokenType != token.Colon {
+			this_segment = append(this_segment, t)
+		} else {
+			// add EndOfLine to segment before adding to segments slice
+			this_segment = append(this_segment, token.Token{token.EndOfLine, ""})
+			segments = append(segments, this_segment)
+			this_segment = make([]token.Token, 0)
+		}
+	}
+	if len(this_segment) > 0 {
+		segments = append(segments, this_segment)
+	}
+	// run each segment
+	badTokenOffset := 0
+	for index, segment := range segments {
+		if index > 0 {
+			badTokenOffset += len(segments[index-1])
+		}
+		// Debug segment not ending with EndOfLine
+		if segment[len(segment)-1].TokenType != token.EndOfLine {
+			fmt.Println("No EndOfLine in this segment!")
+		}
+
+		ok := i.RunSegment(segment)
+		// Handle syntax error or <BREAK>
+		if i.g.BreakInterruptDetected || !ok {
+			return false
+		}
+	}
+	i.ProgramPointer += 1
+	return true
+}
+
+// ImmediateInput receives a string inputted by the REPL user or by the LOAD command, processes it and responds
+// with a message, if any
+func (i *Interpreter) ImmediateInput(code string) (response string) {
+	// reset error status, tokenize code and try to execute
+	i.ErrorCode = syntaxerror.Success
+	i.LineNumber = -1
+	i.Tokenize(code)
+	ok := i.RunLine(code)
+	if !ok {
+		// There was an error so the response should include the error message
+		// But if it was <BREAK> override the error message
+		if i.g.BreakInterruptDetected {
+			i.ErrorCode = syntaxerror.InterruptedByBreakKey
+		}
+		if i.LineNumber == -1 {
+			// immediate-mode syntax error without line number
+			if i.g.BreakInterruptDetected {
+				i.g.BreakInterruptDetected = false
+				i.g.Print(syntaxerror.ErrorMessage(i.ErrorCode))
+				i.g.Put(13)
+				time.Sleep(100 * time.Millisecond)
+			} else {
+				token.PrintToken(i.TokenStack[i.TokenPointer])
+				i.g.Print(fmt.Sprintf("Syntax error: %s", syntaxerror.ErrorMessage(i.ErrorCode)))
+				i.g.Put(13)
+				i.g.Print(fmt.Sprintf("  %s", i.FormatCode(code, i.TokenPointer, false)))
+				i.g.Put(13)
+			}
+			response = fmt.Sprintf("Syntax error: %s\n  %s", syntaxerror.ErrorMessage(i.ErrorCode), i.FormatCode(code, i.TokenPointer, false))
+		} else {
+			// syntax error with line number
+			if i.g.BreakInterruptDetected {
+				i.g.BreakInterruptDetected = false
+				i.g.Print(fmt.Sprintf("%s at line %d", syntaxerror.ErrorMessage(i.ErrorCode), i.LineNumber))
+				i.g.Put(13)
+				time.Sleep(100 * time.Millisecond)
+			} else {
+				i.g.Print(fmt.Sprintf("Syntax error in line %d: %s", i.LineNumber, syntaxerror.ErrorMessage(i.ErrorCode)))
+				i.g.Put(13)
+				i.g.Print(fmt.Sprintf("  %d %s", i.LineNumber, i.FormatCode(code, i.TokenPointer, false)))
+				i.g.Put(13)
+			}
+			response = fmt.Sprintf("Syntax error in line %d: %s\n  %d %s", i.LineNumber, syntaxerror.ErrorMessage(i.ErrorCode), i.LineNumber, i.FormatCode(i.Program[i.LineNumber], i.TokenPointer, false))
+		}
+	}
+	return response
+}
+
+// FormatCode receives a line of BASIC code and returns it formatted.  If a number
+// > 0 is passed for highlightTokenIndex, the corresponding token is highlighted
+// with arrows; this is used for printing error messages.
+func (i *Interpreter) FormatCode(code string, highlightTokenIndex int, skipFirstToken bool) string {
+	i.Tokenize(code)
+	formattedCode := ""
+	// handle skipFirstToken
+	if skipFirstToken {
+		i.CurrentTokens = i.CurrentTokens[1:]
+	}
+	// bump highlighter if it's pointing at :
+	if highlightTokenIndex >= 0 {
+		if i.CurrentTokens[highlightTokenIndex].TokenType == token.Colon && len(i.CurrentTokens) > highlightTokenIndex+1 {
+			highlightTokenIndex += 1
+		}
+	}
+	// format code and insert highlighter
+	for index, t := range i.CurrentTokens {
+		if index == highlightTokenIndex {
+			formattedCode += "--> "
+		}
+		if t.TokenType == token.StringLiteral {
+			formattedCode += "\""
+			formattedCode += t.Literal
+			formattedCode += "\""
+		} else {
+			formattedCode += t.Literal
+		}
+		formattedCode += " "
+	}
+	formattedCode = strings.TrimSpace(formattedCode)
+	return formattedCode
+}
+
+// GetLineOrder returns a list of program line numbers ordered from smallest to greatest
+func (i *Interpreter) GetLineOrder() (ordered []int) {
+	for lineNumber, _ := range i.Program {
+		ordered = append(ordered, lineNumber)
+	}
+	sort.Ints(ordered)
+	return ordered
+}
+
+// IsStringVar returns true if a token represents a string variable
+func IsStringVar(t token.Token) bool {
+	if t.TokenType == token.IdentifierLiteral && t.Literal[len(t.Literal)-1:] == "$" {
+		return true
+	} else {
+		return false
+	}
+}
+
+// IsIntVar returns true if a token represents a integer variable
+func IsIntVar(t token.Token) bool {
+	if t.TokenType == token.IdentifierLiteral && t.Literal[len(t.Literal)-1:] == "%" {
+		return true
+	} else {
+		return false
+	}
+}
+
+// IsFloatVar returns true if a token represents a float variable
+func IsFloatVar(t token.Token) bool {
+	if t.TokenType == token.IdentifierLiteral && (t.Literal[len(t.Literal)-1:] != "%" && t.Literal[len(t.Literal)-1:] != "$") {
+		return true
+	} else {
+		return false
+	}
+}
+
+// InferTypeFromVariableName returns "string", "int" or "float" depending on the postfix of the variable name
+func InferTypeFromVariableName(variableName string) string {
+	if variableName[len(variableName)-1:] == "$" {
+		return "string"
+	}
+	if variableName[len(variableName)-1:] == "%" {
+		return "int"
+	} else {
+		return "float"
+	}
+}
+
+// IsArray returns true if the variableName represents an array
+func (i *Interpreter) IsArray(variableName string) bool {
+	_, ok := i.ArrayStore[variableName]
+	return ok
+}
+
+// ResolveArraySubscripts parses tokens representing a reference to an value in an array and
+// returns the flat array index.
+func (i *Interpreter) ResolveArraySubscripts() (index int, ok bool) {
+	// Get bounds and consume variableName
+	variableName := i.TokenStack[i.TokenPointer].Literal
+	i.TokenPointer++
+
+	// Get required (
+	if !i.OnOpenBracket() {
+		fmt.Println("in ResolveArr... not on open bracket")
+		return 0, false
+	}
+
+	// Collect subscripts
+	subscripts := make([]int, 0)
+	// Get required first subscript
+	val, ok := i.OnExpression("numeric")
+	if !ok {
+		fmt.Println("in ResolveArr... OnExpression failed")
+		return 0, false
+	}
+
+	subscripts = append(subscripts, int(math.Round(val.(float64))))
+	// Get optional closing bracket (if no more subscripts)
+	if !i.OnCloseBracket() {
+		for {
+			// More dimensions declared so get required comma
+			if !i.OnComma() {
+				return 0, false
+			}
+			// Get required nth dimension
+			val, ok := i.OnExpression("numeric")
+			if !ok {
+				return 0, false
+			}
+			subscripts = append(subscripts, int(math.Round(val.(float64))))
+			// Get optional closing bracket if no more dimensions
+			if i.OnCloseBracket() {
+				break
+			}
+			// Requires closing bracket if end of segment
+			if i.OnSegmentEnd() {
+				i.ErrorCode = syntaxerror.ClosingBracketIsNeeded
+				return 0, false
+			}
+		}
+	}
+	// Execute
+	fmt.Println(" in ResolveArr... Execute")
+	// Number of subscripts must = number of bounds
+	if len(subscripts) != len(i.ArrayStore[variableName].bounds) {
+		i.ErrorCode = syntaxerror.WrongNumberOfSubscripts
+		return 0, false
+	}
+	// Value of subscripts cannot be < 0 and cannot exceed bound
+	for index, _ := range subscripts {
+		if subscripts[index] < 0 || subscripts[index] > i.ArrayStore[variableName].bounds[index]-1 {
+			i.ErrorCode = syntaxerror.ArraySubscriptIsWrong
+			return 0, false
+		}
+	}
+	// Resolve value
+	index = subscripts[len(subscripts)-1]
+	if len(i.ArrayStore[variableName].bounds) > 1 {
+		for j := len(i.ArrayStore[variableName].bounds) - 2; j >= 0; j-- {
+			index += subscripts[j] * i.ArrayStore[variableName].bounds[j]
+		}
+	}
+	return index, true
+}
+
+// SetVar stores a variable
+func (i *Interpreter) SetVar(variableName string, value interface{}) bool {
+	switch variableName[len(variableName)-1:] {
+	case "$":
+		// set string variable
+		if GetType(value) == "float64" {
+			// cast float value to string and store
+			i.Store[variableName] = RenderNumberAsString(value.(float64))
+		} else {
+			// store float value directly
+			i.Store[variableName] = value.(string)
+			return true
+		}
+	case "%":
+		// set integer variable
+		if GetType(value) == "float64" {
+			// round float and store
+			i.Store[variableName] = math.Round(value.(float64))
+			return true
+		} else {
+			// try to parse float from string then round to int
+			if valfloat64, err := strconv.ParseFloat(value.(string), 64); err == nil {
+				i.Store[variableName] = math.Round(valfloat64)
+				return true
+			} else {
+				i.ErrorCode = syntaxerror.NumericExpressionNeeded
+				return false
+			}
+		}
+	default:
+		// set float variable
+		if GetType(value) == "float64" {
+			// store
+			i.Store[variableName] = value.(float64)
+			return true
+		} else {
+			// try to parse float from string
+			if valfloat64, err := strconv.ParseFloat(value.(string), 64); err == nil {
+				i.Store[variableName] = valfloat64
+				return true
+			} else {
+				i.ErrorCode = syntaxerror.NumericExpressionNeeded
+				return false
+			}
+		}
+	}
+	// This should not happen therefore fatal
+	log.Fatalf("Fatal error!")
+	return false
+}
+
+// GetVar retrieves the value of a variable from the store
+func (i *Interpreter) GetVar(variableName string) (value interface{}, ok bool) {
+	val, ok := i.Store[variableName]
+	if !ok {
+		i.ErrorCode = syntaxerror.HasNotBeenDefined
+		// How do we handle undefined vars?
+		return 0, false
+	} else {
+		return val, true
+	}
+}
+
+// GetValueFromToken receives a token representing either a variable or a literal, gets
+// the value, and ~casts~ it to the required type
+func (i *Interpreter) GetValueFromToken(t token.Token, castTo string) (value interface{}, ok bool) {
+	if t.TokenType == token.IdentifierLiteral {
+		value, ok = i.GetVar(t.Literal)
+		if !ok {
+			return 0, false
+		}
+	} else {
+		value = t.Literal
+	}
+	switch GetType(value) {
+	case "string":
+		switch castTo {
+		case "string":
+			return value, true
+		case "float64":
+			// try to parse float from string
+			if valfloat64, err := strconv.ParseFloat(value.(string), 64); err == nil {
+				return valfloat64, true
+			} else {
+				i.ErrorCode = syntaxerror.CouldNotInterpretAsANumber
+				return 0, false
+			}
+		case "int64":
+			// try to parse float from string
+			if valfloat64, err := strconv.ParseFloat(value.(string), 64); err == nil {
+				return math.Round(valfloat64), true
+			} else {
+				i.ErrorCode = syntaxerror.NumericExpressionNeeded
+				return 0, false
+			}
+		case "":
+			return value, true
+		}
+	case "float64":
+		switch castTo {
+		case "string":
+			return fmt.Sprintf("%e", value.(float64)), true
+		case "float64":
+			return value, true
+		case "int64":
+			return math.Round(value.(float64)), true
+		case "":
+			return value, true
+		}
+	}
+	log.Fatalf("Fatal error!")
+	return 0, false
+}
+
+// AcceptAnyNumber checks if the current token represents a number and returns the value.  If
+// it does not represent a number then the tokenPointer is reset to its original position.
+func (i *Interpreter) AcceptAnyNumber() (acceptedValue float64, acceptOk bool) {
+	originalPosition := i.TokenPointer
+	val, tp, ok := i.EvaluateExpression(i.TokenStack, i.TokenPointer)
+	i.TokenPointer = tp
+	if !ok {
+		// broken expression so reset pointer and return false
+		i.TokenPointer = originalPosition
+		return 0, false
+	} else {
+		if GetType(val) != "float64" {
+			// is not float
+			// error?
+			i.TokenPointer = originalPosition
+			return 0, false
+		} else {
+			return val.(float64), true
+		}
+	}
+}
+
+// AcceptAnyString checks if the current token represents a string, returns the value
+// and advances the pointer if so.
+func (i *Interpreter) AcceptAnyString() (acceptedValue string, acceptOk bool) {
+	originalPosition := i.TokenPointer
+	val, tp, ok := i.EvaluateExpression(i.TokenStack, i.TokenPointer)
+	i.TokenPointer = tp
+	if !ok {
+		// broken expression so reset pointer and return false
+		i.TokenPointer = originalPosition
+		return "", false
+	} else {
+		if GetType(val) != "string" {
+			// is not string
+			// error?
+			i.TokenPointer = originalPosition
+			return "", false
+		} else {
+			return val.(string), true
+		}
+	}
+}
+
+// AcceptAnyOfTheseTokens checks if the current token matches any that are passed in a slice and, if so,
+// returns the token and advances the pointer.
+func (i *Interpreter) AcceptAnyOfTheseTokens(acceptableTokens []int) (acceptedToken token.Token, acceptOk bool) {
+	for _, tokenType := range acceptableTokens {
+		if tokenType == i.TokenStack[i.TokenPointer].TokenType {
+			// found a match, advanced pointer and return the token type
+			i.TokenPointer++
+			return i.TokenStack[i.TokenPointer-1], true
+		}
+	}
+	// no matches
+	return token.Token{}, false
+}
+
+// IsAnyOfTheseTokens checks if the current token matches any that are passed in a slice and, if so,
+// returns true but *does not advance the pointer*.
+func (i *Interpreter) IsAnyOfTheseTokens(acceptableTokens []int) bool {
+	for _, tokenType := range acceptableTokens {
+		if tokenType == i.TokenStack[i.TokenPointer].TokenType {
+			// found a match
+			return true
+		}
+	}
+	// no matches
+	return false
+}
+
+// EndOfTokens returns true if no more tokens are to be evaluated in the token stack
+func (i *Interpreter) EndOfTokens() bool {
+	if i.TokenPointer > len(i.TokenStack) {
+		return true
+	}
+	if i.TokenStack[i.TokenPointer].TokenType == token.EndOfLine {
+		return true
+	}
+	return false
+}
+
+// New functions for accepting tokens -----------------------------
+// ----------------------------------------------------------------
+
+// HasType returns "string" if an interface has the string type, or "numeric" if
+// it has the float64 type.
+func HasType(v interface{}) string {
+	ok := false
+	_, ok = v.(float64)
+	if ok {
+		return "numeric"
+	}
+	_, ok = v.(string)
+	if ok {
+		return "string"
+	}
+	return ""
+}
+
+// OnExpression returns the value and true of an expression if it's valid and matches
+// the type passed in expType.  expType accepts "any", "string", or "numeric" as types.
+// The returned value type is interface{} if "any" is selected, string if "string" is
+// selected, or "float64" if float is selected.  If anything breaks the ErrorCode is
+// set and false is returned for ok.
+func (i *Interpreter) OnExpression(expType string) (value interface{}, ok bool) {
+	// Protect against trying to evaluate EndOfLine token
+	if i.OnSegmentEnd() {
+		switch expType {
+		case "any":
+			i.ErrorCode = syntaxerror.NumericOrStringExpressionNeeded
+			return nil, false
+		case "string":
+			i.ErrorCode = syntaxerror.StringExpressionNeeded
+			return nil, false
+		case "numeric":
+			i.ErrorCode = syntaxerror.NumericExpressionNeeded
+			return nil, false
+		default:
+			// Internal error
+			log.Fatalf("Internal error: Interpreter.OnExpression does not accept \"%s\" for expType.\n", expType)
+		}
+	}
+	// Try to evaluate expression and raise error if it fails
+	originalPosition := i.TokenPointer
+	val, tp, ok := i.EvaluateExpression(i.TokenStack, i.TokenPointer)
+	i.TokenPointer = tp
+	if !ok {
+		// broken expression
+		return nil, false
+	}
+	// Evaluated ok, so get type and raise error if type mismatch
+	fmt.Printf("return type is %s\n", GetType(val))
+	switch expType {
+	case "any":
+		return val, true
+	case "string":
+		if HasType(val) == "string" {
+			return val, true
+		} else {
+			i.ErrorCode = syntaxerror.StringExpressionNeeded
+			i.TokenPointer = originalPosition
+			return nil, false
+		}
+	case "numeric":
+		if HasType(val) == "numeric" {
+			return val, true
+		} else {
+			i.ErrorCode = syntaxerror.NumericExpressionNeeded
+			i.TokenPointer = originalPosition
+			return nil, false
+		}
+	default:
+		// Internal error
+		log.Fatalf("Internal error: Interpreter.OnExpression does not accept \"%s\" for expType.\n", expType)
+	}
+	// Never happens:
+	return nil, true
+}
+
+// OnComma returns true if the current token is a comma otherwise it sets ErrorCode to
+// CommaSeparatorIsNeeded and returns false.
+func (i *Interpreter) OnComma() bool {
+	if i.TokenStack[i.TokenPointer].TokenType == token.Comma {
+		i.TokenPointer++
+		return true
+	} else {
+		i.ErrorCode = syntaxerror.CommaSeparatorIsNeeded
+		return false
+	}
+}
+
+// OnSemicolon returns true if the current token is a semicolon otherwise it sets ErrorCode to
+// SemicolonSeparatorIsNeeded and returns false.
+func (i *Interpreter) OnSemicolon() bool {
+	if i.TokenStack[i.TokenPointer].TokenType == token.Semicolon {
+		i.TokenPointer++
+		return true
+	} else {
+		i.ErrorCode = syntaxerror.SemicolonSeparatorIsNeeded
+		return false
+	}
+}
+
+// OnOpenBracket returns true if the current token is a ( otherwise it sets ErrorCode to
+// OpeningBracketIsNeeded and returns false.
+func (i *Interpreter) OnOpenBracket() bool {
+	if i.TokenStack[i.TokenPointer].TokenType == token.LeftParen {
+		i.TokenPointer++
+		return true
+	} else {
+		i.ErrorCode = syntaxerror.OpeningBracketIsNeeded
+		return false
+	}
+}
+
+// OnCloseBracket returns true if the current token is a ) otherwise it sets ErrorCode to
+// ClosingBracketIsNeeded and returns false.
+func (i *Interpreter) OnCloseBracket() bool {
+	if i.TokenStack[i.TokenPointer].TokenType == token.RightParen {
+		i.TokenPointer++
+		return true
+	} else {
+		i.ErrorCode = syntaxerror.ClosingBracketIsNeeded
+		return false
+	}
+}
+
+// OnTo returns true if the current token is a TO otherwise it sets ErrorCode to
+// InvalidExpressionFound and returns false.
+func (i *Interpreter) OnTo() bool {
+	if i.TokenStack[i.TokenPointer].TokenType == token.TO {
+		i.TokenPointer++
+		return true
+	} else {
+		i.ErrorCode = syntaxerror.InvalidExpressionFound
+		return false
+	}
+}
+
+// OnVariableName returns the current token and true it's a variable name
+// otherwise sets ErrorCode to VariableNameIsNeeded and returns false.
+func (i *Interpreter) OnVariableName() (t token.Token, ok bool) {
+	if i.TokenStack[i.TokenPointer].TokenType == token.IdentifierLiteral {
+		i.TokenPointer++
+		return i.TokenStack[i.TokenPointer-1], true
+	} else {
+		i.ErrorCode = syntaxerror.VariableNameIsNeeded
+		return token.Token{0, ""}, false
+	}
+}
+
+// OnToken returns the token and true if the current token matches any of the token types
+// passed in tokenTypes.
+func (i *Interpreter) OnToken(tokenTypes []int) (t token.Token, ok bool) {
+	for _, tokenType := range tokenTypes {
+		if i.TokenStack[i.TokenPointer].TokenType == tokenType {
+			i.TokenPointer++
+			return i.TokenStack[i.TokenPointer], true
+		}
+	}
+	return token.Token{0, ""}, false
+}
+
+// OnSegmentEnd returns true if the current token represents the end of a line or segment,
+// otherwise it sets the ErrorCode to EndOfInstructionExpected and returns false.  In either
+// case it does not advance the TokenPointer.
+func (i *Interpreter) OnSegmentEnd() bool {
+	if i.TokenStack[i.TokenPointer].TokenType == token.EndOfLine {
+		return true
+	}
+	i.ErrorCode = syntaxerror.EndOfInstructionExpected
+	return false
+}
+
+// IsExpressionTerminator returns true if the current token will terminate an expression
+func IsExpressionTerminator(t token.Token) bool {
+
+	terminators := []int{
+		token.Comma,
+		token.Semicolon,
+		token.EndOfLine,
+		token.Exclamation,
+		token.TO,
+		token.STEP,
+		token.PRINT,
+		token.THEN,
+		token.ELSE,
+	}
+
+	for _, tokenType := range terminators {
+		if tokenType == t.TokenType {
+			return true
+		}
+	}
+
+	return false
+}

@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/adamstimb/rmbasicx64/pkg/nimgobus/images"
+	"github.com/adamstimb/rmbasicx64yar/pkg/nimgobus/images"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 

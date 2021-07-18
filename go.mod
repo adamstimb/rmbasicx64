@@ -1,4 +1,4 @@
-module github.com/adamstimb/rmbasicx64
+module github.com/adamstimb/rmbasicx64yar
 
 go 1.16
 
