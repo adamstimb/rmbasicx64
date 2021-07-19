@@ -374,6 +374,51 @@ func (s *SetPenStatement) String() string {
 	return out.String()
 }
 
+type SetDegStatement struct {
+	Token token.Token
+	Value Expression
+}
+
+func (s *SetDegStatement) statementNode() {}
+func (s *SetDegStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *SetDegStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type SetRadStatement struct {
+	Token token.Token
+	Value Expression
+}
+
+func (s *SetRadStatement) statementNode() {}
+func (s *SetRadStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *SetRadStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type RemStatement struct {
+	Token   token.Token
+	Comment token.Token
+}
+
+func (s *RemStatement) statementNode() {}
+func (s *RemStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *RemStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
 type PrintStatement struct {
 	Token token.Token
 	Value Expression

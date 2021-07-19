@@ -8,7 +8,7 @@ RM BASICx64 is a re-implementation of RM Basic, a dialect of BASIC developed by 
 
 ## Status
 
-An preliminary release is in the works featuring the original RM Basic user interface, expression evaluation and some simple text commands.  Click the "Watch" button on the top right to get notifications of new releases!
+A preliminary release is available featuring the original RM Basic user interface, expression evaluation and some simple text commands.  Click the "Watch" button on the top right to get notifications of new releases!
 
 ## I want it now!
 
@@ -39,12 +39,12 @@ cd scripts
 If you're running Linux, you can run the executable straight away:
 
 ```bash
-../build/rmbasic
+../build/rmbasicx64
 ```
 
-If you're running Windows a file called `rmbasic.exe` will appear in the `build\` folder.
+If you're running Windows a file called `rmbasicx64.exe` will appear in the `build\` folder.
 
-Use File Explorer to make a new folder called `rmbasicx64` in `C:\Program Files` and move the `rmbasic.exe` file into it.  Double-click `rmbasic.exe` to run.
+Use File Explorer to make a new folder called `rmbasicx64` in `C:\Program Files` and move the `rmbasicx64.exe` file into it.  Double-click `rmbasicx64.exe` to run.
 
 If you get a message saying "Windows protected your PC" click "More info" then "Run anyway".
 

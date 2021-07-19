@@ -187,6 +187,14 @@ func (p *Parser) expectPeek(t string) bool {
 	}
 }
 
+func (p *Parser) endOfInstruction() bool {
+	if !(p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF)) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+		return false
+	}
+	return true
+}
+
 // -------------------------------------------------------------------------
 // -- If
 
@@ -380,22 +388,26 @@ func (p *Parser) parseFunctionDefinition() ast.Expression {
 	return lit
 }
 
+func (p *Parser) parseRemStatement() *ast.RemStatement {
+	remToken := p.curToken
+	p.nextToken()
+	return &ast.RemStatement{Token: remToken, Comment: p.curToken}
+}
+
 func (p *Parser) parseByeStatement() *ast.ByeStatement {
 	stmt := &ast.ByeStatement{Token: p.curToken}
-	if !(p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF)) {
-		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
-		return nil
+	if p.endOfInstruction() {
+		return stmt
 	}
-	return stmt
+	return nil
 }
 
 func (p *Parser) parseClsStatement() *ast.ClsStatement {
 	stmt := &ast.ClsStatement{Token: p.curToken}
-	if !(p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF)) {
-		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
-		return nil
+	if p.endOfInstruction() {
+		return stmt
 	}
-	return stmt
+	return nil
 }
 
 func (p *Parser) parsePrintStatement() *ast.PrintStatement {
@@ -406,11 +418,10 @@ func (p *Parser) parsePrintStatement() *ast.PrintStatement {
 	}
 	p.nextToken()
 	stmt.Value = p.parseExpression(LOWEST)
-	if !(p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF)) {
-		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
-		return nil
+	if p.endOfInstruction() {
+		return stmt
 	}
-	return stmt
+	return nil
 }
 
 func (p *Parser) parseSetModeStatement() *ast.SetModeStatement {
@@ -421,7 +432,10 @@ func (p *Parser) parseSetModeStatement() *ast.SetModeStatement {
 	}
 	p.nextToken()
 	stmt.Value = p.parseExpression(LOWEST)
-	return stmt
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
 }
 
 func (p *Parser) parseSetPaperStatement() *ast.SetPaperStatement {
@@ -432,7 +446,10 @@ func (p *Parser) parseSetPaperStatement() *ast.SetPaperStatement {
 	}
 	p.nextToken()
 	stmt.Value = p.parseExpression(LOWEST)
-	return stmt
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
 }
 
 func (p *Parser) parseSetBorderStatement() *ast.SetBorderStatement {
@@ -443,7 +460,10 @@ func (p *Parser) parseSetBorderStatement() *ast.SetBorderStatement {
 	}
 	p.nextToken()
 	stmt.Value = p.parseExpression(LOWEST)
-	return stmt
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
 }
 
 func (p *Parser) parseSetPenStatement() *ast.SetPenStatement {
@@ -454,7 +474,38 @@ func (p *Parser) parseSetPenStatement() *ast.SetPenStatement {
 	}
 	p.nextToken()
 	stmt.Value = p.parseExpression(LOWEST)
-	return stmt
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseSetDegStatement() *ast.SetDegStatement {
+	stmt := &ast.SetDegStatement{Token: p.curToken}
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		return nil
+	}
+	p.nextToken()
+	stmt.Value = p.parseExpression(LOWEST)
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseSetRadStatement() *ast.SetRadStatement {
+	stmt := &ast.SetRadStatement{Token: p.curToken}
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		return nil
+	}
+	p.nextToken()
+	stmt.Value = p.parseExpression(LOWEST)
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
 }
 
 // -------------------------------------------------------------------------
@@ -655,9 +706,12 @@ func (p *Parser) ParseLine() *ast.Line {
 
 	statements := []ast.Statement{}
 
-	for !(p.curTokenIs(token.EOF) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.Colon)) {
+	for !(p.curTokenIs(token.EOF) || p.curTokenIs(token.NewLine)) {
 		statements = append(statements, p.parseStatement())
 		p.nextToken()
+		if p.curTokenIs(token.Colon) {
+			p.nextToken()
+		}
 	}
 
 	return &ast.Line{Statements: statements}
@@ -668,6 +722,8 @@ func (p *Parser) ParseLine() *ast.Line {
 
 func (p *Parser) parseStatement() ast.Statement {
 	switch p.curToken.TokenType {
+	case token.REM:
+		return p.parseRemStatement()
 	case token.BYE:
 		return p.parseByeStatement()
 	case token.CLS:
@@ -683,6 +739,10 @@ func (p *Parser) parseStatement() ast.Statement {
 			return p.parseSetBorderStatement()
 		case token.PEN:
 			return p.parseSetPenStatement()
+		case token.DEG:
+			return p.parseSetDegStatement()
+		case token.RAD:
+			return p.parseSetRadStatement()
 		default:
 			p.errorMsg = syntaxerror.ErrorMessage((syntaxerror.WrongSetAskAttribute))
 			return nil

@@ -22,7 +22,8 @@ var (
 
 func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 	switch node := node.(type) {
-
+	case *ast.RemStatement:
+		return nil
 	case *ast.ByeStatement:
 		os.Exit(0)
 	case *ast.ClsStatement:
@@ -35,6 +36,10 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalSetBorderStatement(g, node, env)
 	case *ast.SetPenStatement:
 		return evalSetPenStatement(g, node, env)
+	case *ast.SetDegStatement:
+		return evalSetDegStatement(g, node, env)
+	case *ast.SetRadStatement:
+		return evalSetRadStatement(g, node, env)
 	case *ast.PrintStatement:
 		return evalPrintStatement(g, node, env)
 	case *ast.Program:
@@ -273,6 +278,34 @@ func evalSetPenStatement(g *game.Game, stmt *ast.SetPenStatement, env *object.En
 			val.Value = float64(highestColour)
 		}
 		g.SetPen(int(val.Value))
+		return obj
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)}
+	}
+}
+
+func evalSetDegStatement(g *game.Game, stmt *ast.SetDegStatement, env *object.Environment) object.Object {
+	obj := Eval(g, stmt.Value, env)
+	// return error if evaluation failed
+	if _, ok := obj.(*object.Error); ok {
+		return obj
+	}
+	if val, ok := obj.(*object.Boolean); ok {
+		env.Degrees = val.Value
+		return obj
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)}
+	}
+}
+
+func evalSetRadStatement(g *game.Game, stmt *ast.SetRadStatement, env *object.Environment) object.Object {
+	obj := Eval(g, stmt.Value, env)
+	// return error if evaluation failed
+	if _, ok := obj.(*object.Error); ok {
+		return obj
+	}
+	if val, ok := obj.(*object.Boolean); ok {
+		env.Degrees = !val.Value
 		return obj
 	} else {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)}

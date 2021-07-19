@@ -1,2 +1,4 @@
-build/**
+build/rmbasic
+build/rmbasic.exe
+build/rmbasic.msi
 .env
