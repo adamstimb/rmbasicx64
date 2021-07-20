@@ -2,13 +2,18 @@ package evaluator
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
 	"math"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/game"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/lexer"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/object"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/parser"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
 )
 
@@ -16,8 +21,8 @@ import (
 // creating new objects
 var (
 	NULL  = &object.Null{}
-	TRUE  = &object.Boolean{Value: true}
-	FALSE = &object.Boolean{Value: false}
+	TRUE  = &object.Numeric{Value: -1.0}
+	FALSE = &object.Numeric{Value: 0}
 )
 
 func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
@@ -26,6 +31,17 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return nil
 	case *ast.ByeStatement:
 		os.Exit(0)
+	case *ast.RunStatement:
+		return evalRunStatement(g, node, env)
+	case *ast.NewStatement:
+		env.Wipe()
+		return nil
+	case *ast.SaveStatement:
+		return evalSaveStatement(g, node, env)
+	case *ast.LoadStatement:
+		return evalLoadStatement(g, node, env)
+	case *ast.ListStatement:
+		return evalListStatement(g, node, env)
 	case *ast.ClsStatement:
 		return evalClsStatement(g, node, env)
 	case *ast.SetModeStatement:
@@ -48,8 +64,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return Eval(g, node.Expression, env)
 	case *ast.BlockStatement:
 		return evalBlockStatement(g, node, env)
-	case *ast.IfExpression:
-		return evalIfExpression(g, node, env)
+	case *ast.IfStatement:
+		return evalIfStatement(g, node, env)
 	case *ast.ReturnStatement:
 		val := Eval(g, node.ReturnValue, env)
 		if isError(val) {
@@ -89,6 +105,7 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 			Value: node.Value,
 		}
 	case *ast.Boolean:
+		log.Println("still getting Boolean branches to evaluate")
 		return nativeBoolToBooleanObject(node.Value)
 	case *ast.PrefixExpression:
 		right := Eval(g, node.Right, env)
@@ -189,6 +206,101 @@ func evalPrintStatement(g *game.Game, stmt *ast.PrintStatement, env *object.Envi
 	}
 	g.Print(printStr)
 	g.Put(13)
+	return obj
+}
+
+func evalSaveStatement(g *game.Game, stmt *ast.SaveStatement, env *object.Environment) object.Object {
+	obj := Eval(g, stmt.Value, env)
+	// return error if evaluation failed
+	if _, ok := obj.(*object.Error); ok {
+		return obj
+	}
+	filename := ""
+	if stringVal, ok := obj.(*object.String); ok {
+		filename = stringVal.Value
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded)}
+	}
+	// Add .BAS if necessary
+	if !strings.HasSuffix(filename, ".BAS") {
+		filename += ".BAS"
+	}
+	// Save the program
+	file, err := os.Create(filename)
+	if err != nil {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure)}
+	}
+	defer file.Close()
+	for _, lineString := range env.Program.List() {
+		file.WriteString(fmt.Sprintf("%s\n", lineString))
+	}
+	return obj
+}
+
+func evalLoadStatement(g *game.Game, stmt *ast.LoadStatement, env *object.Environment) object.Object {
+	obj := Eval(g, stmt.Value, env)
+	// return error if evaluation failed
+	if _, ok := obj.(*object.Error); ok {
+		return obj
+	}
+	filename := ""
+	if stringVal, ok := obj.(*object.String); ok {
+		filename = stringVal.Value
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded)}
+	}
+	// Add .BAS if necessary
+	if !strings.HasSuffix(filename, ".BAS") {
+		filename += ".BAS"
+	}
+	// Load the program
+	fileBytes, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure)}
+	}
+	// To read into the program space we just pretend the code is being manually keyed it (I think that's how it worked originally)
+	sliceData := strings.Split(string(fileBytes), "\n")
+	l := &lexer.Lexer{}
+	for _, rawLine := range sliceData {
+		if g.BreakInterruptDetected {
+			break
+		}
+		l.Scan(rawLine)
+		p := parser.New(l)
+		line := p.ParseLine()
+		// Check of parser errors here.  Parser errors are handled just like evaluation errors but
+		// obviously we'll skip evaluation if parsing already failed.
+		if errorMsg, hasError := p.GetError(); hasError {
+			g.Print(fmt.Sprintf("Syntax error: %s", errorMsg))
+			g.Put(13)
+			continue
+		}
+		// And this is temporary while we're still migrating from Monkey to RM Basic
+		if len(p.Errors()) > 0 {
+			g.Print("Oops! Some random parsing error occurred. These will be handled properly downstream by for now here's some spewage:")
+			g.Put(13)
+			for _, msg := range p.Errors() {
+				g.Print(msg)
+				g.Put(13)
+			}
+			continue
+		}
+		// Add new line to stored program
+		if line.Statements == nil {
+			env.Program.AddLine(line.LineNumber, line.LineString)
+			continue
+		}
+		// Execute each statement in the inputted line.  If an error occurs, print the
+		// error message and stop.
+		for _, stmt := range line.Statements {
+			obj := Eval(g, stmt, env)
+			if errorMsg, ok := obj.(*object.Error); ok {
+				g.Print(fmt.Sprintf("Syntax error: %s", errorMsg.Message))
+				g.Put(13)
+				break
+			}
+		}
+	}
 	return obj
 }
 
@@ -312,6 +424,65 @@ func evalSetRadStatement(g *game.Game, stmt *ast.SetRadStatement, env *object.En
 	}
 }
 
+func evalListStatement(g *game.Game, stmt *ast.ListStatement, env *object.Environment) object.Object {
+	listing := env.Program.List()
+	if listing == nil {
+		return nil
+	}
+	for _, listString := range listing {
+		g.Print(listString)
+		g.Put(13)
+	}
+	return nil
+}
+
+func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environment) object.Object {
+	l := &lexer.Lexer{}
+	env.Program.Start()
+	for !env.Program.EndOfProgram() && !g.BreakInterruptDetected {
+		l.Scan(env.Program.GetLine())
+		p := parser.New(l)
+		line := p.ParseLine()
+		// Check of parser errors here.  Parser errors are handled just like evaluation errors but
+		// obviously we'll skip evaluation if parsing already failed.
+		if errorMsg, hasError := p.GetError(); hasError {
+			g.Print(fmt.Sprintf("Syntax error in line %d: %s", env.Program.GetLineNumber(), errorMsg))
+			g.Put(13)
+			return nil
+		}
+		// And this is temporary while we're still migrating from Monkey to RM Basic
+		if len(p.Errors()) > 0 {
+			g.Print("Oops! Some random parsing error occurred. These will be handled properly downstream by for now here's some spewage:")
+			g.Put(13)
+			for _, msg := range p.Errors() {
+				g.Print(msg)
+				g.Put(13)
+			}
+			return nil
+		}
+		// Execute each statement in the program line.  If an error occurs, print the
+		// error message and stop.
+		for _, stmt := range line.Statements {
+			obj := Eval(g, stmt, env)
+			if errorMsg, ok := obj.(*object.Error); ok {
+				g.Print(fmt.Sprintf("Syntax error in line %d: %s", env.Program.GetLineNumber(), errorMsg.Message))
+				g.Put(13)
+				return nil
+			}
+			if g.BreakInterruptDetected {
+				break
+			}
+		}
+		env.Program.Next()
+	}
+	if g.BreakInterruptDetected {
+		g.Print(fmt.Sprintf("%s at line %d", syntaxerror.ErrorMessage(syntaxerror.InterruptedByBreakKey), env.Program.GetLineNumber()))
+		g.Put(13)
+		time.Sleep(150 * time.Millisecond)
+	}
+	return nil
+}
+
 func evalClsStatement(g *game.Game, stmt *ast.ClsStatement, env *object.Environment) object.Object {
 	g.Cls()
 	g.SetCurpos(1, 1)
@@ -347,7 +518,6 @@ func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object
 		env.Set(node.Value, &object.Numeric{Value: 0})
 	}
 	return &object.Warning{Message: "Variable without any value"}
-	//return newError("identifier not found: " + node.Value)
 }
 
 func isError(obj object.Object) bool {
@@ -372,31 +542,47 @@ func evalBlockStatement(g *game.Game, block *ast.BlockStatement, env *object.Env
 	return result
 }
 
-func evalIfExpression(g *game.Game, ie *ast.IfExpression, env *object.Environment) object.Object {
+func evalIfStatement(g *game.Game, ie *ast.IfStatement, env *object.Environment) object.Object {
 	condition := Eval(g, ie.Condition, env)
 	if isError(condition) {
 		return condition
 	}
 	if isTruthy(condition) {
-		return Eval(g, ie.Consequence, env)
-	} else if ie.Alternative != nil {
-		return Eval(g, ie.Alternative, env)
-	} else {
+		for _, stmt := range ie.Consequence.Statements {
+			obj := Eval(g, stmt, env)
+			if _, ok := obj.(*object.Error); ok {
+				return obj
+			}
+		}
 		return NULL
+	} else if ie.Alternative != nil {
+		for _, stmt := range ie.Alternative.Statements {
+			obj := Eval(g, stmt, env)
+			if _, ok := obj.(*object.Error); ok {
+				return obj
+			}
+		}
 	}
+	return NULL
 }
 
 func isTruthy(obj object.Object) bool {
-	switch obj {
-	case NULL:
-		return false
-	case TRUE:
+	val := obj.(*object.Numeric).Value
+	if val == -1.0 {
 		return true
-	case FALSE:
+	} else {
 		return false
-	default:
-		return true
 	}
+	//switch obj {
+	//case NULL:
+	//	return false
+	//case TRUE:
+	//	return true
+	//case FALSE:
+	//	return false
+	//default:
+	//	return true
+	//}
 }
 
 func evalInfixExpression(operator string, left, right object.Object) object.Object {
@@ -407,7 +593,8 @@ func evalInfixExpression(operator string, left, right object.Object) object.Obje
 		return evalStringInfixExpression(operator, left, right)
 	case operator == "=":
 		return nativeBoolToBooleanObject(left == right)
-		// TODO: case operator == "!=": etc.
+	case operator == "=":
+		return nativeBoolToBooleanObject(left == right)
 	case left.Type() == object.BOOLEAN_OBJ && right.Type() == object.BOOLEAN_OBJ:
 		return evalBooleanInfixExpression(operator, left, right)
 	case left.Type() != right.Type():
@@ -428,12 +615,20 @@ func evalStringInfixExpression(operator string, left, right object.Object) objec
 		// exactly equal, i.e. case sensitive comparison
 		leftVal := left.(*object.String).Value
 		rightVal := right.(*object.String).Value
-		return &object.Boolean{Value: leftVal == rightVal}
+		if leftVal == rightVal {
+			return &object.Numeric{Value: -1.0}
+		} else {
+			return &object.Numeric{Value: 0}
+		}
 	case operator == "==":
 		// "interestingly equal", i.e. case-insensitive comparison
 		leftVal := left.(*object.String).Value
 		rightVal := right.(*object.String).Value
-		return &object.Boolean{Value: strings.EqualFold(leftVal, rightVal)}
+		if strings.EqualFold(leftVal, rightVal) {
+			return &object.Numeric{Value: -1.0}
+		} else {
+			return &object.Numeric{Value: 0}
+		}
 	default:
 		return newError("%s (unknown operator: %s %s %s)", syntaxerror.ErrorMessage(syntaxerror.InvalidExpressionFound), left.Type(), operator, right.Type())
 	}
@@ -441,17 +636,17 @@ func evalStringInfixExpression(operator string, left, right object.Object) objec
 }
 
 func evalBooleanInfixExpression(operator string, left, right object.Object) object.Object {
-	leftVal := left.(*object.Boolean).Value
-	rightVal := right.(*object.Boolean).Value
+	log.Println("evalBooleanInfixExpression is still being called!")
+	leftVal := left.(*object.Numeric).Value
+	rightVal := right.(*object.Numeric).Value
 
 	switch operator {
 	case "AND":
-		return &object.Boolean{Value: leftVal && rightVal}
+		return &object.Numeric{Value: float64(int(leftVal) & int(rightVal))}
 	case "OR":
-		return &object.Boolean{Value: leftVal || rightVal}
+		return &object.Numeric{Value: float64(int(leftVal) | int(rightVal))}
 	case "XOR":
-		// Ummm.... https://stackoverflow.com/questions/23025694/is-there-no-xor-operator-for-booleans-in-golang
-		return &object.Boolean{Value: leftVal != rightVal}
+		return &object.Numeric{Value: float64(int(leftVal) ^ int(rightVal))}
 	default:
 		return newError("%s (unknown operator: %s %s %s)", syntaxerror.ErrorMessage(syntaxerror.InvalidExpressionFound), left.Type(), operator, right.Type())
 	}
@@ -476,6 +671,12 @@ func evalNumericInfixExpression(operator string, left, right object.Object) obje
 		return nativeBoolToBooleanObject(leftVal > rightVal)
 	case "=":
 		return nativeBoolToBooleanObject(leftVal == rightVal)
+	case "AND":
+		return &object.Numeric{Value: float64(int(leftVal) & int(rightVal))}
+	case "OR":
+		return &object.Numeric{Value: float64(int(leftVal) | int(rightVal))}
+	case "XOR":
+		return &object.Numeric{Value: float64(int(leftVal) ^ int(rightVal))}
 	default:
 		return newError("%s (unknown operator: %s %s %s)", syntaxerror.ErrorMessage(syntaxerror.InvalidExpressionFound), left.Type(), operator, right.Type())
 	}
@@ -493,16 +694,18 @@ func evalPrefixExpression(operator string, right object.Object) object.Object {
 }
 
 func evalNotOperatorExpression(right object.Object) object.Object {
-	switch right {
-	case TRUE:
-		return FALSE
-	case FALSE:
-		return TRUE
-	case NULL:
-		return TRUE
-	default:
-		return FALSE
-	}
+	val := right.(*object.Numeric).Value
+	return &object.Numeric{Value: float64(^int(val))}
+	//switch right {
+	//case TRUE:
+	//	return FALSE
+	//case FALSE:
+	//	return TRUE
+	//case NULL:
+	//	return TRUE
+	//default:
+	//	return FALSE
+	//}
 }
 
 func evalMinusPrefixOperatorExpression(right object.Object) object.Object {
@@ -513,7 +716,7 @@ func evalMinusPrefixOperatorExpression(right object.Object) object.Object {
 	return &object.Numeric{Value: -value}
 }
 
-func nativeBoolToBooleanObject(input bool) *object.Boolean {
+func nativeBoolToBooleanObject(input bool) *object.Numeric {
 	if input {
 		return TRUE
 	}

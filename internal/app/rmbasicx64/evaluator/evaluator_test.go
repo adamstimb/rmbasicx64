@@ -65,39 +65,38 @@ func testNumericObject(t *testing.T, obj object.Object, expected float64) bool {
 func TestEvalBooleanExpression(t *testing.T) {
 	tests := []struct {
 		input    string
-		expected bool
+		expected float64
 	}{
-		{"true", true},
-		{"false", false},
-		{"1 < 2", true},
-		{"1 > 2", false},
-		{"1 < 1", false},
-		{"1 > 1", false},
-		//{"NOT 1 = 1", false},
-		{"1 = 1", true},
-		{"1 = 2", false},
-		//{"NOT 1 = 2", true},
-		{"true = true", true},
-		{"false = false", true},
-		{"true = false", false},
-		//{"true != false", true},
-		//{"false != true", true},
-		{"(1 < 2) = true", true},
-		{"(1 < 2) = false", false},
-		{"(1 > 2) = true", false},
-		{"(1 > 2) = false", true},
-		{"true and true", true},
-		{"true and false", false},
-		{"true or false", true},
-		{"true xor false", true},
-		{"\"this\" = \"that\"", false},
-		{"\"that\" = \"that\"", true},
-		{"\"this\" == \"THIS\"", true},
+		{"true", -1.0},
+		{"false", 0},
+		{"1 < 2", -1.0},
+		{"1 > 2", 0},
+		{"1 < 1", 0},
+		{"1 > 1", 0},
+		{"NOT TRUE", 0},
+		{"NOT FALSE", -1.0},
+		{"NOT 1 = 1", 0},
+		{"1 = 1", -1.0},
+		{"1 = 2", 0},
+		{"true = true", -1.0},
+		{"false = false", -1.0},
+		{"true = false", 0},
+		{"(1 < 2) = true", -1.0},
+		{"(1 < 2) = false", 0},
+		{"(1 > 2) = true", 0},
+		{"(1 > 2) = false", -1.0},
+		{"true and true", -1.0},
+		{"true and false", 0},
+		{"true or false", -1.0},
+		{"true xor false", -1.0},
+		{"\"this\" = \"that\"", 0},
+		{"\"that\" = \"that\"", -1.0},
+		{"\"this\" == \"THIS\"", -1.0},
 	}
 
 	for _, tt := range tests {
 		evaluated := testEval(tt.input)
-		testBooleanObject(t, evaluated, tt.expected)
+		testNumericObject(t, evaluated, tt.expected)
 	}
 }
 

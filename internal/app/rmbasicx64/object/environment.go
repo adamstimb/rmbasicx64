@@ -1,9 +1,84 @@
 package object
 
+import (
+	"fmt"
+	"sort"
+)
+
+type program struct {
+	lines       map[int]string
+	sortedIndex []int
+	curLocation int
+}
+
+func (p *program) New() {
+	p.lines = make(map[int]string)
+	p.sortedIndex = []int{}
+	p.curLocation = 0
+}
+func (p *program) Sort() {
+	keys := []int{}
+	for k := range p.lines {
+		keys = append(keys, k)
+	}
+	sort.Ints(keys)
+	p.sortedIndex = keys
+}
+func (p *program) Start() {
+	p.curLocation = 0
+}
+func (p *program) Next() {
+	p.curLocation += 1
+}
+
+func (p *program) GetLineNumber() int {
+	if len(p.lines) > 0 {
+		return p.sortedIndex[p.curLocation]
+	} else {
+		return -1
+	}
+}
+func (p *program) GetLine() string {
+	if len(p.lines) > 0 {
+		return p.lines[p.sortedIndex[p.curLocation]]
+	} else {
+		return ""
+	}
+}
+func (p *program) AddLine(lineNumber int, line string) {
+	if line == "" {
+		// delete line if it exists
+		delete(p.lines, lineNumber)
+		p.Sort()
+	} else {
+		p.lines[lineNumber] = line
+		p.Sort()
+	}
+}
+func (p *program) EndOfProgram() bool {
+	if p.curLocation >= len(p.lines) {
+		// end of program
+		return true
+	} else {
+		return false
+	}
+}
+func (p *program) List() []string {
+	if len(p.lines) == 0 {
+		return nil
+	}
+	listing := []string{}
+	for i := 0; i < len(p.lines); i++ {
+		listing = append(listing, fmt.Sprintf("%d %s", p.sortedIndex[i], p.lines[p.sortedIndex[i]]))
+	}
+	return listing
+}
+
 type Environment struct {
 	store   map[string]Object
 	Degrees bool
 	outer   *Environment
+	Program program
 }
 
 func (e *Environment) Get(name string) (Object, bool) {
@@ -30,13 +105,21 @@ func (e *Environment) Set(name string, val Object) Object {
 	e.store[name] = val
 	return val
 }
-
+func (e *Environment) Wipe() {
+	e.Program.New()
+	e.store = make(map[string]Object)
+	e.Degrees = true
+	e.outer = nil
+}
 func NewEnvironment() *Environment {
 	s := make(map[string]Object)
+	p := &program{}
+	p.New()
 	return &Environment{
 		store:   s,
 		Degrees: true,
 		outer:   nil,
+		Program: *p,
 	}
 }
 

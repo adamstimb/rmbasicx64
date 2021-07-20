@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/lexer"
@@ -98,7 +99,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.TRUE, p.parseBoolean)
 	p.registerPrefix(token.FALSE, p.parseBoolean)
 	p.registerPrefix(token.LeftParen, p.parseGroupedExpression)
-	p.registerPrefix(token.IF, p.parseIfExpression)
+	//p.registerPrefix(token.IF, p.parseIfExpression)
 	p.registerPrefix(token.FUNCTION, p.parseFunctionDefinition)
 	p.registerPrefix(token.StringLiteral, p.parseStringLiteral)
 	p.infixParseFns = make(map[string]infixParseFn)
@@ -136,9 +137,17 @@ func (p *Parser) parseGroupedExpression() ast.Expression {
 }
 
 func (p *Parser) parseBoolean() ast.Expression {
-	return &ast.Boolean{
+	retVal := -1.0 // true
+	if p.curTokenIs(token.FALSE) {
+		retVal = 0
+		// Need to hack the literal as well
+		p.curToken.Literal = "0"
+	} else {
+		p.curToken.Literal = "-1.0"
+	}
+	return &ast.NumericLiteral{
 		Token: p.curToken,
-		Value: p.curTokenIs(token.TRUE),
+		Value: retVal,
 	}
 }
 
@@ -215,36 +224,33 @@ func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 	return block
 }
 
-func (p *Parser) parseIfExpression() ast.Expression {
-	expression := &ast.IfExpression{
+func (p *Parser) parseIfStatement() ast.Statement {
+	stmt := &ast.IfStatement{
 		Token: p.curToken,
 	}
 
-	if !p.expectPeek(token.LeftParen) {
+	//if !p.expectPeek(token.LeftParen) {
+	//	return nil
+	//}
+
+	p.nextToken() // consume IF
+
+	stmt.Condition = p.parseExpression(LOWEST)
+
+	if !p.expectPeek(token.THEN) {
+		// this will be a syntax error
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.ThenExpected)
 		return nil
 	}
-	p.nextToken()
+	p.nextToken() // consume THEN
 
-	expression.Condition = p.parseExpression(LOWEST)
+	stmt.Consequence = p.parseIfConsequence()
 
-	if !p.expectPeek(token.RightParen) {
-		return nil
-	}
-
-	if !p.expectPeek(token.LeftCurlyBrace) {
-		return nil
-	}
-
-	expression.Consequence = p.parseBlockStatement()
-
-	if p.peekTokenIs(token.ELSE) {
+	if p.curTokenIs(token.ELSE) {
 		p.nextToken()
-		if !p.expectPeek(token.LeftCurlyBrace) {
-			return nil
-		}
-		expression.Alternative = p.parseBlockStatement()
+		stmt.Alternative = p.ParseLine()
 	}
-	return expression
+	return stmt
 }
 
 // -------------------------------------------------------------------------
@@ -402,6 +408,30 @@ func (p *Parser) parseByeStatement() *ast.ByeStatement {
 	return nil
 }
 
+func (p *Parser) parseListStatement() *ast.ListStatement {
+	stmt := &ast.ListStatement{Token: p.curToken}
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseRunStatement() *ast.RunStatement {
+	stmt := &ast.RunStatement{Token: p.curToken}
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseNewStatement() *ast.NewStatement {
+	stmt := &ast.NewStatement{Token: p.curToken}
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parseClsStatement() *ast.ClsStatement {
 	stmt := &ast.ClsStatement{Token: p.curToken}
 	if p.endOfInstruction() {
@@ -417,6 +447,36 @@ func (p *Parser) parsePrintStatement() *ast.PrintStatement {
 		stmt.Value = &ast.StringLiteral{Value: ""}
 	}
 	p.nextToken()
+	stmt.Value = p.parseExpression(LOWEST)
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseSaveStatement() *ast.SaveStatement {
+	stmt := &ast.SaveStatement{Token: p.curToken}
+	p.nextToken()
+	// Handle SAVE without args
+	if !(p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF)) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.ExactFilenameIsNeeded)
+		return nil
+	}
+	stmt.Value = p.parseExpression(LOWEST)
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseLoadStatement() *ast.LoadStatement {
+	stmt := &ast.LoadStatement{Token: p.curToken}
+	p.nextToken()
+	// Handle LOAD without args
+	if !(p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF)) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.ExactFilenameIsNeeded)
+		return nil
+	}
 	stmt.Value = p.parseExpression(LOWEST)
 	if p.endOfInstruction() {
 		return stmt
@@ -663,7 +723,7 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 }
 
 func (p *Parser) noPrefixParseFnError(t string) {
-	msg := fmt.Sprintf("no prefix parse function for %s found", t)
+	msg := fmt.Sprintf("no prefix parse function for %s found, current token=%s", t, p.curToken.Literal)
 	p.errors = append(p.errors, msg)
 }
 
@@ -689,7 +749,6 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 
 	stmt := &ast.ExpressionStatement{Token: p.curToken}
-
 	stmt.Expression = p.parseExpression(LOWEST)
 
 	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) {
@@ -702,12 +761,73 @@ func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 // -------------------------------------------------------------------------
 // -- Line
 
+func (p *Parser) prettyPrint() string {
+	// Collect string
+	lineString := ""
+	for !(p.curTokenIs(token.EOF) || p.curTokenIs(token.NewLine)) {
+		// Put string literals in double-quotes
+		if p.curToken.TokenType == token.StringLiteral {
+			lineString += fmt.Sprintf("%q", p.curToken.Literal) + " "
+			p.nextToken()
+			continue
+		}
+		// Never a space after (
+		if p.curToken.TokenType == token.LeftParen {
+			lineString += "("
+			p.nextToken()
+			continue
+		}
+		// Remove trailing space if )
+		if len(lineString) > 0 {
+			if lineString[len(lineString)-1] == ' ' && p.curToken.TokenType == token.RightParen {
+				lineString = lineString[0 : len(lineString)-1]
+				lineString += ")"
+				p.nextToken()
+				continue
+			}
+		}
+		// Otherwise add literal with trailing space
+		lineString += p.curToken.Literal + " "
+		p.nextToken()
+	}
+	return strings.TrimSpace(lineString)
+}
+
 func (p *Parser) ParseLine() *ast.Line {
+
+	statements := []ast.Statement{}
+
+	// Catch new line for stored program
+	if p.curTokenIs(token.NumericLiteral) {
+		// Get line number
+		val, _ := strconv.ParseFloat(p.curToken.Literal, 64)
+		lineNumber := int(val)
+		p.nextToken()
+		// Extract and pretty print the line string
+		lineString := p.prettyPrint()
+		return &ast.Line{Statements: nil, LineNumber: lineNumber, LineString: lineString}
+	}
+
+	for !(p.curTokenIs(token.EOF) || p.curTokenIs(token.NewLine)) {
+		statements = append(statements, p.parseStatement())
+		p.nextToken()
+		if p.curTokenIs(token.Colon) {
+			p.nextToken()
+		}
+	}
+
+	return &ast.Line{Statements: statements}
+}
+
+func (p *Parser) parseIfConsequence() *ast.Line {
 
 	statements := []ast.Statement{}
 
 	for !(p.curTokenIs(token.EOF) || p.curTokenIs(token.NewLine)) {
 		statements = append(statements, p.parseStatement())
+		if p.curTokenIs(token.ELSE) {
+			break
+		}
 		p.nextToken()
 		if p.curTokenIs(token.Colon) {
 			p.nextToken()
@@ -722,12 +842,24 @@ func (p *Parser) ParseLine() *ast.Line {
 
 func (p *Parser) parseStatement() ast.Statement {
 	switch p.curToken.TokenType {
+	case token.ELSE:
+		return nil
 	case token.REM:
 		return p.parseRemStatement()
 	case token.BYE:
 		return p.parseByeStatement()
+	case token.LIST:
+		return p.parseListStatement()
+	case token.RUN:
+		return p.parseRunStatement()
+	case token.NEW:
+		return p.parseNewStatement()
 	case token.CLS:
 		return p.parseClsStatement()
+	case token.SAVE:
+		return p.parseSaveStatement()
+	case token.LOAD:
+		return p.parseLoadStatement()
 	case token.SET:
 		p.nextToken()
 		switch p.curToken.TokenType {
@@ -757,6 +889,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		}
 	case token.RESULT:
 		return p.parseResultStatement()
+	case token.IF:
+		return p.parseIfStatement()
 	default:
 		return p.parseExpressionStatement()
 	}
