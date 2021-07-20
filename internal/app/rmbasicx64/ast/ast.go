@@ -52,6 +52,8 @@ func (p *Program) String() string {
 // This represents a line of code, which code contain several statements
 type Line struct {
 	Statements []Statement
+	LineNumber int
+	LineString string
 }
 
 func (l *Line) lineNode() {}
@@ -91,12 +93,11 @@ func (bs *BlockStatement) String() string {
 	return out.String()
 }
 
-// redundant?
 type IfExpression struct {
 	Token       token.Token // the If token
 	Condition   Expression
-	Consequence *BlockStatement
-	Alternative *BlockStatement
+	Consequence *Line
+	Alternative *Line
 }
 
 func (ie *IfExpression) expressionNode() {}
@@ -107,11 +108,35 @@ func (ie *IfExpression) String() string {
 	var out bytes.Buffer
 	out.WriteString("IF")
 	out.WriteString(ie.Condition.String())
-	out.WriteString(" ")
+	out.WriteString(" THEN")
 	out.WriteString(ie.Consequence.String())
 	if ie.Alternative != nil {
 		out.WriteString("ELSE ")
 		out.WriteString(ie.Alternative.String())
+	}
+	return out.String()
+}
+
+type IfStatement struct {
+	Token       token.Token // the If token
+	Condition   Expression
+	Consequence *Line
+	Alternative *Line
+}
+
+func (s *IfStatement) statementNode() {}
+func (s *IfStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *IfStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString("IF")
+	out.WriteString(s.Condition.String())
+	out.WriteString(" THEN")
+	out.WriteString(s.Consequence.String())
+	if s.Alternative != nil {
+		out.WriteString("ELSE ")
+		out.WriteString(s.Alternative.String())
 	}
 	return out.String()
 }
@@ -300,6 +325,48 @@ func (bs *ByeStatement) String() string {
 	return out.String()
 }
 
+type ListStatement struct {
+	Token token.Token // the token.Bye token
+}
+
+func (s *ListStatement) statementNode() {}
+func (s *ListStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *ListStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type RunStatement struct {
+	Token token.Token // the token.Bye token
+}
+
+func (s *RunStatement) statementNode() {}
+func (s *RunStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *RunStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type NewStatement struct {
+	Token token.Token // the token.Bye token
+}
+
+func (s *NewStatement) statementNode() {}
+func (s *NewStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *NewStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
 type ClsStatement struct {
 	Token token.Token
 }
@@ -432,6 +499,38 @@ func (ps *PrintStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(ps.TokenLiteral() + " ")
 	out.WriteString(ps.Value.String())
+	return out.String()
+}
+
+type SaveStatement struct {
+	Token token.Token
+	Value Expression
+}
+
+func (s *SaveStatement) statementNode() {}
+func (s *SaveStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *SaveStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	out.WriteString(s.Value.String())
+	return out.String()
+}
+
+type LoadStatement struct {
+	Token token.Token
+	Value Expression
+}
+
+func (s *LoadStatement) statementNode() {}
+func (s *LoadStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *LoadStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	out.WriteString(s.Value.String())
 	return out.String()
 }
 

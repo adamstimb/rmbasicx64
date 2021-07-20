@@ -34,7 +34,7 @@ func welcomeScreen(g *game.Game) {
 	g.Print("This is a tribute project and is in no way linked to or endorsed by RM plc.")
 	g.Put(13)
 	g.Put(13)
-	g.Print("RM BASICx64 Version 0.01A 19th July 2021")
+	g.Print("RM BASICx64 Version 0.01B 21st July 2021")
 	g.Put(13)
 	// Generate and print workspace available notification
 	workspaceAvailable := fmt.Sprintf("%dG bytes workspace available.", bToGb(memInfo.Available))
@@ -64,7 +64,7 @@ func repl(g *game.Game) {
 			}
 			// And this is temporary while we're still migrating from Monkey to RM Basic
 			if len(p.Errors()) > 0 {
-				g.Print("Oops! Some random parsing error occured. These will be handled properly downstream by for now here's some spewage:")
+				g.Print("Oops! Some random parsing error occurred. These will be handled properly downstream by for now here's some spewage:")
 				g.Put(13)
 				for _, msg := range p.Errors() {
 					g.Print(msg)
@@ -72,9 +72,13 @@ func repl(g *game.Game) {
 				}
 				continue
 			}
+			// Add new line to stored program
+			if line.Statements == nil {
+				env.Program.AddLine(line.LineNumber, line.LineString)
+				continue
+			}
 			// Execute each statement in the inputted line.  If an error occurs, print the
-			// error message and stop.  If a warning is received, print the warning but
-			// continue execution.
+			// error message and stop.
 			for _, stmt := range line.Statements {
 				obj := evaluator.Eval(g, stmt, env)
 				if errorMsg, ok := obj.(*object.Error); ok {

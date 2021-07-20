@@ -1,0 +1,2 @@
+10 SET MODE 80
+30 SET PEN 2 : PRINT "So badass" : SET PEN 3
