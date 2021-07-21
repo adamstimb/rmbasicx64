@@ -1,4 +1,4 @@
 build/rmbasicx64
 build/rmbasicx64.exe
-build/rmbasic.msi
+build/rmbasicx64setup.exe
 .env
