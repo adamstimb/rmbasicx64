@@ -65,7 +65,9 @@ func (s *Lexer) match(r rune) bool {
 
 // addToken creates a new token and adds it the slice of tokens
 func (s *Lexer) addToken(TokenType string, literal string) {
-	s.Tokens = append(s.Tokens, token.Token{TokenType: TokenType, Literal: literal})
+	index := len(s.Tokens)
+	s.Tokens = append(s.Tokens, token.Token{TokenType: TokenType, Literal: literal, Index: index})
+	//token.PrintToken(token.Token{TokenType: TokenType, Literal: literal, Index: index})
 }
 
 // getString extracts a string literal from the source code
@@ -98,9 +100,11 @@ func (s *Lexer) getString() {
 func (s *Lexer) getHexLiteral(firstRune rune) {
 	hexVal := []rune{}
 	hexVal = append(hexVal, firstRune)
+	rx, _ := regexp.Compile("[0-9a-fA-F]")
 	for {
 		r := s.peek()
-		isHex, _ := regexp.Match("[0-9a-fA-F]", []byte(string(r)))
+		isHex := rx.Match([]byte(string(r)))
+		//isHex, _ := regexp.Match("[0-9a-fA-F]", []byte(string(r)))
 		if isHex {
 			// is hex so consume and add to value
 			hexVal = append(hexVal, s.advance())

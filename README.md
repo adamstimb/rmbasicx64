@@ -33,7 +33,8 @@ Change directory and run the build script for your operating system:
 cd rmbasicx64
 cd scripts
 ./build-linux.sh    # To build a Linux executable, or...
-./build-windows.sh  # ... to build a Windows .exe
+./build-windows.sh  # ... to build a Windows .exe, or...
+./build-this.sh     # ... attempt to build on the current platform if neither Winoows nor Linux
 ```
 
 If you're running Linux, you can run the executable straight away:
