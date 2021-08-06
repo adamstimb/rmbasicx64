@@ -271,7 +271,7 @@ func evalLoadStatement(g *game.Game, stmt *ast.LoadStatement, env *object.Enviro
 		// Check of parser errors here.  Parser errors are handled just like evaluation errors but
 		// obviously we'll skip evaluation if parsing already failed.
 		if errorMsg, hasError := p.GetError(); hasError {
-			g.Print(fmt.Sprintf("Syntax error: %s", errorMsg))
+			g.Print(errorMsg)
 			g.Put(13)
 			continue
 		}
@@ -295,7 +295,7 @@ func evalLoadStatement(g *game.Game, stmt *ast.LoadStatement, env *object.Enviro
 		for _, stmt := range line.Statements {
 			obj := Eval(g, stmt, env)
 			if errorMsg, ok := obj.(*object.Error); ok {
-				g.Print(fmt.Sprintf("Syntax error: %s", errorMsg.Message))
+				g.Print(errorMsg.Message)
 				g.Put(13)
 				break
 			}
@@ -446,7 +446,7 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 		// Check of parser errors here.  Parser errors are handled just like evaluation errors but
 		// obviously we'll skip evaluation if parsing already failed.
 		if errorMsg, hasError := p.GetError(); hasError {
-			g.Print(fmt.Sprintf("Syntax error in line %d: %s", env.Program.GetLineNumber(), errorMsg))
+			g.Print(fmt.Sprintf("%s in line %d", errorMsg, env.Program.GetLineNumber()))
 			g.Put(13)
 			return nil
 		}
@@ -465,7 +465,7 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 		for _, stmt := range line.Statements {
 			obj := Eval(g, stmt, env)
 			if errorMsg, ok := obj.(*object.Error); ok {
-				g.Print(fmt.Sprintf("Syntax error in line %d: %s", env.Program.GetLineNumber(), errorMsg.Message))
+				g.Print(fmt.Sprintf("%s in line %d", errorMsg, env.Program.GetLineNumber()))
 				g.Put(13)
 				return nil
 			}
@@ -476,7 +476,7 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 		env.Program.Next()
 	}
 	if g.BreakInterruptDetected {
-		g.Print(fmt.Sprintf("%s at line %d", syntaxerror.ErrorMessage(syntaxerror.InterruptedByBreakKey), env.Program.GetLineNumber()))
+		g.Print(fmt.Sprintf("%s in line %d", syntaxerror.ErrorMessage(syntaxerror.InterruptedByBreakKey), env.Program.GetLineNumber()))
 		g.Put(13)
 		time.Sleep(150 * time.Millisecond)
 	}

@@ -9,6 +9,7 @@ import (
 type Token struct {
 	TokenType string
 	Literal   string
+	Index     int
 }
 
 // Token types are defined here

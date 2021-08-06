@@ -58,7 +58,7 @@ func repl(g *game.Game) {
 			// Check of parser errors here.  Parser errors are handled just like evaluation errors but
 			// obviously we'll skip evaluation if parsing already failed.
 			if errorMsg, hasError := p.GetError(); hasError {
-				g.Print(fmt.Sprintf("Syntax error: %s", errorMsg))
+				g.Print(errorMsg)
 				g.Put(13)
 				continue
 			}
