@@ -758,10 +758,16 @@ func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 	return stmt
 }
 
+func (p *Parser) JumpToToken(i int) {
+	p.l.JumpToToken(i)
+	p.nextToken()
+	p.nextToken()
+}
+
 // -------------------------------------------------------------------------
 // -- Line
 
-func (p *Parser) prettyPrint() string {
+func (p *Parser) PrettyPrint() string {
 	// Collect string
 	lineString := ""
 	for !(p.curTokenIs(token.EOF) || p.curTokenIs(token.NewLine)) {
@@ -804,7 +810,7 @@ func (p *Parser) ParseLine() *ast.Line {
 		lineNumber := int(val)
 		p.nextToken()
 		// Extract and pretty print the line string
-		lineString := p.prettyPrint()
+		lineString := p.PrettyPrint()
 		return &ast.Line{Statements: nil, LineNumber: lineNumber, LineString: lineString}
 	}
 
