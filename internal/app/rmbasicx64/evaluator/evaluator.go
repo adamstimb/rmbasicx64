@@ -3,7 +3,6 @@ package evaluator
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math"
 	"os"
 	"strings"
@@ -105,7 +104,6 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 			Value: node.Value,
 		}
 	case *ast.Boolean:
-		log.Println("still getting Boolean branches to evaluate")
 		return nativeBoolToBooleanObject(node.Value)
 	case *ast.PrefixExpression:
 		right := Eval(g, node.Right, env)
@@ -273,11 +271,17 @@ func evalLoadStatement(g *game.Game, stmt *ast.LoadStatement, env *object.Enviro
 		if errorMsg, hasError := p.GetError(); hasError {
 			g.Print(errorMsg)
 			g.Put(13)
+			p.JumpToToken(0)
+			g.Print(p.PrettyPrint())
+			g.Put(13)
 			continue
 		}
 		// And this is temporary while we're still migrating from Monkey to RM Basic
 		if len(p.Errors()) > 0 {
 			g.Print("Oops! Some random parsing error occurred. These will be handled properly downstream by for now here's some spewage:")
+			g.Put(13)
+			p.JumpToToken(0)
+			g.Print(p.PrettyPrint())
 			g.Put(13)
 			for _, msg := range p.Errors() {
 				g.Print(msg)
@@ -296,6 +300,9 @@ func evalLoadStatement(g *game.Game, stmt *ast.LoadStatement, env *object.Enviro
 			obj := Eval(g, stmt, env)
 			if errorMsg, ok := obj.(*object.Error); ok {
 				g.Print(errorMsg.Message)
+				g.Put(13)
+				p.JumpToToken(0)
+				g.Print(p.PrettyPrint())
 				g.Put(13)
 				break
 			}
@@ -448,11 +455,17 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 		if errorMsg, hasError := p.GetError(); hasError {
 			g.Print(fmt.Sprintf("%s in line %d", errorMsg, env.Program.GetLineNumber()))
 			g.Put(13)
+			p.JumpToToken(0)
+			g.Print(p.PrettyPrint())
+			g.Put(13)
 			return nil
 		}
 		// And this is temporary while we're still migrating from Monkey to RM Basic
 		if len(p.Errors()) > 0 {
 			g.Print("Oops! Some random parsing error occurred. These will be handled properly downstream by for now here's some spewage:")
+			g.Put(13)
+			p.JumpToToken(0)
+			g.Print(p.PrettyPrint())
 			g.Put(13)
 			for _, msg := range p.Errors() {
 				g.Print(msg)
@@ -466,6 +479,9 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 			obj := Eval(g, stmt, env)
 			if errorMsg, ok := obj.(*object.Error); ok {
 				g.Print(fmt.Sprintf("%s in line %d", errorMsg, env.Program.GetLineNumber()))
+				g.Put(13)
+				p.JumpToToken(0)
+				g.Print(p.PrettyPrint())
 				g.Put(13)
 				return nil
 			}
@@ -636,7 +652,6 @@ func evalStringInfixExpression(operator string, left, right object.Object) objec
 }
 
 func evalBooleanInfixExpression(operator string, left, right object.Object) object.Object {
-	log.Println("evalBooleanInfixExpression is still being called!")
 	leftVal := left.(*object.Numeric).Value
 	rightVal := right.(*object.Numeric).Value
 
