@@ -115,7 +115,8 @@ func (s *String) Inspect() string {
 }
 
 type Error struct {
-	Message string
+	Message         string
+	ErrorTokenIndex int
 }
 
 func (e *Error) Type() ObjectType {

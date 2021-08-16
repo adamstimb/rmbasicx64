@@ -19,6 +19,11 @@ type Lexer struct {
 	currentTokenPosition int           // position of the buffer
 }
 
+// JumpToToken sets the currentTokenPosition
+func (s *Lexer) JumpToToken(i int) {
+	s.currentTokenPosition = i
+}
+
 // isAtEnd returns true if the offset is at the end of the source code
 func (s *Lexer) isAtEnd() bool {
 	return s.CurrentPosition >= len(s.Source)

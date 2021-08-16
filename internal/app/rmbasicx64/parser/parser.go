@@ -45,13 +45,14 @@ type (
 )
 
 type Parser struct {
-	l              *lexer.Lexer
-	curToken       token.Token
-	peekToken      token.Token
-	prefixParseFns map[string]prefixParseFn
-	infixParseFns  map[string]infixParseFn
-	errors         []string // For debugging only - RM Basic-ish error handling to be implemented separately - or not?
-	errorMsg       string   // This is for the holding parse error.  We don't collect errors before but fail on the first one.
+	l               *lexer.Lexer
+	curToken        token.Token
+	peekToken       token.Token
+	prefixParseFns  map[string]prefixParseFn
+	infixParseFns   map[string]infixParseFn
+	errors          []string // For debugging only - RM Basic-ish error handling to be implemented separately - or not?
+	errorMsg        string   // This is for the holding parse error.  We don't collect errors before but fail on the first one.
+	ErrorTokenIndex int      // the index of the token where an error occured
 }
 
 func (p *Parser) peekPrecedence() int {
@@ -83,9 +84,10 @@ func (p *Parser) nextToken() {
 
 func New(l *lexer.Lexer) *Parser {
 	p := &Parser{
-		l:        l,
-		errors:   []string{},
-		errorMsg: "",
+		l:               l,
+		errors:          []string{},
+		errorMsg:        "",
+		ErrorTokenIndex: -1,
 	}
 	// Read 2 tokens so curToken and peekToken are both set
 	p.nextToken()
@@ -199,6 +201,7 @@ func (p *Parser) expectPeek(t string) bool {
 func (p *Parser) endOfInstruction() bool {
 	if !(p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF)) {
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+		p.ErrorTokenIndex = p.curToken.Index + 1
 		return false
 	}
 	return true
@@ -240,6 +243,7 @@ func (p *Parser) parseIfStatement() ast.Statement {
 	if !p.expectPeek(token.THEN) {
 		// this will be a syntax error
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.ThenExpected)
+		p.ErrorTokenIndex = p.curToken.Index + 1
 		return nil
 	}
 	p.nextToken() // consume THEN
@@ -456,12 +460,13 @@ func (p *Parser) parsePrintStatement() *ast.PrintStatement {
 
 func (p *Parser) parseSaveStatement() *ast.SaveStatement {
 	stmt := &ast.SaveStatement{Token: p.curToken}
-	p.nextToken()
 	// Handle SAVE without args
-	if !(p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF)) {
-		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.ExactFilenameIsNeeded)
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded)
 		return nil
 	}
+	p.nextToken()
 	stmt.Value = p.parseExpression(LOWEST)
 	if p.endOfInstruction() {
 		return stmt
@@ -471,12 +476,13 @@ func (p *Parser) parseSaveStatement() *ast.SaveStatement {
 
 func (p *Parser) parseLoadStatement() *ast.LoadStatement {
 	stmt := &ast.LoadStatement{Token: p.curToken}
-	p.nextToken()
 	// Handle LOAD without args
-	if !(p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF)) {
-		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.ExactFilenameIsNeeded)
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index
 		return nil
 	}
+	p.nextToken()
 	stmt.Value = p.parseExpression(LOWEST)
 	if p.endOfInstruction() {
 		return stmt
@@ -488,6 +494,7 @@ func (p *Parser) parseSetModeStatement() *ast.SetModeStatement {
 	stmt := &ast.SetModeStatement{Token: p.curToken}
 	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index
 		return nil
 	}
 	p.nextToken()
@@ -502,6 +509,7 @@ func (p *Parser) parseSetPaperStatement() *ast.SetPaperStatement {
 	stmt := &ast.SetPaperStatement{Token: p.curToken}
 	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index + 1
 		return nil
 	}
 	p.nextToken()
@@ -516,6 +524,7 @@ func (p *Parser) parseSetBorderStatement() *ast.SetBorderStatement {
 	stmt := &ast.SetBorderStatement{Token: p.curToken}
 	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index + 1
 		return nil
 	}
 	p.nextToken()
@@ -530,6 +539,7 @@ func (p *Parser) parseSetPenStatement() *ast.SetPenStatement {
 	stmt := &ast.SetPenStatement{Token: p.curToken}
 	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index + 1
 		return nil
 	}
 	p.nextToken()
@@ -544,6 +554,7 @@ func (p *Parser) parseSetDegStatement() *ast.SetDegStatement {
 	stmt := &ast.SetDegStatement{Token: p.curToken}
 	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index + 1
 		return nil
 	}
 	p.nextToken()
@@ -558,6 +569,22 @@ func (p *Parser) parseSetRadStatement() *ast.SetRadStatement {
 	stmt := &ast.SetRadStatement{Token: p.curToken}
 	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index + 1
+		return nil
+	}
+	p.nextToken()
+	stmt.Value = p.parseExpression(LOWEST)
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseGotoStatement() *ast.GotoStatement {
+	stmt := &ast.GotoStatement{Token: p.curToken}
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index + 1
 		return nil
 	}
 	p.nextToken()
@@ -576,6 +603,7 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 
 	if !p.expectPeek(token.IdentifierLiteral) {
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+		p.ErrorTokenIndex = p.curToken.Index + 1
 		return nil
 	}
 
@@ -583,6 +611,7 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 
 	if !p.peekTokenIs(token.Assign) && !p.peekTokenIs(token.Equal) {
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.InvalidExpressionFound)
+		p.ErrorTokenIndex = p.curToken.Index + 1
 		return nil
 	}
 	p.nextToken()
@@ -593,6 +622,7 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 
 	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.InvalidExpression)
+		p.ErrorTokenIndex = p.curToken.Index + 1
 		return nil
 	}
 
@@ -758,13 +788,28 @@ func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 	return stmt
 }
 
+func (p *Parser) JumpToToken(i int) {
+	p.l.JumpToToken(i)
+	p.nextToken()
+	p.nextToken()
+}
+
 // -------------------------------------------------------------------------
 // -- Line
 
-func (p *Parser) prettyPrint() string {
+func (p *Parser) PrettyPrint() string {
 	// Collect string
 	lineString := ""
-	for !(p.curTokenIs(token.EOF) || p.curTokenIs(token.NewLine)) {
+	for {
+		if p.ErrorTokenIndex > 0 {
+			if p.curToken.Index == p.ErrorTokenIndex {
+				lineString += ">> "
+			}
+		}
+		// Break if end of line
+		if p.curTokenIs(token.EOF) || p.curTokenIs(token.NewLine) {
+			break
+		}
 		// Put string literals in double-quotes
 		if p.curToken.TokenType == token.StringLiteral {
 			lineString += fmt.Sprintf("%q", p.curToken.Literal) + " "
@@ -804,7 +849,7 @@ func (p *Parser) ParseLine() *ast.Line {
 		lineNumber := int(val)
 		p.nextToken()
 		// Extract and pretty print the line string
-		lineString := p.prettyPrint()
+		lineString := p.PrettyPrint()
 		return &ast.Line{Statements: nil, LineNumber: lineNumber, LineString: lineString}
 	}
 
@@ -860,6 +905,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseSaveStatement()
 	case token.LOAD:
 		return p.parseLoadStatement()
+	case token.GOTO:
+		return p.parseGotoStatement()
 	case token.SET:
 		p.nextToken()
 		switch p.curToken.TokenType {
@@ -877,6 +924,7 @@ func (p *Parser) parseStatement() ast.Statement {
 			return p.parseSetRadStatement()
 		default:
 			p.errorMsg = syntaxerror.ErrorMessage((syntaxerror.WrongSetAskAttribute))
+			p.ErrorTokenIndex = p.curToken.Index
 			return nil
 		}
 	case token.PRINT:

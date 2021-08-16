@@ -60,11 +60,17 @@ func repl(g *game.Game) {
 			if errorMsg, hasError := p.GetError(); hasError {
 				g.Print(errorMsg)
 				g.Put(13)
+				p.JumpToToken(0)
+				g.Print(p.PrettyPrint())
+				g.Put(13)
 				continue
 			}
 			// And this is temporary while we're still migrating from Monkey to RM Basic
 			if len(p.Errors()) > 0 {
 				g.Print("Oops! Some random parsing error occurred. These will be handled properly downstream by for now here's some spewage:")
+				g.Put(13)
+				p.JumpToToken(0)
+				g.Print(p.PrettyPrint())
 				g.Put(13)
 				for _, msg := range p.Errors() {
 					g.Print(msg)
@@ -82,7 +88,13 @@ func repl(g *game.Game) {
 			for _, stmt := range line.Statements {
 				obj := evaluator.Eval(g, stmt, env)
 				if errorMsg, ok := obj.(*object.Error); ok {
-					g.Print(fmt.Sprintf("Syntax error: %s", errorMsg.Message))
+					if errorMsg.ErrorTokenIndex != 0 {
+						p.ErrorTokenIndex = errorMsg.ErrorTokenIndex
+					}
+					g.Print(fmt.Sprintf(errorMsg.Message))
+					g.Put(13)
+					p.JumpToToken(0)
+					g.Print(p.PrettyPrint())
 					g.Put(13)
 					break
 				}

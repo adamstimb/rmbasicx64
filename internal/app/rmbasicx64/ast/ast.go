@@ -534,6 +534,21 @@ func (s *LoadStatement) String() string {
 	return out.String()
 }
 
+type GotoStatement struct {
+	Token token.Token
+	Value Expression
+}
+
+func (s *GotoStatement) statementNode() {}
+func (s *GotoStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *GotoStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
 type LetStatement struct {
 	Token     token.Token // the token.Let token
 	BindToken token.Token // either then = or := token

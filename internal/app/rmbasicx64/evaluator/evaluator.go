@@ -3,7 +3,6 @@ package evaluator
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math"
 	"os"
 	"strings"
@@ -58,6 +57,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalSetRadStatement(g, node, env)
 	case *ast.PrintStatement:
 		return evalPrintStatement(g, node, env)
+	case *ast.GotoStatement:
+		return evalGotoStatement(g, node, env)
 	case *ast.Program:
 		return evalProgram(g, node, env)
 	case *ast.ExpressionStatement:
@@ -105,7 +106,6 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 			Value: node.Value,
 		}
 	case *ast.Boolean:
-		log.Println("still getting Boolean branches to evaluate")
 		return nativeBoolToBooleanObject(node.Value)
 	case *ast.PrefixExpression:
 		right := Eval(g, node.Right, env)
@@ -219,7 +219,7 @@ func evalSaveStatement(g *game.Game, stmt *ast.SaveStatement, env *object.Enviro
 	if stringVal, ok := obj.(*object.String); ok {
 		filename = stringVal.Value
 	} else {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded)}
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 	// Add .BAS if necessary
 	if !strings.HasSuffix(filename, ".BAS") {
@@ -247,7 +247,7 @@ func evalLoadStatement(g *game.Game, stmt *ast.LoadStatement, env *object.Enviro
 	if stringVal, ok := obj.(*object.String); ok {
 		filename = stringVal.Value
 	} else {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded)}
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 	// Add .BAS if necessary
 	if !strings.HasSuffix(filename, ".BAS") {
@@ -273,11 +273,17 @@ func evalLoadStatement(g *game.Game, stmt *ast.LoadStatement, env *object.Enviro
 		if errorMsg, hasError := p.GetError(); hasError {
 			g.Print(errorMsg)
 			g.Put(13)
+			p.JumpToToken(0)
+			g.Print(p.PrettyPrint())
+			g.Put(13)
 			continue
 		}
 		// And this is temporary while we're still migrating from Monkey to RM Basic
 		if len(p.Errors()) > 0 {
 			g.Print("Oops! Some random parsing error occurred. These will be handled properly downstream by for now here's some spewage:")
+			g.Put(13)
+			p.JumpToToken(0)
+			g.Print(p.PrettyPrint())
 			g.Put(13)
 			for _, msg := range p.Errors() {
 				g.Print(msg)
@@ -297,6 +303,9 @@ func evalLoadStatement(g *game.Game, stmt *ast.LoadStatement, env *object.Enviro
 			if errorMsg, ok := obj.(*object.Error); ok {
 				g.Print(errorMsg.Message)
 				g.Put(13)
+				p.JumpToToken(0)
+				g.Print(p.PrettyPrint())
+				g.Put(13)
 				break
 			}
 		}
@@ -314,7 +323,7 @@ func evalSetModeStatement(g *game.Game, stmt *ast.SetModeStatement, env *object.
 		g.SetMode(int(val.Value))
 		return obj
 	} else {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)}
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 }
 
@@ -340,7 +349,7 @@ func evalSetPaperStatement(g *game.Game, stmt *ast.SetPaperStatement, env *objec
 		g.SetPaper(int(val.Value))
 		return obj
 	} else {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)}
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 }
 
@@ -366,7 +375,7 @@ func evalSetBorderStatement(g *game.Game, stmt *ast.SetBorderStatement, env *obj
 		g.SetBorder(int(val.Value))
 		return obj
 	} else {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)}
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 }
 
@@ -392,7 +401,7 @@ func evalSetPenStatement(g *game.Game, stmt *ast.SetPenStatement, env *object.En
 		g.SetPen(int(val.Value))
 		return obj
 	} else {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)}
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 }
 
@@ -406,7 +415,24 @@ func evalSetDegStatement(g *game.Game, stmt *ast.SetDegStatement, env *object.En
 		env.Degrees = val.Value
 		return obj
 	} else {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)}
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+}
+
+func evalGotoStatement(g *game.Game, stmt *ast.GotoStatement, env *object.Environment) object.Object {
+	obj := Eval(g, stmt.Value, env)
+	// return error if evaluation failed
+	if _, ok := obj.(*object.Error); ok {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		if env.Program.Jump(int(val.Value)) {
+			return obj
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.LineNumberDoesNotExist), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 }
 
@@ -420,7 +446,7 @@ func evalSetRadStatement(g *game.Game, stmt *ast.SetRadStatement, env *object.En
 		env.Degrees = !val.Value
 		return obj
 	} else {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)}
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 }
 
@@ -446,13 +472,20 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 		// Check of parser errors here.  Parser errors are handled just like evaluation errors but
 		// obviously we'll skip evaluation if parsing already failed.
 		if errorMsg, hasError := p.GetError(); hasError {
-			g.Print(fmt.Sprintf("%s in line %d", errorMsg, env.Program.GetLineNumber()))
+			lineNumber := env.Program.GetLineNumber()
+			g.Print(fmt.Sprintf("%s in line %d", errorMsg, lineNumber))
+			g.Put(13)
+			p.JumpToToken(0)
+			g.Print(fmt.Sprintf("%d %s", lineNumber, p.PrettyPrint()))
 			g.Put(13)
 			return nil
 		}
 		// And this is temporary while we're still migrating from Monkey to RM Basic
 		if len(p.Errors()) > 0 {
 			g.Print("Oops! Some random parsing error occurred. These will be handled properly downstream by for now here's some spewage:")
+			g.Put(13)
+			p.JumpToToken(0)
+			g.Print(p.PrettyPrint())
 			g.Put(13)
 			for _, msg := range p.Errors() {
 				g.Print(msg)
@@ -465,7 +498,14 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 		for _, stmt := range line.Statements {
 			obj := Eval(g, stmt, env)
 			if errorMsg, ok := obj.(*object.Error); ok {
-				g.Print(fmt.Sprintf("%s in line %d", errorMsg, env.Program.GetLineNumber()))
+				if errorMsg.ErrorTokenIndex != 0 {
+					p.ErrorTokenIndex = errorMsg.ErrorTokenIndex
+				}
+				lineNumber := env.Program.GetLineNumber()
+				g.Print(fmt.Sprintf("%s in line %d", errorMsg.Message, lineNumber))
+				g.Put(13)
+				p.JumpToToken(0)
+				g.Print(fmt.Sprintf("%d %s", lineNumber, p.PrettyPrint()))
 				g.Put(13)
 				return nil
 			}
@@ -636,7 +676,6 @@ func evalStringInfixExpression(operator string, left, right object.Object) objec
 }
 
 func evalBooleanInfixExpression(operator string, left, right object.Object) object.Object {
-	log.Println("evalBooleanInfixExpression is still being called!")
 	leftVal := left.(*object.Numeric).Value
 	rightVal := right.(*object.Numeric).Value
 
