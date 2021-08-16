@@ -88,6 +88,9 @@ func repl(g *game.Game) {
 			for _, stmt := range line.Statements {
 				obj := evaluator.Eval(g, stmt, env)
 				if errorMsg, ok := obj.(*object.Error); ok {
+					if errorMsg.ErrorTokenIndex != 0 {
+						p.ErrorTokenIndex = errorMsg.ErrorTokenIndex
+					}
 					g.Print(fmt.Sprintf(errorMsg.Message))
 					g.Put(13)
 					p.JumpToToken(0)

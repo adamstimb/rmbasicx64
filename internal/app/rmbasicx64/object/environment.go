@@ -30,7 +30,25 @@ func (p *program) Start() {
 func (p *program) Next() {
 	p.curLocation += 1
 }
-
+func (p *program) Jump(lineNumber int) bool {
+	// Go to top of program and search for the required lineNumber
+	currentLocation := p.curLocation
+	p.Start()
+	for !p.EndOfProgram() {
+		if p.GetLineNumber() == lineNumber {
+			// Found lineNumber, we're done so back up the current location and return true
+			p.curLocation -= 1
+			return true
+		} else {
+			// Try next line
+			p.Next()
+		}
+	}
+	// Failed to find lineNumber.  Return to original location and
+	// return false.
+	p.curLocation = currentLocation
+	return false
+}
 func (p *program) GetLineNumber() int {
 	if len(p.lines) > 0 {
 		return p.sortedIndex[p.curLocation]

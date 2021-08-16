@@ -57,6 +57,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalSetRadStatement(g, node, env)
 	case *ast.PrintStatement:
 		return evalPrintStatement(g, node, env)
+	case *ast.GotoStatement:
+		return evalGotoStatement(g, node, env)
 	case *ast.Program:
 		return evalProgram(g, node, env)
 	case *ast.ExpressionStatement:
@@ -217,7 +219,7 @@ func evalSaveStatement(g *game.Game, stmt *ast.SaveStatement, env *object.Enviro
 	if stringVal, ok := obj.(*object.String); ok {
 		filename = stringVal.Value
 	} else {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded)}
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 	// Add .BAS if necessary
 	if !strings.HasSuffix(filename, ".BAS") {
@@ -245,7 +247,7 @@ func evalLoadStatement(g *game.Game, stmt *ast.LoadStatement, env *object.Enviro
 	if stringVal, ok := obj.(*object.String); ok {
 		filename = stringVal.Value
 	} else {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded)}
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 	// Add .BAS if necessary
 	if !strings.HasSuffix(filename, ".BAS") {
@@ -321,7 +323,7 @@ func evalSetModeStatement(g *game.Game, stmt *ast.SetModeStatement, env *object.
 		g.SetMode(int(val.Value))
 		return obj
 	} else {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)}
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 }
 
@@ -347,7 +349,7 @@ func evalSetPaperStatement(g *game.Game, stmt *ast.SetPaperStatement, env *objec
 		g.SetPaper(int(val.Value))
 		return obj
 	} else {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)}
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 }
 
@@ -373,7 +375,7 @@ func evalSetBorderStatement(g *game.Game, stmt *ast.SetBorderStatement, env *obj
 		g.SetBorder(int(val.Value))
 		return obj
 	} else {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)}
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 }
 
@@ -399,7 +401,7 @@ func evalSetPenStatement(g *game.Game, stmt *ast.SetPenStatement, env *object.En
 		g.SetPen(int(val.Value))
 		return obj
 	} else {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)}
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 }
 
@@ -413,7 +415,24 @@ func evalSetDegStatement(g *game.Game, stmt *ast.SetDegStatement, env *object.En
 		env.Degrees = val.Value
 		return obj
 	} else {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)}
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+}
+
+func evalGotoStatement(g *game.Game, stmt *ast.GotoStatement, env *object.Environment) object.Object {
+	obj := Eval(g, stmt.Value, env)
+	// return error if evaluation failed
+	if _, ok := obj.(*object.Error); ok {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		if env.Program.Jump(int(val.Value)) {
+			return obj
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.LineNumberDoesNotExist), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 }
 
@@ -427,7 +446,7 @@ func evalSetRadStatement(g *game.Game, stmt *ast.SetRadStatement, env *object.En
 		env.Degrees = !val.Value
 		return obj
 	} else {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)}
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 }
 
@@ -453,10 +472,11 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 		// Check of parser errors here.  Parser errors are handled just like evaluation errors but
 		// obviously we'll skip evaluation if parsing already failed.
 		if errorMsg, hasError := p.GetError(); hasError {
-			g.Print(fmt.Sprintf("%s in line %d", errorMsg, env.Program.GetLineNumber()))
+			lineNumber := env.Program.GetLineNumber()
+			g.Print(fmt.Sprintf("%s in line %d", errorMsg, lineNumber))
 			g.Put(13)
 			p.JumpToToken(0)
-			g.Print(p.PrettyPrint())
+			g.Print(fmt.Sprintf("%d %s", lineNumber, p.PrettyPrint()))
 			g.Put(13)
 			return nil
 		}
@@ -478,10 +498,14 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 		for _, stmt := range line.Statements {
 			obj := Eval(g, stmt, env)
 			if errorMsg, ok := obj.(*object.Error); ok {
-				g.Print(fmt.Sprintf("%s in line %d", errorMsg, env.Program.GetLineNumber()))
+				if errorMsg.ErrorTokenIndex != 0 {
+					p.ErrorTokenIndex = errorMsg.ErrorTokenIndex
+				}
+				lineNumber := env.Program.GetLineNumber()
+				g.Print(fmt.Sprintf("%s in line %d", errorMsg.Message, lineNumber))
 				g.Put(13)
 				p.JumpToToken(0)
-				g.Print(p.PrettyPrint())
+				g.Print(fmt.Sprintf("%d %s", lineNumber, p.PrettyPrint()))
 				g.Put(13)
 				return nil
 			}
