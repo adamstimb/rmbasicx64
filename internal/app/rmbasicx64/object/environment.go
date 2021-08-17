@@ -6,15 +6,19 @@ import (
 )
 
 type program struct {
-	lines       map[int]string
-	sortedIndex []int
-	curLocation int
+	lines                  map[int]string
+	sortedIndex            []int
+	curLineIndex           int
+	JumpToStatement        int
+	CurrentStatementNumber int
 }
 
 func (p *program) New() {
 	p.lines = make(map[int]string)
 	p.sortedIndex = []int{}
-	p.curLocation = 0
+	p.curLineIndex = 0
+	p.JumpToStatement = 0
+	p.CurrentStatementNumber = 0
 }
 func (p *program) Sort() {
 	keys := []int{}
@@ -25,19 +29,28 @@ func (p *program) Sort() {
 	p.sortedIndex = keys
 }
 func (p *program) Start() {
-	p.curLocation = 0
+	p.curLineIndex = 0
+	p.JumpToStatement = 0
+	p.CurrentStatementNumber = 0
 }
 func (p *program) Next() {
-	p.curLocation += 1
+	p.curLineIndex += 1
+	p.JumpToStatement = 0
+	p.CurrentStatementNumber = 0
 }
-func (p *program) Jump(lineNumber int) bool {
-	// Go to top of program and search for the required lineNumber
-	currentLocation := p.curLocation
+
+// Jump is used to resume program execution from a specific line number and statement within
+// that line.  Jump allows GOTO, GOSUB, FOR, WHILE and PROCEDURE/FUNCTION calls to be implemented.
+func (p *program) Jump(lineNumber int, statementIndex int) bool {
+	// Go to top of program and search for the required lineNumber and set JumpToStatement
+	// if found
+	currentLocation := p.curLineIndex
 	p.Start()
 	for !p.EndOfProgram() {
 		if p.GetLineNumber() == lineNumber {
-			// Found lineNumber, we're done so back up the current location and return true
-			p.curLocation -= 1
+			// Found lineNumber, so back up the current location and we're done
+			p.curLineIndex -= 1
+			p.JumpToStatement = statementIndex
 			return true
 		} else {
 			// Try next line
@@ -46,19 +59,19 @@ func (p *program) Jump(lineNumber int) bool {
 	}
 	// Failed to find lineNumber.  Return to original location and
 	// return false.
-	p.curLocation = currentLocation
+	p.curLineIndex = currentLocation
 	return false
 }
 func (p *program) GetLineNumber() int {
 	if len(p.lines) > 0 {
-		return p.sortedIndex[p.curLocation]
+		return p.sortedIndex[p.curLineIndex]
 	} else {
 		return -1
 	}
 }
 func (p *program) GetLine() string {
 	if len(p.lines) > 0 {
-		return p.lines[p.sortedIndex[p.curLocation]]
+		return p.lines[p.sortedIndex[p.curLineIndex]]
 	} else {
 		return ""
 	}
@@ -74,7 +87,7 @@ func (p *program) AddLine(lineNumber int, line string) {
 	}
 }
 func (p *program) EndOfProgram() bool {
-	if p.curLocation >= len(p.lines) {
+	if p.curLineIndex >= len(p.lines) {
 		// end of program
 		return true
 	} else {
@@ -92,11 +105,39 @@ func (p *program) List() []string {
 	return listing
 }
 
+// JumpStack is used to store all the return points and parameters for loops and function/procedure calls
+type jumpStack struct {
+	items []interface{}
+}
+
+func (j *jumpStack) New() {
+	j.items = make([]interface{}, 0)
+}
+func (j *jumpStack) Peek() interface{} {
+
+	if len(j.items) > 0 {
+		return j.items[0]
+	}
+	return nil
+}
+func (j *jumpStack) Push(item interface{}) {
+	j.items = append(j.items, item)
+}
+func (j *jumpStack) Pop() interface{} {
+	if len(j.items) > 0 {
+		item := j.items[0]
+		j.items = j.items[:len(j.items)-1]
+		return item
+	}
+	return nil
+}
+
 type Environment struct {
-	store   map[string]Object
-	Degrees bool
-	outer   *Environment
-	Program program
+	store     map[string]Object
+	Degrees   bool
+	outer     *Environment
+	Program   program
+	JumpStack jumpStack
 }
 
 func (e *Environment) Get(name string) (Object, bool) {
@@ -132,12 +173,15 @@ func (e *Environment) Wipe() {
 func NewEnvironment() *Environment {
 	s := make(map[string]Object)
 	p := &program{}
+	j := &jumpStack{}
 	p.New()
+	j.New()
 	return &Environment{
-		store:   s,
-		Degrees: true,
-		outer:   nil,
-		Program: *p,
+		store:     s,
+		Degrees:   true,
+		outer:     nil,
+		Program:   *p,
+		JumpStack: *j,
 	}
 }
 

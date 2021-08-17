@@ -232,10 +232,6 @@ func (p *Parser) parseIfStatement() ast.Statement {
 		Token: p.curToken,
 	}
 
-	//if !p.expectPeek(token.LeftParen) {
-	//	return nil
-	//}
-
 	p.nextToken() // consume IF
 
 	stmt.Condition = p.parseExpression(LOWEST)
@@ -255,6 +251,28 @@ func (p *Parser) parseIfStatement() ast.Statement {
 		stmt.Alternative = p.ParseLine()
 	}
 	return stmt
+}
+
+func (p *Parser) parseUntilStatement() ast.Statement {
+	stmt := &ast.UntilStatement{
+		Token: p.curToken,
+	}
+
+	p.nextToken() // consume UNTIL
+
+	// Ensure condition follows
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index + 1
+		return nil
+	}
+	stmt.Condition = p.parseExpression(LOWEST)
+
+	// Ensure end of instruction
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
 }
 
 // -------------------------------------------------------------------------
@@ -446,16 +464,40 @@ func (p *Parser) parseClsStatement() *ast.ClsStatement {
 
 func (p *Parser) parsePrintStatement() *ast.PrintStatement {
 	stmt := &ast.PrintStatement{Token: p.curToken}
+	stmt.PrintList = make([]interface{}, 0)
 	// Handle PRINT without args
-	if !(p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF)) {
-		stmt.Value = &ast.StringLiteral{Value: ""}
-	}
-	p.nextToken()
-	stmt.Value = p.parseExpression(LOWEST)
-	if p.endOfInstruction() {
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+		stmt.PrintList = append(stmt.PrintList, &ast.StringLiteral{Value: ""})
 		return stmt
 	}
-	return nil
+	p.nextToken()
+	for !(p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF)) {
+		// ; -> noSpace
+		if p.curTokenIs(token.Semicolon) {
+			stmt.PrintList = append(stmt.PrintList, "noSpace")
+			p.nextToken()
+			continue
+		}
+		// , -> nextPrintZone
+		if p.curTokenIs(token.Comma) {
+			stmt.PrintList = append(stmt.PrintList, "nextPrintZone")
+			p.nextToken()
+			continue
+		}
+		// ! -> newLine
+		if p.curTokenIs(token.Exclamation) {
+			stmt.PrintList = append(stmt.PrintList, "newLine")
+			p.nextToken()
+			continue
+		}
+		val := p.parseExpression(LOWEST)
+		stmt.PrintList = append(stmt.PrintList, val)
+		p.nextToken()
+		if p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF) {
+			break
+		}
+	}
+	return stmt
 }
 
 func (p *Parser) parseSaveStatement() *ast.SaveStatement {
@@ -589,6 +631,14 @@ func (p *Parser) parseGotoStatement() *ast.GotoStatement {
 	}
 	p.nextToken()
 	stmt.Value = p.parseExpression(LOWEST)
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseRepeatStatement() *ast.RepeatStatement {
+	stmt := &ast.RepeatStatement{Token: p.curToken}
 	if p.endOfInstruction() {
 		return stmt
 	}
@@ -907,6 +957,10 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseLoadStatement()
 	case token.GOTO:
 		return p.parseGotoStatement()
+	case token.REPEAT:
+		return p.parseRepeatStatement()
+	case token.UNTIL:
+		return p.parseUntilStatement()
 	case token.SET:
 		p.nextToken()
 		switch p.curToken.TokenType {

@@ -59,6 +59,10 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalPrintStatement(g, node, env)
 	case *ast.GotoStatement:
 		return evalGotoStatement(g, node, env)
+	case *ast.RepeatStatement:
+		return evalRepeatStatement(g, node, env)
+	case *ast.UntilStatement:
+		return evalUntilStatement(g, node, env)
 	case *ast.Program:
 		return evalProgram(g, node, env)
 	case *ast.ExpressionStatement:
@@ -185,28 +189,40 @@ func unwrapReturnValue(obj object.Object) object.Object {
 }
 
 func evalPrintStatement(g *game.Game, stmt *ast.PrintStatement, env *object.Environment) object.Object {
-	obj := Eval(g, stmt.Value, env)
-	// return error if evaluation failed
-	if _, ok := obj.(*object.Error); ok {
-		return obj
-	}
 	printStr := ""
-	if numericVal, ok := obj.(*object.Numeric); ok {
-		printStr = fmt.Sprintf("%g", numericVal.Value)
-	}
-	if boolVal, ok := obj.(*object.Boolean); ok {
-		if boolVal.Value {
-			printStr = "TRUE"
-		} else {
-			printStr = "FALSE"
+	for _, val := range stmt.PrintList {
+		// Handle seperator type
+		if s, ok := val.(string); ok {
+			switch s {
+			case "noSpace":
+				printStr += ""
+			case "nextPrintZone":
+				printStr += "     " // TODO: Implement actual print zones in Nimgobus
+			case "newLine":
+				g.Print(printStr)
+				g.Put(13)
+				printStr = ""
+			}
+			continue
 		}
-	}
-	if stringVal, ok := obj.(*object.String); ok {
-		printStr = stringVal.Value
+		obj := Eval(g, val.(ast.Node), env)
+		if numericVal, ok := obj.(*object.Numeric); ok {
+			printStr += fmt.Sprintf("%g", numericVal.Value)
+		}
+		if boolVal, ok := obj.(*object.Boolean); ok {
+			if boolVal.Value {
+				printStr += "TRUE"
+			} else {
+				printStr += "FALSE"
+			}
+		}
+		if stringVal, ok := obj.(*object.String); ok {
+			printStr += stringVal.Value
+		}
 	}
 	g.Print(printStr)
 	g.Put(13)
-	return obj
+	return nil
 }
 
 func evalSaveStatement(g *game.Game, stmt *ast.SaveStatement, env *object.Environment) object.Object {
@@ -426,7 +442,7 @@ func evalGotoStatement(g *game.Game, stmt *ast.GotoStatement, env *object.Enviro
 		return obj
 	}
 	if val, ok := obj.(*object.Numeric); ok {
-		if env.Program.Jump(int(val.Value)) {
+		if env.Program.Jump(int(val.Value), 0) {
 			return obj
 		} else {
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.LineNumberDoesNotExist), ErrorTokenIndex: stmt.Token.Index + 1}
@@ -434,6 +450,39 @@ func evalGotoStatement(g *game.Game, stmt *ast.GotoStatement, env *object.Enviro
 	} else {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
+}
+
+func evalRepeatStatement(g *game.Game, stmt *ast.RepeatStatement, env *object.Environment) object.Object {
+	stmt.LineNumber = env.Program.GetLineNumber()
+	stmt.StatementNumber = env.Program.CurrentStatementNumber
+	// don't repush the same Repeat
+	if repeatStmt, ok := env.JumpStack.Peek().(*ast.RepeatStatement); ok {
+		if repeatStmt.LineNumber == stmt.LineNumber && repeatStmt.StatementNumber == stmt.StatementNumber {
+			return nil
+		}
+	}
+	env.JumpStack.Push(stmt)
+	return nil
+}
+
+func evalUntilStatement(g *game.Game, stmt *ast.UntilStatement, env *object.Environment) object.Object {
+	// Ensure we're inside a Repeat loop before evaluating condition
+	if repeatStmt, ok := env.JumpStack.Peek().(*ast.RepeatStatement); ok {
+		condition := Eval(g, stmt.Condition, env)
+		if isError(condition) {
+			return condition
+		}
+		if isTruthy(condition) {
+			// condition is true to drop through loop
+			env.JumpStack.Pop()
+			return nil
+		} else {
+			// condition is false so jump to repeat
+			env.Program.Jump(repeatStmt.LineNumber, repeatStmt.StatementNumber)
+			return nil
+		}
+	}
+	return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.UntilWithoutAnyRepeat), ErrorTokenIndex: stmt.Token.Index}
 }
 
 func evalSetRadStatement(g *game.Game, stmt *ast.SetRadStatement, env *object.Environment) object.Object {
@@ -494,8 +543,10 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 			return nil
 		}
 		// Execute each statement in the program line.  If an error occurs, print the
-		// error message and stop.
-		for _, stmt := range line.Statements {
+		// error message and stop.  If JumpToStatement is non-zero, all statements in
+		// the line will be skipped until i == JumpToStatement.
+		for statementNumber, stmt := range line.Statements {
+			env.Program.CurrentStatementNumber = statementNumber
 			obj := Eval(g, stmt, env)
 			if errorMsg, ok := obj.(*object.Error); ok {
 				if errorMsg.ErrorTokenIndex != 0 {

@@ -141,6 +141,22 @@ func (s *IfStatement) String() string {
 	return out.String()
 }
 
+type UntilStatement struct {
+	Token     token.Token
+	Condition Expression
+}
+
+func (s *UntilStatement) statementNode() {}
+func (s *UntilStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *UntilStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString("UNTIL ")
+	out.WriteString(s.Condition.String())
+	return out.String()
+}
+
 // redundant?
 type FunctionDefinition struct {
 	Token      token.Token // The FUNCTION token
@@ -487,8 +503,9 @@ func (s *RemStatement) String() string {
 }
 
 type PrintStatement struct {
-	Token token.Token
-	Value Expression
+	Token     token.Token
+	Value     Expression
+	PrintList []interface{}
 }
 
 func (ps *PrintStatement) statementNode() {}
@@ -544,6 +561,22 @@ func (s *GotoStatement) TokenLiteral() string {
 	return s.Token.Literal
 }
 func (s *GotoStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type RepeatStatement struct {
+	Token           token.Token
+	LineNumber      int
+	StatementNumber int
+}
+
+func (s *RepeatStatement) statementNode() {}
+func (s *RepeatStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *RepeatStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(s.TokenLiteral())
 	return out.String()

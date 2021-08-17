@@ -1,24 +1,62 @@
 package game
 
 import (
+	"io/ioutil"
+	"log"
+	"os"
+	"path/filepath"
+
 	"github.com/adamstimb/rmbasicx64/pkg/nimgobus"
 	"github.com/hajimehoshi/ebiten/v2"
+	"gopkg.in/yaml.v3"
 )
+
+type AppConfig struct {
+	Boot bool
+}
 
 type Game struct {
 	Count int
-	//count           int
-	nimgobus.Nimbus // Embed the Nimbus in the Game struct
+	nimgobus.Nimbus
+	Config AppConfig
+}
+
+// LoadConfig attempts to load settings from the config file.  If the file does not
+// exist or is unreadable it will be ignored and default settings will be used.
+func (g *Game) LoadConfig() {
+	// Default settings
+	g.Config = AppConfig{Boot: true}
+	// Attempt to load settings from config file
+	c, err := g.readConf()
+	if err != nil {
+		// Overwrite default settings
+		g.Config = c
+	}
+}
+func (g *Game) readConf() (AppConfig, error) {
+	// Try to get directory of executable
+	exeDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		log.Printf("Error resolving directory of executable: %v", err)
+	}
+	// Try to load and parse config file
+	buf, err := ioutil.ReadFile(filepath.Join(exeDir, "rmbasicx64config.yaml"))
+	c := AppConfig{}
+	if err != nil {
+		log.Printf("Error loading config file: %v", err)
+		return c, err
+	}
+	err = yaml.Unmarshal(buf, c)
+	if err != nil {
+		log.Printf("Error parsing config file: %v", err)
+		return c, err
+	}
+	// Success
+	return c, nil
 }
 
 func (g *Game) Update() error {
-	//if g.Count == 0 {
-	//	//go App(g) // Launch the Nimbus app on first iteration
-	//	//g.Count++
-	//	log.Println("done frame 0")
-	//	g.Count = 1
-	//}
-	g.Nimbus.Update() // Update the app on all subsequent iterations
+	g.Nimbus.Update()
 	return nil
 }
 
