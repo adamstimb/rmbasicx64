@@ -473,6 +473,22 @@ func (s *SetCurposStatement) String() string {
 	return out.String()
 }
 
+type MoveStatement struct {
+	Token token.Token
+	Cols  Expression
+	Rows  Expression
+}
+
+func (s *MoveStatement) statementNode() {}
+func (s *MoveStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *MoveStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
 type HomeStatement struct {
 	Token token.Token
 }

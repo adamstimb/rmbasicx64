@@ -20,6 +20,10 @@ type colRow struct {
 	row int
 }
 
+func (c *colRow) AskCurpos() (int, int) {
+	return c.col, c.row
+}
+
 // textBox defines the bounding box of a scrollable text box
 type textBox struct {
 	col1 int
