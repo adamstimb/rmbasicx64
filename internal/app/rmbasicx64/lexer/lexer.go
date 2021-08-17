@@ -83,7 +83,8 @@ func (s *Lexer) getString() {
 		if s.peek() == '"' && s.peekNext() == '"' {
 			// is double-double quote so consume both and continue collecting
 			stringVal = append(stringVal, s.advance())
-			stringVal = append(stringVal, s.advance())
+			//stringVal = append(stringVal, s.advance())
+			s.advance()
 			continue
 		}
 		if s.peek() == '"' && s.peekNext() != '"' {

@@ -85,7 +85,8 @@ func repl(g *game.Game) {
 			}
 			// Execute each statement in the inputted line.  If an error occurs, print the
 			// error message and stop.
-			for _, stmt := range line.Statements {
+			for statementNumber, stmt := range line.Statements {
+				env.Program.CurrentStatementNumber = statementNumber
 				obj := evaluator.Eval(g, stmt, env)
 				if errorMsg, ok := obj.(*object.Error); ok {
 					if errorMsg.ErrorTokenIndex != 0 {
@@ -111,7 +112,7 @@ func repl(g *game.Game) {
 }
 
 // StartUi is called by the ebiten App.  It draws the welcome screen then starts the
-// the REPL
+// the REPL.
 func StartUi(g *game.Game) {
 	welcomeScreen(g)
 	repl(g)

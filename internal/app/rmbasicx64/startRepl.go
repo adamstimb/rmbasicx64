@@ -11,8 +11,9 @@ import (
 
 func NewGame() *game.Game {
 	g := &game.Game{}
-	g.Init()  // Initialize Nimgobus
-	go App(g) // Start the app
+	g.Init()
+	g.LoadConfig()
+	go App(g)
 	return g
 }
 
