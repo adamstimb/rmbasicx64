@@ -130,18 +130,33 @@ func (n *Nimbus) SetCurpos(col, row int) {
 	// Pick the textbox
 	box := n.textBoxes[n.selectedTextBox]
 	// Validate col and row position
-	if col < 0 || row < 0 {
-		panic("Negative column or row values are not allowed")
-	}
+	//if col < 0 || row < 0 {
+	//	panic("Negative column or row values are not allowed")
+	//}
 	width := box.col2 - box.col1
 	height := box.row2 - box.row1
-	if col > width {
-		panic("Column value is outside selected textbox")
+	//if col > width {
+	//	panic("Column value is outside selected textbox")
+	//}
+	//if row > height {
+	//	panic("Row value is outside selected textbox")
+	//}
+	// If both col and row are outside textbox, go to home position
+	if (col > width || col < 1) && (row > height || row < 1) {
+		n.cursorPosition = colRow{1, 1}
+		return
 	}
-	if row > height {
-		panic("Row value is outside selected textbox")
+	// If col is within area but row is not, move to col and top row
+	if (col <= width && col > 0) && (row > height || row < 1) {
+		n.cursorPosition = colRow{col, 1}
+		return
 	}
-	// Validation passed, set cursor position
+	// If row is within area but col is not, move to row and left column
+	if (row <= height && row > 0) && (col > width || col < 1) {
+		n.cursorPosition = colRow{1, row}
+		return
+	}
+	// Otherwie set curpos as-is
 	n.cursorPosition = colRow{col, row}
 }
 

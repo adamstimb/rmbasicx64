@@ -457,6 +457,22 @@ func (s *SetPenStatement) String() string {
 	return out.String()
 }
 
+type SetCurposStatement struct {
+	Token token.Token
+	Col   Expression
+	Row   Expression
+}
+
+func (s *SetCurposStatement) statementNode() {}
+func (s *SetCurposStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *SetCurposStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
 type SetDegStatement struct {
 	Token token.Token
 	Value Expression

@@ -592,6 +592,37 @@ func (p *Parser) parseSetPenStatement() *ast.SetPenStatement {
 	return nil
 }
 
+func (p *Parser) parseSetCurposStatement() *ast.SetCurposStatement {
+	stmt := &ast.SetCurposStatement{Token: p.curToken}
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index + 1
+		return nil
+	}
+	p.nextToken()
+	// Get col
+	stmt.Col = p.parseExpression(LOWEST)
+	p.nextToken()
+	// Must have ,
+	if !p.curTokenIs(token.Comma) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.CommaSeparatorIsNeeded)
+		p.ErrorTokenIndex = p.curToken.Index
+		return nil
+	}
+	p.nextToken() // consume ,
+	if p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index
+		return nil
+	}
+	// Get row
+	stmt.Row = p.parseExpression(LOWEST)
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parseSetDegStatement() *ast.SetDegStatement {
 	stmt := &ast.SetDegStatement{Token: p.curToken}
 	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
@@ -976,6 +1007,8 @@ func (p *Parser) parseStatement() ast.Statement {
 			return p.parseSetDegStatement()
 		case token.RAD:
 			return p.parseSetRadStatement()
+		case token.CURPOS:
+			return p.parseSetCurposStatement()
 		default:
 			p.errorMsg = syntaxerror.ErrorMessage((syntaxerror.WrongSetAskAttribute))
 			p.ErrorTokenIndex = p.curToken.Index
