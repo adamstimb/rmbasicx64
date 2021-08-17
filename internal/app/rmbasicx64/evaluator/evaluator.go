@@ -43,6 +43,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalListStatement(g, node, env)
 	case *ast.ClsStatement:
 		return evalClsStatement(g, node, env)
+	case *ast.HomeStatement:
+		return evalHomeStatement(g, node, env)
 	case *ast.SetModeStatement:
 		return evalSetModeStatement(g, node, env)
 	case *ast.SetPaperStatement:
@@ -65,7 +67,6 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalRepeatStatement(g, node, env)
 	case *ast.UntilStatement:
 		return evalUntilStatement(g, node, env)
-
 	case *ast.Program:
 		return evalProgram(g, node, env)
 	case *ast.ExpressionStatement:
@@ -607,6 +608,11 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 func evalClsStatement(g *game.Game, stmt *ast.ClsStatement, env *object.Environment) object.Object {
 	g.Cls()
 	g.SetCurpos(1, 1)
+	return nil
+}
+
+func evalHomeStatement(g *game.Game, stmt *ast.HomeStatement, env *object.Environment) object.Object {
+	g.SetCurpos(0, 0)
 	return nil
 }
 

@@ -462,6 +462,14 @@ func (p *Parser) parseClsStatement() *ast.ClsStatement {
 	return nil
 }
 
+func (p *Parser) parseHomeStatement() *ast.HomeStatement {
+	stmt := &ast.HomeStatement{Token: p.curToken}
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parsePrintStatement() *ast.PrintStatement {
 	stmt := &ast.PrintStatement{Token: p.curToken}
 	stmt.PrintList = make([]interface{}, 0)
@@ -982,6 +990,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseNewStatement()
 	case token.CLS:
 		return p.parseClsStatement()
+	case token.HOME:
+		return p.parseHomeStatement()
 	case token.SAVE:
 		return p.parseSaveStatement()
 	case token.LOAD:
