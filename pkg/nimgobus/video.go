@@ -28,7 +28,7 @@ func (n *Nimbus) resizeSprite(thisSprite Sprite, newWidth, newHeight int) Sprite
 		for j := 0; j < newWidth; j++ {
 			x2 = ((j * xRatio) >> 16)
 			y2 = ((i * yRatio) >> 16)
-			newImg[(i*newWidth)+j] = img[(y2*imgWidth)+x2]
+			newImg[(i*newWidth)+j] = img[(y2*imgWidth)+x2] // <--- doh!!! 1d array!
 		}
 	}
 	return Sprite{pixels: newImg, x: thisSprite.x, y: thisSprite.y, colour: thisSprite.colour, over: thisSprite.over}

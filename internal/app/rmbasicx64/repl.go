@@ -36,6 +36,8 @@ func welcomeScreen(g *game.Game) {
 	g.Put(13)
 	g.Print("RM BASICx64 Version 0.01B 21st July 2021")
 	g.Put(13)
+	//opt := nimgobus.PlotOptions{Brush: 2, Font: 1}
+	//g.Plot(opt, "Test plot", 50, 50)
 	// Generate and print workspace available notification
 	workspaceAvailable := fmt.Sprintf("%dG bytes workspace available.", bToGb(memInfo.Available))
 	g.Print(workspaceAvailable)
