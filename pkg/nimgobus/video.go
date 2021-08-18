@@ -14,6 +14,26 @@ func (n *Nimbus) GetPixel(x, y int) (colour int) {
 	return colour
 }
 
+// resizeSprite does a nearest-neighbour resize of a sprite
+func (n *Nimbus) resizeSprite(thisSprite Sprite, newWidth, newHeight int) Sprite {
+	img := thisSprite.pixels
+	newImg := make2dArray(newWidth, newHeight)
+	imgWidth := len(img[0])
+	imgHeight := len(img)
+	xRatio := int(((imgWidth << 16) / newWidth) + 1)
+	yRatio := int(((imgHeight << 16) / newHeight) + 1)
+	x2 := 0
+	y2 := 0
+	for i := 0; i < newHeight; i++ {
+		for j := 0; j < newWidth; j++ {
+			x2 = ((j * xRatio) >> 16)
+			y2 = ((i * yRatio) >> 16)
+			newImg[(i*newWidth)+j] = img[(y2*imgWidth)+x2]
+		}
+	}
+	return Sprite{pixels: newImg, x: thisSprite.x, y: thisSprite.y, colour: thisSprite.colour, over: thisSprite.over}
+}
+
 // drawSprite waits until the drawQueue is unlocked then adds a sprite for drawing to the drawQueue
 func (n *Nimbus) drawSprite(thisSprite Sprite) {
 	n.redrawComplete = false
