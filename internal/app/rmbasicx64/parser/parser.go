@@ -462,6 +462,14 @@ func (p *Parser) parseClsStatement() *ast.ClsStatement {
 	return nil
 }
 
+func (p *Parser) parseHomeStatement() *ast.HomeStatement {
+	stmt := &ast.HomeStatement{Token: p.curToken}
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parsePrintStatement() *ast.PrintStatement {
 	stmt := &ast.PrintStatement{Token: p.curToken}
 	stmt.PrintList = make([]interface{}, 0)
@@ -586,6 +594,68 @@ func (p *Parser) parseSetPenStatement() *ast.SetPenStatement {
 	}
 	p.nextToken()
 	stmt.Value = p.parseExpression(LOWEST)
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseSetCurposStatement() *ast.SetCurposStatement {
+	stmt := &ast.SetCurposStatement{Token: p.curToken}
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index + 1
+		return nil
+	}
+	p.nextToken()
+	// Get col
+	stmt.Col = p.parseExpression(LOWEST)
+	p.nextToken()
+	// Must have ,
+	if !p.curTokenIs(token.Comma) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.CommaSeparatorIsNeeded)
+		p.ErrorTokenIndex = p.curToken.Index
+		return nil
+	}
+	p.nextToken() // consume ,
+	if p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index
+		return nil
+	}
+	// Get row
+	stmt.Row = p.parseExpression(LOWEST)
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseMoveStatement() *ast.MoveStatement {
+	stmt := &ast.MoveStatement{Token: p.curToken}
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index + 1
+		return nil
+	}
+	p.nextToken()
+	// Get cols
+	stmt.Cols = p.parseExpression(LOWEST)
+	p.nextToken()
+	// Must have ,
+	if !p.curTokenIs(token.Comma) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.CommaSeparatorIsNeeded)
+		p.ErrorTokenIndex = p.curToken.Index
+		return nil
+	}
+	p.nextToken() // consume ,
+	if p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index
+		return nil
+	}
+	// Get rows
+	stmt.Rows = p.parseExpression(LOWEST)
 	if p.endOfInstruction() {
 		return stmt
 	}
@@ -951,6 +1021,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseNewStatement()
 	case token.CLS:
 		return p.parseClsStatement()
+	case token.HOME:
+		return p.parseHomeStatement()
 	case token.SAVE:
 		return p.parseSaveStatement()
 	case token.LOAD:
@@ -976,6 +1048,8 @@ func (p *Parser) parseStatement() ast.Statement {
 			return p.parseSetDegStatement()
 		case token.RAD:
 			return p.parseSetRadStatement()
+		case token.CURPOS:
+			return p.parseSetCurposStatement()
 		default:
 			p.errorMsg = syntaxerror.ErrorMessage((syntaxerror.WrongSetAskAttribute))
 			p.ErrorTokenIndex = p.curToken.Index
@@ -983,6 +1057,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		}
 	case token.PRINT:
 		return p.parsePrintStatement()
+	case token.MOVE:
+		return p.parseMoveStatement()
 	case token.LET:
 		return p.parseLetStatement() // all these methods need to return when they encounter :
 	case token.IdentifierLiteral:

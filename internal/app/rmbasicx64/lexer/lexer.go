@@ -179,6 +179,7 @@ var builtins = map[string]string{
 	"SIN": "SIN",
 	"SQR": "SQR",
 	"TAN": "TAN",
+	"GET": "GET",
 }
 
 // getIdentifier extracts an identifier (keyword, variable, etc) from the source code

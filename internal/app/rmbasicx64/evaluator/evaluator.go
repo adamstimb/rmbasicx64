@@ -43,6 +43,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalListStatement(g, node, env)
 	case *ast.ClsStatement:
 		return evalClsStatement(g, node, env)
+	case *ast.HomeStatement:
+		return evalHomeStatement(g, node, env)
 	case *ast.SetModeStatement:
 		return evalSetModeStatement(g, node, env)
 	case *ast.SetPaperStatement:
@@ -55,6 +57,10 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalSetDegStatement(g, node, env)
 	case *ast.SetRadStatement:
 		return evalSetRadStatement(g, node, env)
+	case *ast.SetCurposStatement:
+		return evalSetCurposStatement(g, node, env)
+	case *ast.MoveStatement:
+		return evalMoveStatement(g, node, env)
 	case *ast.PrintStatement:
 		return evalPrintStatement(g, node, env)
 	case *ast.GotoStatement:
@@ -164,9 +170,9 @@ func applyFunction(env *object.Environment, g *game.Game, fn object.Object, args
 			if env.Degrees {
 				args[0].(*object.Numeric).Value *= (math.Pi / 180)
 			}
-			return fn.Fn(args...)
+			return fn.Fn(env, g, args) // args...
 		} else {
-			return fn.Fn(args...)
+			return fn.Fn(env, g, args) // args...
 		}
 	default:
 		return newError("not a function: %s", fn.Type())
@@ -421,6 +427,61 @@ func evalSetPenStatement(g *game.Game, stmt *ast.SetPenStatement, env *object.En
 	}
 }
 
+func evalSetCurposStatement(g *game.Game, stmt *ast.SetCurposStatement, env *object.Environment) object.Object {
+	colVal := 0
+	rowVal := 0
+	col := Eval(g, stmt.Col, env)
+	row := Eval(g, stmt.Row, env)
+	// evaluate col
+	if _, ok := col.(*object.Error); ok {
+		return col
+	}
+	if val, ok := col.(*object.Numeric); ok {
+		colVal = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// evaluate row
+	if _, ok := row.(*object.Error); ok {
+		return col
+	}
+	if val, ok := row.(*object.Numeric); ok {
+		rowVal = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	g.SetCurpos(colVal, rowVal)
+	return nil
+}
+
+func evalMoveStatement(g *game.Game, stmt *ast.MoveStatement, env *object.Environment) object.Object {
+	colsIncr := 0
+	rowsIncr := 0
+	cols := Eval(g, stmt.Cols, env)
+	rows := Eval(g, stmt.Rows, env)
+	// evaluate col
+	if _, ok := cols.(*object.Error); ok {
+		return cols
+	}
+	if val, ok := cols.(*object.Numeric); ok {
+		colsIncr = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// evaluate row
+	if _, ok := rows.(*object.Error); ok {
+		return cols
+	}
+	if val, ok := rows.(*object.Numeric); ok {
+		rowsIncr = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	col, row := g.AskCurpos()
+	g.SetCurpos(col+colsIncr, row+rowsIncr)
+	return nil
+}
+
 func evalSetDegStatement(g *game.Game, stmt *ast.SetDegStatement, env *object.Environment) object.Object {
 	obj := Eval(g, stmt.Value, env)
 	// return error if evaluation failed
@@ -577,6 +638,11 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 func evalClsStatement(g *game.Game, stmt *ast.ClsStatement, env *object.Environment) object.Object {
 	g.Cls()
 	g.SetCurpos(1, 1)
+	return nil
+}
+
+func evalHomeStatement(g *game.Game, stmt *ast.HomeStatement, env *object.Environment) object.Object {
+	g.SetCurpos(0, 0)
 	return nil
 }
 

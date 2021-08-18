@@ -457,6 +457,67 @@ func (s *SetPenStatement) String() string {
 	return out.String()
 }
 
+type GetStatement struct {
+	Token token.Token
+	Value Expression
+}
+
+func (s *GetStatement) statementNode() {}
+func (s *GetStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *GetStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type SetCurposStatement struct {
+	Token token.Token
+	Col   Expression
+	Row   Expression
+}
+
+func (s *SetCurposStatement) statementNode() {}
+func (s *SetCurposStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *SetCurposStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type MoveStatement struct {
+	Token token.Token
+	Cols  Expression
+	Rows  Expression
+}
+
+func (s *MoveStatement) statementNode() {}
+func (s *MoveStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *MoveStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type HomeStatement struct {
+	Token token.Token
+}
+
+func (s *HomeStatement) statementNode() {}
+func (s *HomeStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *HomeStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
 type SetDegStatement struct {
 	Token token.Token
 	Value Expression

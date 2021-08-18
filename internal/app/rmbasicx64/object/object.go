@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/game"
 )
 
 const (
@@ -52,7 +53,7 @@ func (f *Function) Inspect() string {
 	return out.String()
 }
 
-type BuiltinFunction func(args ...Object) Object
+type BuiltinFunction func(env *Environment, g *game.Game, args []Object) Object
 
 type Builtin struct {
 	Fn BuiltinFunction
