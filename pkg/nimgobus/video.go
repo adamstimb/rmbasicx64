@@ -51,7 +51,7 @@ func (n *Nimbus) rotateSprite90(thisSprite Sprite) Sprite {
 	return Sprite{pixels: newImg, x: thisSprite.x, y: thisSprite.y, colour: thisSprite.colour, over: thisSprite.over}
 }
 
-// rotateSprite rotates a sprite 90 degress clockwise r times
+// rotateSprite rotates a sprite 90 degress counterclockwise r times
 func (n *Nimbus) rotateSprite(thisSprite Sprite, r int) Sprite {
 	for i := 0; i < r; i++ {
 		thisSprite = n.rotateSprite90(thisSprite)
