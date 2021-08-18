@@ -6,13 +6,14 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/game"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/object"
 )
 
 // don't forget to add builtins to the map in lexer as well (better solution?)
 var builtins = map[string]*object.Builtin{
 	"LEN": &object.Builtin{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(env *object.Environment, g *game.Game, args []object.Object) object.Object {
 			if len(args) != 1 {
 				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
 			}
@@ -28,7 +29,7 @@ var builtins = map[string]*object.Builtin{
 		},
 	},
 	"ABS": &object.Builtin{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(env *object.Environment, g *game.Game, args []object.Object) object.Object {
 			if len(args) != 1 {
 				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
 			}
@@ -44,7 +45,7 @@ var builtins = map[string]*object.Builtin{
 		},
 	},
 	"ATN": &object.Builtin{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(env *object.Environment, g *game.Game, args []object.Object) object.Object {
 			if len(args) != 1 {
 				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
 			}
@@ -60,7 +61,7 @@ var builtins = map[string]*object.Builtin{
 		},
 	},
 	"COS": &object.Builtin{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(env *object.Environment, g *game.Game, args []object.Object) object.Object {
 			if len(args) != 1 {
 				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
 			}
@@ -76,7 +77,7 @@ var builtins = map[string]*object.Builtin{
 		},
 	},
 	"SIN": &object.Builtin{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(env *object.Environment, g *game.Game, args []object.Object) object.Object {
 			if len(args) != 1 {
 				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
 			}
@@ -93,7 +94,7 @@ var builtins = map[string]*object.Builtin{
 		},
 	},
 	"EXP": &object.Builtin{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(env *object.Environment, g *game.Game, args []object.Object) object.Object {
 			if len(args) != 1 {
 				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
 			}
@@ -109,7 +110,7 @@ var builtins = map[string]*object.Builtin{
 		},
 	},
 	"INT": &object.Builtin{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(env *object.Environment, g *game.Game, args []object.Object) object.Object {
 			if len(args) != 1 {
 				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
 			}
@@ -125,7 +126,7 @@ var builtins = map[string]*object.Builtin{
 		},
 	},
 	"LN": &object.Builtin{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(env *object.Environment, g *game.Game, args []object.Object) object.Object {
 			if len(args) != 1 {
 				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
 			}
@@ -141,7 +142,7 @@ var builtins = map[string]*object.Builtin{
 		},
 	},
 	"LOG": &object.Builtin{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(env *object.Environment, g *game.Game, args []object.Object) object.Object {
 			if len(args) != 1 {
 				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
 			}
@@ -157,7 +158,7 @@ var builtins = map[string]*object.Builtin{
 		},
 	},
 	"RND": &object.Builtin{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(env *object.Environment, g *game.Game, args []object.Object) object.Object {
 			if len(args) != 1 {
 				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
 			}
@@ -188,7 +189,7 @@ var builtins = map[string]*object.Builtin{
 		},
 	},
 	"SGN": &object.Builtin{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(env *object.Environment, g *game.Game, args []object.Object) object.Object {
 			if len(args) != 1 {
 				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
 			}
@@ -211,7 +212,7 @@ var builtins = map[string]*object.Builtin{
 		},
 	},
 	"SQR": &object.Builtin{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(env *object.Environment, g *game.Game, args []object.Object) object.Object {
 			if len(args) != 1 {
 				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
 			}
@@ -227,7 +228,7 @@ var builtins = map[string]*object.Builtin{
 		},
 	},
 	"TAN": &object.Builtin{
-		Fn: func(args ...object.Object) object.Object {
+		Fn: func(env *object.Environment, g *game.Game, args []object.Object) object.Object {
 			if len(args) != 1 {
 				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
 			}
@@ -239,6 +240,47 @@ var builtins = map[string]*object.Builtin{
 				}
 			default:
 				return newError("argument to `TAN` not supported, got %s", args[0].Type())
+			}
+		},
+	},
+	"GET": &object.Builtin{
+		Fn: func(env *object.Environment, g *game.Game, args []object.Object) object.Object {
+			if len(args) > 1 {
+				return newError("wrong number of arguments, got %d, want < %d", len(args), 2)
+			}
+			// Determine timeout from args.  If no arg passed then timeout is infinite (-1).
+			timeout := 100 * time.Millisecond
+			useTimeout := false
+			if len(args) > 0 {
+				switch arg := args[0].(type) {
+				case *object.Numeric:
+					if arg.Value > 0 {
+						timeout = time.Duration(100) * time.Millisecond * time.Duration(int(arg.Value))
+						useTimeout = true
+					}
+				default:
+					return newError("argument to `GET` not supported, got %s", args[0].Type())
+				}
+			}
+			// Get
+			elapsedTime := 1 * time.Millisecond
+			for {
+				c := g.Get()
+				if c > 0 {
+					// normal key pressed
+					return &object.Numeric{
+						Value: float64(c),
+					}
+				}
+				time.Sleep(100 * time.Millisecond)
+				elapsedTime += 100 * time.Millisecond
+				if useTimeout && elapsedTime > timeout {
+					break
+				}
+			}
+			// if key not pressed before timeout
+			return &object.Numeric{
+				Value: float64(0),
 			}
 		},
 	},

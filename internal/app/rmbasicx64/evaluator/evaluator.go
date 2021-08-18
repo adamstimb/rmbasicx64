@@ -170,9 +170,9 @@ func applyFunction(env *object.Environment, g *game.Game, fn object.Object, args
 			if env.Degrees {
 				args[0].(*object.Numeric).Value *= (math.Pi / 180)
 			}
-			return fn.Fn(args...)
+			return fn.Fn(env, g, args) // args...
 		} else {
-			return fn.Fn(args...)
+			return fn.Fn(env, g, args) // args...
 		}
 	default:
 		return newError("not a function: %s", fn.Type())

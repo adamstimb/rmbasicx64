@@ -62,7 +62,7 @@ func (n *Nimbus) writeSprite(thisSprite Sprite) {
 					spriteY++
 					continue
 				}
-				// colour > 0 represents a b+w sprite so colourise it with specified colour
+				// colour >= 0 represents a b+w sprite so colourise it with specified colour
 				// otherwise use the colour given by the pixel
 				if thisSprite.colour >= 0 {
 					if thisSprite.pixels[spriteY][spriteX] == 1 {
