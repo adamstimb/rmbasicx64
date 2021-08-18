@@ -50,8 +50,8 @@ func (n *Nimbus) Plot(opt PlotOptions, text string, x, y int) {
 		xOffset += 8
 	}
 	// TODO: Stretch
-	resizedImg := n.resizeSprite(Sprite{img, x, y, opt.Brush, true}, imgWidth*2, imgHeight*2)
+	resizedSprite := n.resizeSprite(Sprite{img, x, y, opt.Brush, true}, imgWidth*opt.SizeX, imgHeight*opt.SizeY)
 	// TODO: Direction
 	// TODO: Over
-	n.drawSprite(Sprite{resizedImg.pixels, x, y, opt.Brush, true})
+	n.drawSprite(resizedSprite)
 }

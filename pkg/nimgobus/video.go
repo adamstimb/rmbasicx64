@@ -1,6 +1,7 @@
 package nimgobus
 
 import (
+	"math"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -20,15 +21,14 @@ func (n *Nimbus) resizeSprite(thisSprite Sprite, newWidth, newHeight int) Sprite
 	newImg := make2dArray(newWidth, newHeight)
 	imgWidth := len(img[0])
 	imgHeight := len(img)
-	xRatio := int(((imgWidth << 16) / newWidth) + 1)
-	yRatio := int(((imgHeight << 16) / newHeight) + 1)
-	x2 := 0
-	y2 := 0
-	for i := 0; i < newHeight; i++ {
-		for j := 0; j < newWidth; j++ {
-			x2 = ((j * xRatio) >> 16)
-			y2 = ((i * yRatio) >> 16)
-			newImg[(i*newWidth)+j] = img[(y2*imgWidth)+x2] // <--- doh!!! 1d array!
+	xScale := float64(imgWidth) / float64(newWidth)
+	yScale := float64(imgHeight) / float64(newHeight)
+
+	for y2 := 0; y2 < newHeight; y2++ {
+		for x2 := 0; x2 < newWidth; x2++ {
+			x1 := int(math.Floor((float64(x2) + 0.5) * xScale))
+			y1 := int(math.Floor((float64(y2) + 0.5) * yScale))
+			newImg[y2][x2] = img[y1][x1]
 		}
 	}
 	return Sprite{pixels: newImg, x: thisSprite.x, y: thisSprite.y, colour: thisSprite.colour, over: thisSprite.over}
