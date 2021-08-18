@@ -23,7 +23,6 @@ func (n *Nimbus) resizeSprite(thisSprite Sprite, newWidth, newHeight int) Sprite
 	imgHeight := len(img)
 	xScale := float64(imgWidth) / float64(newWidth)
 	yScale := float64(imgHeight) / float64(newHeight)
-
 	for y2 := 0; y2 < newHeight; y2++ {
 		for x2 := 0; x2 < newWidth; x2++ {
 			x1 := int(math.Floor((float64(x2) + 0.5) * xScale))
@@ -32,6 +31,32 @@ func (n *Nimbus) resizeSprite(thisSprite Sprite, newWidth, newHeight int) Sprite
 		}
 	}
 	return Sprite{pixels: newImg, x: thisSprite.x, y: thisSprite.y, colour: thisSprite.colour, over: thisSprite.over}
+}
+
+// rotateSprite90 rotates a sprite 90 degrees counterclockwise
+func (n *Nimbus) rotateSprite90(thisSprite Sprite) Sprite {
+	img := thisSprite.pixels
+	imgWidth := len(img[0])
+	imgHeight := len(img)
+	newWidth := imgHeight
+	newHeight := imgWidth
+	newImg := make2dArray(newWidth, newHeight)
+	for x1 := 0; x1 < imgWidth; x1++ {
+		for y1 := 0; y1 < imgHeight; y1++ {
+			x2 := y1
+			y2 := (newHeight - 1) - x1
+			newImg[y2][x2] = img[y1][x1]
+		}
+	}
+	return Sprite{pixels: newImg, x: thisSprite.x, y: thisSprite.y, colour: thisSprite.colour, over: thisSprite.over}
+}
+
+// rotateSprite rotates a sprite 90 degress clockwise r times
+func (n *Nimbus) rotateSprite(thisSprite Sprite, r int) Sprite {
+	for i := 0; i < r; i++ {
+		thisSprite = n.rotateSprite90(thisSprite)
+	}
+	return thisSprite
 }
 
 // drawSprite waits until the drawQueue is unlocked then adds a sprite for drawing to the drawQueue
