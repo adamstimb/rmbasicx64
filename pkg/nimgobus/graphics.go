@@ -109,6 +109,19 @@ type LineOptions struct {
 
 // Line draws a list of coordinates on the screen connected by lines
 func (n *Nimbus) Line(opt LineOptions, coordList []XyCoord) {
+	// Handle default values
+	if opt.Brush == -255 {
+		opt.Brush = n.brush
+	}
+	var over bool
+	switch opt.Over {
+	case -255:
+		over = n.over
+	case 0:
+		over = false
+	case -1:
+		over = true
+	}
 	// Find optimal image size and minimum x,y
 	minX := 1000
 	maxX := 0
@@ -131,9 +144,9 @@ func (n *Nimbus) Line(opt LineOptions, coordList []XyCoord) {
 	imgWidth := maxX - minX
 	imgHeight := maxY - minY
 	img := make2dArray(imgWidth, imgHeight)
+	// draw lines
 	for i := 0; i < len(coordList)-1; i++ {
 		img = n.drawLine(img, coordList[i].X-minX, coordList[i].Y-minY, coordList[i+1].X-minX, coordList[i+1].Y-minY)
 	}
-	n.drawSprite(n.applyDrawingbox(Sprite{img, minX, minY, 3, n.over}, 0))
-	n.drawSprite(Sprite{img, minY, minX, 3, n.over})
+	n.drawSprite(n.applyDrawingbox(Sprite{img, minX, minY, opt.Brush, over}, 0))
 }

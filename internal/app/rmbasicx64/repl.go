@@ -43,6 +43,7 @@ func welcomeScreen(g *game.Game) {
 	g.Put(13)
 
 	var opt nimgobus.LineOptions
+	opt.Brush = 2
 	g.Line(opt, []nimgobus.XyCoord{{0, 0}, {100, 100}})
 }
 
