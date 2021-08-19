@@ -1,6 +1,9 @@
 package nimgobus
 
-import "log"
+import (
+	"log"
+	"math"
+)
 
 // PlonkLogo draws the RM Nimbus logo
 func (n *Nimbus) PlonkLogo(x, y int) {
@@ -74,25 +77,50 @@ func (n *Nimbus) Plot(opt PlotOptions, text string, x, y int) {
 }
 
 // drawLine implements Bresenham's line algorithm to draw a line on a 2d array
-func (n *Nimbus) drawLine(img [][]int, x0, y0, x1, y1 int) [][]int {
-	dx := x1 - x0
-	dy := y1 - y0
-	x := x0
-	y := y0
-	p := 2*dy - dx
+func (n *Nimbus) drawLine(img [][]int, x1, y1, x2, y2 int) [][]int {
+	//dx := x1 - x0
+	//dy := y1 - y0
+	//x := x0
+	//y := y0
+	//p := 2*dy - dx
 	imgHeight := len(img)
-	for x < x1 {
-		if p >= 0 {
-			//log.Printf("%d %d, %d", imgHeight, x, y)
-			img[(imgHeight-1)-y][x] = 1
-			y++
-			p = p + 2*dy - 2*dx
-		} else {
-			//log.Printf("%d %d, %d", imgHeight, x, y)
-			img[(imgHeight-1)-y][x] = 1
-			p = p + 2*dy
-		}
+	//for x < x1 {
+	//	if p >= 0 {
+	//		log.Printf("%d %d, %d", imgHeight, x, y)
+	//		img[(imgHeight-1)-y][x] = 1
+	//		y++
+	//		p = p + 2*dy - 2*dx
+	//	} else {
+	//		log.Printf("%d %d, %d", imgHeight, x, y)
+	//		img[(imgHeight-1)-y][x] = 1
+	//		p = p + 2*dy
+	//	}
+	//	x++
+	//}
+	dx := math.Abs(float64(x1) - float64(x2))
+	dy := math.Abs(float64(y1) - float64(y2))
+	p := 2*dy - dx
+	var x, y, end int
+	if x1 > x2 {
+		x = x2
+		y = y2
+		end = x1
+	} else {
+		x = x1
+		y = y1
+		end = x2
+	}
+	img[(imgHeight)-y][x] = 1
+	for x < end-1 {
 		x++
+		if p < 0 {
+			p = p + 2*dy
+		} else {
+			y++
+			p = p + 2*(dy-dx)
+		}
+		log.Printf("%d, %d", x, (imgHeight-1)-y)
+		img[(imgHeight)-y][x] = 1
 	}
 	return img
 }
@@ -147,7 +175,7 @@ func (n *Nimbus) Line(opt LineOptions, coordList []XyCoord) {
 	}
 	log.Printf("min %d, %d max %d, %d", minX, minY, maxX, maxY)
 	imgWidth := (maxX - minX) + 1
-	imgHeight := (maxY - minY) + 1
+	imgHeight := (maxY - minY)
 	img := make2dArray(imgWidth, imgHeight)
 	// draw lines
 	for i := 0; i < len(coordList)-1; i++ {
