@@ -109,10 +109,31 @@ type LineOptions struct {
 
 // Line draws a list of coordinates on the screen connected by lines
 func (n *Nimbus) Line(opt LineOptions, coordList []XyCoord) {
-	img := make2dArray(200, 200) // TODO: Find actual required size
-	for i := 0; i < len(coordList)-1; i++ {
-		img = n.drawLine(img, coordList[i].X, coordList[i].Y, coordList[i+1].X, coordList[i+1].Y)
+	// Find optimal image size and minimum x,y
+	minX := 1000
+	maxX := 0
+	minY := 1000
+	maxY := 0
+	for _, coord := range coordList {
+		if coord.X < minX {
+			minX = coord.X
+		}
+		if coord.X > maxX {
+			maxX = coord.X
+		}
+		if coord.Y < minY {
+			minY = coord.Y
+		}
+		if coord.Y > maxY {
+			maxY = coord.Y
+		}
 	}
-	n.drawSprite(n.applyDrawingbox(Sprite{img, 0, 0, 3, n.over}, 0))
-	n.drawSprite(Sprite{img, 0, 0, 3, n.over})
+	imgWidth := maxX - minX
+	imgHeight := maxY - minY
+	img := make2dArray(imgWidth, imgHeight)
+	for i := 0; i < len(coordList)-1; i++ {
+		img = n.drawLine(img, coordList[i].X-minX, coordList[i].Y-minY, coordList[i+1].X-minX, coordList[i+1].Y-minY)
+	}
+	n.drawSprite(n.applyDrawingbox(Sprite{img, minX, minY, 3, n.over}, 0))
+	n.drawSprite(Sprite{img, minY, minX, 3, n.over})
 }
