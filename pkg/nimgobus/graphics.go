@@ -81,12 +81,10 @@ func (n *Nimbus) drawLine(img [][]int, x0, y0, x1, y1 int) [][]int {
 	for x < x1 {
 		if p >= 0 {
 			img[y][x] = 1
-			//log.Printf("%d, %d", x, y)
 			y++
 			p = p + 2*dy - 2*dx
 		} else {
 			img[y][x] = 1
-			//log.Printf("%d, %d", x, y)
 			p = p + 2*dy
 		}
 		x++
