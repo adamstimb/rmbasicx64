@@ -604,6 +604,23 @@ func (ps *PlotStatement) String() string {
 	return out.String()
 }
 
+type LineStatement struct {
+	Token     token.Token
+	CoordList []Expression
+	Brush     Expression
+	Over      Expression
+}
+
+func (ps *LineStatement) statementNode() {}
+func (ps *LineStatement) TokenLiteral() string {
+	return ps.Token.Literal
+}
+func (ps *LineStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(ps.TokenLiteral() + " ")
+	return out.String()
+}
+
 type SaveStatement struct {
 	Token token.Token
 	Value Expression

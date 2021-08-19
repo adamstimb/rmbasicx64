@@ -11,7 +11,6 @@ import (
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/object"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/parser"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
-	"github.com/adamstimb/rmbasicx64/pkg/nimgobus"
 	"github.com/elastic/go-sysinfo"
 )
 
@@ -41,10 +40,6 @@ func welcomeScreen(g *game.Game) {
 	workspaceAvailable := fmt.Sprintf("%dG bytes workspace available.", bToGb(memInfo.Available))
 	g.Print(workspaceAvailable)
 	g.Put(13)
-
-	var opt nimgobus.LineOptions
-	opt.Brush = 2
-	g.Line(opt, []nimgobus.XyCoord{{0, 0}, {100, 100}})
 }
 
 // repl is the REPL that handles input

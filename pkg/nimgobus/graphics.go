@@ -1,5 +1,7 @@
 package nimgobus
 
+import "log"
+
 // PlonkLogo draws the RM Nimbus logo
 func (n *Nimbus) PlonkLogo(x, y int) {
 	n.drawSprite(Sprite{n.logoImage, x, y, -1, true})
@@ -81,10 +83,12 @@ func (n *Nimbus) drawLine(img [][]int, x0, y0, x1, y1 int) [][]int {
 	imgHeight := len(img)
 	for x < x1 {
 		if p >= 0 {
+			//log.Printf("%d %d, %d", imgHeight, x, y)
 			img[(imgHeight-1)-y][x] = 1
 			y++
 			p = p + 2*dy - 2*dx
 		} else {
+			//log.Printf("%d %d, %d", imgHeight, x, y)
 			img[(imgHeight-1)-y][x] = 1
 			p = p + 2*dy
 		}
@@ -141,8 +145,9 @@ func (n *Nimbus) Line(opt LineOptions, coordList []XyCoord) {
 			maxY = coord.Y
 		}
 	}
-	imgWidth := maxX - minX
-	imgHeight := maxY - minY
+	log.Printf("min %d, %d max %d, %d", minX, minY, maxX, maxY)
+	imgWidth := (maxX - minX) + 1
+	imgHeight := (maxY - minY) + 1
 	img := make2dArray(imgWidth, imgHeight)
 	// draw lines
 	for i := 0; i < len(coordList)-1; i++ {

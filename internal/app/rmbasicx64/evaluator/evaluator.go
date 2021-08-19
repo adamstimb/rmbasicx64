@@ -66,6 +66,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalPrintStatement(g, node, env)
 	case *ast.PlotStatement:
 		return evalPlotStatement(g, node, env)
+	case *ast.LineStatement:
+		return evalLineStatement(g, node, env)
 	case *ast.GotoStatement:
 		return evalGotoStatement(g, node, env)
 	case *ast.RepeatStatement:
@@ -328,6 +330,53 @@ func evalPlotStatement(g *game.Game, stmt *ast.PlotStatement, env *object.Enviro
 	// Execute
 	opt := nimgobus.PlotOptions{Brush: Brush, Direction: Direction, Font: Font, SizeX: SizeX, SizeY: SizeY, Over: Over}
 	g.Plot(opt, Text, X, Y)
+	return nil
+}
+
+func evalLineStatement(g *game.Game, stmt *ast.LineStatement, env *object.Environment) object.Object {
+	// Handle defaults
+	var Brush, Over int
+	if stmt.Brush == nil {
+		Brush = -255
+	} else {
+		obj := Eval(g, stmt.Brush, env)
+		if val, ok := obj.(*object.Numeric); ok {
+			Brush = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	if stmt.Over == nil {
+		Over = -255
+	} else {
+		obj := Eval(g, stmt.Over, env)
+		if val, ok := obj.(*object.Numeric); ok {
+			Over = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	// Handle coord list
+	var coordList []nimgobus.XyCoord
+	var X, Y int
+	for i := 0; i < len(stmt.CoordList)-1; i += 2 {
+		obj := Eval(g, stmt.CoordList[i], env)
+		if val, ok := obj.(*object.Numeric); ok {
+			X = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+		obj = Eval(g, stmt.CoordList[i+1], env)
+		if val, ok := obj.(*object.Numeric); ok {
+			Y = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+		coordList = append(coordList, nimgobus.XyCoord{X, Y})
+	}
+	// Execute
+	opt := nimgobus.LineOptions{Brush: Brush, Over: Over}
+	g.Line(opt, coordList)
 	return nil
 }
 
