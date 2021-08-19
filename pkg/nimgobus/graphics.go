@@ -78,13 +78,14 @@ func (n *Nimbus) drawLine(img [][]int, x0, y0, x1, y1 int) [][]int {
 	x := x0
 	y := y0
 	p := 2*dy - dx
+	imgHeight := len(img)
 	for x < x1 {
 		if p >= 0 {
-			img[y][x] = 1
+			img[(imgHeight-1)-y][x] = 1
 			y++
 			p = p + 2*dy - 2*dx
 		} else {
-			img[y][x] = 1
+			img[(imgHeight-1)-y][x] = 1
 			p = p + 2*dy
 		}
 		x++
@@ -113,4 +114,5 @@ func (n *Nimbus) Line(opt LineOptions, coordList []XyCoord) {
 		img = n.drawLine(img, coordList[i].X, coordList[i].Y, coordList[i+1].X, coordList[i+1].Y)
 	}
 	n.drawSprite(n.applyDrawingbox(Sprite{img, 0, 0, 3, n.over}, 0))
+	n.drawSprite(Sprite{img, 0, 0, 3, n.over})
 }

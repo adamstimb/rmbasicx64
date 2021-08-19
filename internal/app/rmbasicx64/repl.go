@@ -43,7 +43,7 @@ func welcomeScreen(g *game.Game) {
 	g.Put(13)
 
 	var opt nimgobus.LineOptions
-	g.Line(opt, []nimgobus.XyCoord{{10, 10}, {100, 100}})
+	g.Line(opt, []nimgobus.XyCoord{{0, 0}, {100, 100}})
 }
 
 // repl is the REPL that handles input
