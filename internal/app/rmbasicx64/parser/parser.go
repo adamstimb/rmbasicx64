@@ -207,6 +207,33 @@ func (p *Parser) endOfInstruction() bool {
 	return true
 }
 
+func (p *Parser) requireComma() bool {
+	if !p.curTokenIs(token.Comma) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.CommaSeparatorIsNeeded)
+		p.ErrorTokenIndex = p.curToken.Index
+		p.nextToken()
+		return false
+	}
+	p.nextToken()
+	return true
+}
+
+func (p *Parser) requireExpression() (val ast.Expression, ok bool) {
+	val = p.parseExpression(LOWEST)
+	p.nextToken()
+	if _, hasError := p.GetError(); hasError {
+		return val, false
+	}
+	return val, true
+}
+
+func (p *Parser) onEndOfInstruction() bool {
+	if p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF) {
+		return true
+	}
+	return false
+}
+
 // -------------------------------------------------------------------------
 // -- If
 
@@ -504,6 +531,84 @@ func (p *Parser) parsePrintStatement() *ast.PrintStatement {
 		if p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF) {
 			break
 		}
+	}
+	return stmt
+}
+
+func (p *Parser) parsePlotStatement() *ast.PlotStatement {
+	stmt := &ast.PlotStatement{Token: p.curToken}
+	// Handle PLOT without args
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericOrStringExpressionNeeded)
+		return nil
+	}
+	// Get Value
+	val, ok := p.requireExpression()
+	if ok {
+		stmt.Value = val
+	} else {
+		return nil
+	}
+	// ,
+	if !p.requireComma() {
+		return nil
+	}
+	// Get X
+	val, ok = p.requireExpression()
+	if ok {
+		stmt.X = val
+	} else {
+		return nil
+	}
+	// ,
+	if !p.requireComma() {
+		return nil
+	}
+	// Get Y
+	val, ok = p.requireExpression()
+	if ok {
+		stmt.Y = val
+	} else {
+		return nil
+	}
+	// Handle no options list
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// Handle options list
+	for !p.onEndOfInstruction() {
+		tokenType := p.curToken.TokenType
+		switch tokenType {
+		case token.BRUSH:
+			p.nextToken()
+			stmt.Brush = p.parseExpression(LOWEST)
+		case token.DIRECTION:
+			p.nextToken()
+			stmt.Direction = p.parseExpression(LOWEST)
+		case token.FONT:
+			p.nextToken()
+			stmt.Font = p.parseExpression(LOWEST)
+		case token.OVER:
+			p.nextToken()
+			stmt.Over = p.parseExpression(LOWEST)
+		case token.SIZE:
+			p.nextToken()
+			stmt.SizeX = p.parseExpression(LOWEST)
+			if p.curTokenIs(token.Comma) {
+				p.nextToken()
+				stmt.SizeY = p.parseExpression(LOWEST)
+				p.nextToken()
+			} else {
+				stmt.SizeY = stmt.SizeX
+			}
+		default:
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.UnknownSetAskAttribute)
+			return nil
+		}
+		p.nextToken()
 	}
 	return stmt
 }
@@ -1057,6 +1162,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		}
 	case token.PRINT:
 		return p.parsePrintStatement()
+	case token.PLOT:
+		return p.parsePlotStatement()
 	case token.MOVE:
 		return p.parseMoveStatement()
 	case token.LET:

@@ -32,6 +32,14 @@ type textBox struct {
 	row2 int
 }
 
+// drawingBox defines the bounding box of a drawing box
+type drawingBox struct {
+	x1 int
+	y1 int
+	x2 int
+	y2 int
+}
+
 // Sprite defines a sprite that contains a 2d image array, a screen co-ordinate, colour and overwrite (XOR) mode
 type Sprite struct {
 	pixels [][]int
@@ -62,6 +70,7 @@ type Nimbus struct {
 	borderImage            *ebiten.Image     // An ebiten image representing the Nimbus monitor's background
 	basicColours           []color.RGBA      // An array of the Nimbus's 16 built-in colours
 	textBoxes              [10]textBox       // All defined textboxes
+	drawingBoxes           [10]drawingBox    // All define drawing boxes
 	imageBlocks            [16]*ebiten.Image // Images loaded into memory as "blocks"
 	logoImage              [][]int           // The "RM Nimbus" branding image
 	charImages0            [256][][]int      // An array of 2d arrays for each char in this charset
@@ -73,7 +82,14 @@ type Nimbus struct {
 	charset                int               // The current char set (0 or 1)
 	cursorCharset          int               // The current cursor char set (0 or 1)
 	cursorChar             int               // The current cursor char
+	brush                  int               // The current drawing/plot brush
+	plotDirection          int               // The current plot direction
+	plotFont               int               // The current plot font
+	plotSizeX              int               // The current plot size x
+	plotSizeY              int               // The current plot size y
+	over                   bool              // The drawing mode (XOR)
 	selectedTextBox        int               // The current textbox
+	selectedDrawingBox     int               // The current drawing box
 	defaultHighResPalette  []int             // The default palette for high-res (mode 80)
 	defaultLowResPalette   []int             // The default palette for low-res (mode 40)
 	palette                []int             // The current palette
@@ -121,6 +137,12 @@ func (n *Nimbus) Init() {
 	n.cursorMode = -1
 	n.cursorChar = 95
 	n.cursorCharset = 0
+	n.brush = 3
+	n.plotDirection = 0
+	n.plotFont = 0
+	n.plotSizeX = 1
+	n.plotSizeY = 1
+	n.over = true
 	n.cursorPosition = colRow{1, 1}
 	n.muCursorFlash.Lock()
 	n.cursorFlash = false
@@ -128,6 +150,7 @@ func (n *Nimbus) Init() {
 	n.cursorFlashEnabled = true
 	n.deleteMode = false
 	n.selectedTextBox = 0
+	n.selectedDrawingBox = 0
 	n.keyBuffer = []int{}
 	n.charRepeat = repeatingChar{0, 0}
 	n.muBorderImage.Lock()
@@ -142,9 +165,10 @@ func (n *Nimbus) Init() {
 		}
 	}
 
-	// Initialize with mode 80 textboxes
+	// Initialize with mode 80 textboxes and drawingboxes
 	for i := 0; i < 10; i++ {
 		n.textBoxes[i] = textBox{1, 1, 80, 25}
+		n.drawingBoxes[i] = drawingBox{0, 0, 639, 249}
 	}
 
 	// Set break int

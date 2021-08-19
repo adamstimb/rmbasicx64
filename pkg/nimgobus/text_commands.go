@@ -72,6 +72,9 @@ func (n *Nimbus) SetMode(columns int) {
 		// we'll do the same
 		return
 	}
+	// Restore some defaults
+	n.selectedDrawingBox = 0
+	n.selectedTextBox = 0
 	// Need to manipulate videoImage so force redraw and get the lock
 	n.ForceRedraw()
 	n.muDrawQueue.Lock()
@@ -83,6 +86,11 @@ func (n *Nimbus) SetMode(columns int) {
 		n.borderColour = 0
 		n.penColour = 15
 		n.palette = n.defaultLowResPalette
+		n.brush = 15
+		n.plotDirection = 0
+		n.plotFont = 0
+		n.plotSizeX = 1
+		n.plotSizeY = 1
 		// reinit border image and fill with new colour
 		n.borderImage = ebiten.NewImage(640+(n.borderSize*2), 500+(n.borderSize*2))
 		n.borderImage.Fill(n.basicColours[n.palette[n.borderColour]])
@@ -94,6 +102,11 @@ func (n *Nimbus) SetMode(columns int) {
 		n.paperColour = 0
 		n.borderColour = 0
 		n.penColour = 3
+		n.brush = 3
+		n.plotDirection = 0
+		n.plotFont = 0
+		n.plotSizeX = 1
+		n.plotSizeY = 1
 		// reinit border image and fill with new colour
 		n.borderImage = ebiten.NewImage(640+(n.borderSize*2), 500+(n.borderSize*2))
 		n.borderImage.Fill(n.basicColours[n.palette[n.borderColour]])
@@ -102,6 +115,12 @@ func (n *Nimbus) SetMode(columns int) {
 	// Redefine textboxes, imageBlocks and clear screen
 	for i := 0; i < 10; i++ {
 		n.textBoxes[i] = textBox{1, 1, columns, 25}
+		switch columns {
+		case 40:
+			n.drawingBoxes[i] = drawingBox{0, 0, 639, 249}
+		case 80:
+			n.drawingBoxes[i] = drawingBox{0, 0, 319, 249}
+		}
 	}
 	n.imageBlocks = [16]*ebiten.Image{}
 	n.muBorderImage.Unlock()

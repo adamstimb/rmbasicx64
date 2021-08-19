@@ -11,23 +11,40 @@ type PlotOptions struct {
 	Direction int
 	SizeX     int
 	SizeY     int
+	Over      int
 }
 
 // Plot draws a string of characters on the paper at a given location
 // with the colour, size and orientation of your choice.
 func (n *Nimbus) Plot(opt PlotOptions, text string, x, y int) {
-	// Handle default size values
-	if opt.SizeX == 0 {
-		opt.SizeX = 1
+	// Handle default values
+	if opt.SizeX == -255 {
+		opt.SizeX = n.plotSizeX
 	}
-	if opt.SizeY == 0 {
-		opt.SizeY = 1
+	if opt.SizeY == -255 {
+		opt.SizeY = n.plotSizeY
 	}
-	// TODO: Handle fonts
+	if opt.Brush == -255 {
+		opt.Brush = n.brush
+	}
+	if opt.Direction == -255 {
+		opt.Direction = n.plotDirection
+	}
+	if opt.Font == -255 {
+		opt.Font = n.plotFont
+	}
+	var over bool
+	switch opt.Over {
+	case -255:
+		over = n.over
+	case 0:
+		over = false
+	case -1:
+		over = true
+	}
 	// Validate brush
 	// n.validateColour(opt.Brush)  // TODO: Decide once and for all how to handle this.
-	// Create a new image big enough to contain the plotted chars
-	// (without scaling)
+	// Plot chars and applying scaling/direction
 	imgWidth := len(text) * 8
 	imgHeight := 10
 	img := make2dArray(imgWidth, imgHeight)
@@ -49,10 +66,53 @@ func (n *Nimbus) Plot(opt PlotOptions, text string, x, y int) {
 		}
 		xOffset += 8
 	}
+	resizedSprite := n.resizeSprite(Sprite{img, x, y, opt.Brush, over}, imgWidth*opt.SizeX, imgHeight*opt.SizeY)
+	rotatedSprite := n.rotateSprite(Sprite{resizedSprite.pixels, x, y, opt.Brush, over}, opt.Direction)
+	n.drawSprite(n.applyDrawingbox(rotatedSprite, 0))
+}
 
-	// TODO: Stretch
-	resizedSprite := n.resizeSprite(Sprite{img, x, y, opt.Brush, true}, imgWidth*opt.SizeX, imgHeight*opt.SizeY)
-	rotatedSprite := n.rotateSprite(Sprite{resizedSprite.pixels, x, y, opt.Brush, true}, opt.Direction)
-	// TODO: Over
-	n.drawSprite(rotatedSprite)
+// drawLine implements Bresenham's line algorithm to draw a line on a 2d array
+func (n *Nimbus) drawLine(img [][]int, x0, y0, x1, y1 int) [][]int {
+	dx := x1 - x0
+	dy := y1 - y0
+	x := x0
+	y := y0
+	p := 2*dy - dx
+	for x < x1 {
+		if p >= 0 {
+			img[y][x] = 1
+			//log.Printf("%d, %d", x, y)
+			y++
+			p = p + 2*dy - 2*dx
+		} else {
+			img[y][x] = 1
+			//log.Printf("%d, %d", x, y)
+			p = p + 2*dy
+		}
+		x++
+	}
+	return img
+}
+
+type XyCoord struct {
+	X int
+	Y int
+}
+
+type LineOptions struct {
+	Brush     int
+	Font      int
+	Direction int
+	SizeX     int
+	SizeY     int
+	Over      int
+}
+
+// Line draws a list of coordinates on the screen connected by lines
+func (n *Nimbus) Line(opt LineOptions, coordList []XyCoord) {
+	img := make2dArray(200, 200) // TODO: Find actual required size
+	for i := 0; i < len(coordList)-1; i++ {
+		img = n.drawLine(img, coordList[i].X, coordList[i].Y, coordList[i+1].X, coordList[i+1].Y)
+	}
+	n.drawSprite(n.applyDrawingbox(Sprite{img, 0, 0, 3, n.over}, 0))
 }

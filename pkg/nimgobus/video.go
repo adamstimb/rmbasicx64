@@ -59,6 +59,30 @@ func (n *Nimbus) rotateSprite(thisSprite Sprite, r int) Sprite {
 	return thisSprite
 }
 
+// applyDrawingbox applies a drawing box to the sprite (translate + truncate)
+func (n *Nimbus) applyDrawingbox(thisSprite Sprite, d int) Sprite {
+
+	// Get translation vector
+	xt := n.drawingBoxes[d].x1
+	yt := n.drawingBoxes[d].y1
+	// Truncate sprite
+	img := thisSprite.pixels
+	imgWidth := len(img[0])
+	imgHeight := len(img)
+	newImg := make2dArray(imgWidth, imgHeight)
+	for x := 0; x < len(img[0]); x++ {
+		for y := 0; y < len(img); y++ {
+			absoluteX := thisSprite.x + x + xt
+			absoluteY := thisSprite.y + y + yt
+			if absoluteX >= xt && absoluteY >= yt && absoluteX <= n.drawingBoxes[d].x2 && absoluteY <= n.drawingBoxes[d].y2 {
+				newImg[y][x] = img[y][x]
+			}
+		}
+	}
+	// Return truncated sprite with applied translation
+	return Sprite{pixels: newImg, x: thisSprite.x + xt, y: thisSprite.y + yt, colour: thisSprite.colour, over: thisSprite.over}
+}
+
 // drawSprite waits until the drawQueue is unlocked then adds a sprite for drawing to the drawQueue
 func (n *Nimbus) drawSprite(thisSprite Sprite) {
 	n.redrawComplete = false

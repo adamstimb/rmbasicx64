@@ -14,6 +14,7 @@ import (
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/object"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/parser"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
+	"github.com/adamstimb/rmbasicx64/pkg/nimgobus"
 )
 
 // Because null and boolean values never change we can reference them instead of
@@ -63,6 +64,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalMoveStatement(g, node, env)
 	case *ast.PrintStatement:
 		return evalPrintStatement(g, node, env)
+	case *ast.PlotStatement:
+		return evalPlotStatement(g, node, env)
 	case *ast.GotoStatement:
 		return evalGotoStatement(g, node, env)
 	case *ast.RepeatStatement:
@@ -228,6 +231,103 @@ func evalPrintStatement(g *game.Game, stmt *ast.PrintStatement, env *object.Envi
 	}
 	g.Print(printStr)
 	g.Put(13)
+	return nil
+}
+
+func evalPlotStatement(g *game.Game, stmt *ast.PlotStatement, env *object.Environment) object.Object {
+	// Handle defaults
+	var Brush, Direction, Font, Over, SizeX, SizeY, X, Y int
+	var Text string
+	if stmt.Brush == nil {
+		Brush = -255
+	} else {
+		obj := Eval(g, stmt.Brush, env)
+		if val, ok := obj.(*object.Numeric); ok {
+			Brush = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	if stmt.Direction == nil {
+		Direction = -255
+	} else {
+		obj := Eval(g, stmt.Direction, env)
+		if val, ok := obj.(*object.Numeric); ok {
+			Direction = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	if stmt.Font == nil {
+		Font = -255
+	} else {
+		obj := Eval(g, stmt.Font, env)
+		if val, ok := obj.(*object.Numeric); ok {
+			Font = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	if stmt.Over == nil {
+		Over = -255
+	} else {
+		obj := Eval(g, stmt.Over, env)
+		if val, ok := obj.(*object.Numeric); ok {
+			Over = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	if stmt.SizeX == nil {
+		SizeX = -255
+	} else {
+		obj := Eval(g, stmt.SizeX, env)
+		if val, ok := obj.(*object.Numeric); ok {
+			SizeX = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	if stmt.SizeY == nil {
+		SizeY = -255
+	} else {
+		obj := Eval(g, stmt.SizeY, env)
+		if val, ok := obj.(*object.Numeric); ok {
+			SizeY = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	// Handle text and coordinates
+	obj := Eval(g, stmt.X, env)
+	if val, ok := obj.(*object.Numeric); ok {
+		X = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	obj = Eval(g, stmt.Y, env)
+	if val, ok := obj.(*object.Numeric); ok {
+		Y = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	obj = Eval(g, stmt.Value, env)
+	if val, ok := obj.(*object.Numeric); ok {
+		Text = fmt.Sprintf("%g", val.Value)
+	}
+	if val, ok := obj.(*object.Boolean); ok {
+		if val.Value {
+			Text = "TRUE"
+		} else {
+			Text = "FALSE"
+		}
+	}
+	if val, ok := obj.(*object.String); ok {
+		Text = val.Value
+	}
+	// Execute
+	opt := nimgobus.PlotOptions{Brush: Brush, Direction: Direction, Font: Font, SizeX: SizeX, SizeY: SizeY, Over: Over}
+	g.Plot(opt, Text, X, Y)
 	return nil
 }
 

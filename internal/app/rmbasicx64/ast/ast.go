@@ -580,6 +580,30 @@ func (ps *PrintStatement) String() string {
 	return out.String()
 }
 
+type PlotStatement struct {
+	Token     token.Token
+	Value     Expression
+	X         Expression
+	Y         Expression
+	Brush     Expression
+	Direction Expression
+	SizeX     Expression
+	SizeY     Expression
+	Font      Expression
+	Over      Expression
+}
+
+func (ps *PlotStatement) statementNode() {}
+func (ps *PlotStatement) TokenLiteral() string {
+	return ps.Token.Literal
+}
+func (ps *PlotStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(ps.TokenLiteral() + " ")
+	out.WriteString(ps.Value.String())
+	return out.String()
+}
+
 type SaveStatement struct {
 	Token token.Token
 	Value Expression
