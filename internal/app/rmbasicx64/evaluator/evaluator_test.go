@@ -42,7 +42,7 @@ func TestEvalNumericExpression(t *testing.T) {
 func testEval(input string) object.Object {
 	l := &lexer.Lexer{}
 	l.Scan(input)
-	p := parser.New(l)
+	p := parser.New(l, &game.Game{})
 	program := p.ParseProgram()
 	env := object.NewEnvironment()
 	g := &game.Game{}

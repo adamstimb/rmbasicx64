@@ -44,6 +44,18 @@ func (n *Nimbus) Cls(p ...int) {
 	n.drawSprite(Sprite{blankPaper, 0, 0, n.paperColour, true})
 }
 
+// SetColour assigns one of the basic colours to a slot in the current palette
+func (n *Nimbus) SetColour(paletteSlot, basicColour int) {
+	// Validate basicColour and paletteSlot
+	if basicColour < 0 || basicColour > 16 {
+		panic("basicColour is out of range")
+	}
+	//n.validateColour(paletteSlot)
+	// Validation passed, assign colour
+	n.palette[paletteSlot] = basicColour
+	n.SetBorder(n.borderColour) // need to force border to update
+}
+
 // SetPaper sets paperColour
 func (n *Nimbus) SetPaper(c int) {
 	n.paperColour = c
@@ -75,6 +87,10 @@ func (n *Nimbus) SetMode(columns int) {
 	// Restore some defaults
 	n.selectedDrawingBox = 0
 	n.selectedTextBox = 0
+	n.cursorMode = -1
+	n.cursorChar = 95
+	n.cursorCharset = 0
+	n.cursorFlashEnabled = true
 	// Need to manipulate videoImage so force redraw and get the lock
 	n.ForceRedraw()
 	n.muDrawQueue.Lock()
@@ -85,7 +101,8 @@ func (n *Nimbus) SetMode(columns int) {
 		n.paperColour = 0
 		n.borderColour = 0
 		n.penColour = 15
-		n.palette = n.defaultLowResPalette
+		n.palette = []int{}
+		n.palette = append(n.palette, n.defaultLowResPalette...)
 		n.brush = 15
 		n.plotDirection = 0
 		n.plotFont = 0
@@ -98,7 +115,8 @@ func (n *Nimbus) SetMode(columns int) {
 	if columns == 80 {
 		// high-resolutions, low-colour mode (640x250)
 		n.videoImage = ebiten.NewImage(640, 250)
-		n.palette = n.defaultHighResPalette
+		n.palette = []int{}
+		n.palette = append(n.palette, n.defaultHighResPalette...)
 		n.paperColour = 0
 		n.borderColour = 0
 		n.penColour = 3
@@ -117,9 +135,9 @@ func (n *Nimbus) SetMode(columns int) {
 		n.textBoxes[i] = textBox{1, 1, columns, 25}
 		switch columns {
 		case 40:
-			n.drawingBoxes[i] = drawingBox{0, 0, 639, 249}
-		case 80:
 			n.drawingBoxes[i] = drawingBox{0, 0, 319, 249}
+		case 80:
+			n.drawingBoxes[i] = drawingBox{0, 0, 639, 249}
 		}
 	}
 	n.imageBlocks = [16]*ebiten.Image{}

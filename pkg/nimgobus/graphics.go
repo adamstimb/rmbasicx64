@@ -1,10 +1,5 @@
 package nimgobus
 
-import (
-	"log"
-	"math"
-)
-
 // PlonkLogo draws the RM Nimbus logo
 func (n *Nimbus) PlonkLogo(x, y int) {
 	n.drawSprite(Sprite{n.logoImage, x, y, -1, true})
@@ -77,50 +72,124 @@ func (n *Nimbus) Plot(opt PlotOptions, text string, x, y int) {
 }
 
 // drawLine implements Bresenham's line algorithm to draw a line on a 2d array
+// adapted from https://github.com/StephaneBunel/bresenham/blob/master/drawline.go
 func (n *Nimbus) drawLine(img [][]int, x1, y1, x2, y2 int) [][]int {
-	//dx := x1 - x0
-	//dy := y1 - y0
-	//x := x0
-	//y := y0
-	//p := 2*dy - dx
-	imgHeight := len(img)
-	//for x < x1 {
-	//	if p >= 0 {
-	//		log.Printf("%d %d, %d", imgHeight, x, y)
-	//		img[(imgHeight-1)-y][x] = 1
-	//		y++
-	//		p = p + 2*dy - 2*dx
-	//	} else {
-	//		log.Printf("%d %d, %d", imgHeight, x, y)
-	//		img[(imgHeight-1)-y][x] = 1
-	//		p = p + 2*dy
-	//	}
-	//	x++
-	//}
-	dx := math.Abs(float64(x1) - float64(x2))
-	dy := math.Abs(float64(y1) - float64(y2))
-	p := 2*dy - dx
-	var x, y, end int
+	imgHeight := len(img) - 1
+	var dx, dy, e, slope int
+
+	//log.Printf("drawLine imgHeight=%d (%d, %d)-(%d, %d)", imgHeight, x1, y1, x2, y2)
+
+	// Because drawing p1 -> p2 is equivalent to draw p2 -> p1,
+	// I sort points in x-axis order to handle only half of possible cases.
 	if x1 > x2 {
-		x = x2
-		y = y2
-		end = x1
-	} else {
-		x = x1
-		y = y1
-		end = x2
+		x1, y1, x2, y2 = x2, y2, x1, y1
 	}
-	img[(imgHeight)-y][x] = 1
-	for x < end-1 {
-		x++
-		if p < 0 {
-			p = p + 2*dy
-		} else {
-			y++
-			p = p + 2*(dy-dx)
+
+	dx, dy = x2-x1, y2-y1
+	// Because point is x-axis ordered, dx cannot be negative
+	if dy < 0 {
+		dy = -dy
+	}
+
+	switch {
+
+	// Is line a point ?
+	case x1 == x2 && y1 == y2:
+		img[imgHeight-y1][x1] = 1
+
+	// Is line an horizontal ?
+	case y1 == y2:
+		for ; dx != 0; dx-- {
+			img[imgHeight-y1][x1] = 1
+			x1++
 		}
-		log.Printf("%d, %d", x, (imgHeight-1)-y)
-		img[(imgHeight)-y][x] = 1
+		img[imgHeight-y1][x1] = 1
+
+	// Is line a vertical ?
+	case x1 == x2:
+		if y1 > y2 {
+			y1, y2 = y2, y1
+		}
+		for ; dy != 0; dy-- {
+			img[imgHeight-y1][x1] = 1
+			y1++
+		}
+		img[imgHeight-y1][x1] = 1
+
+	// Is line a diagonal ?
+	case dx == dy:
+		if y1 < y2 {
+			for ; dx != 0; dx-- {
+				img[imgHeight-y1][x1] = 1
+				x1++
+				y1++
+			}
+		} else {
+			for ; dx != 0; dx-- {
+				img[imgHeight-y1][x1] = 1
+				x1++
+				y1--
+			}
+		}
+		img[imgHeight-y1][x1] = 1
+
+	// wider than high ?
+	case dx > dy:
+		if y1 < y2 {
+			// BresenhamDxXRYD(img, x1, y1, x2, y2, col)
+			dy, e, slope = 2*dy, dx, 2*dx
+			for ; dx != 0; dx-- {
+				img[imgHeight-y1][x1] = 1
+				x1++
+				e -= dy
+				if e < 0 {
+					y1++
+					e += slope
+				}
+			}
+		} else {
+			// BresenhamDxXRYU(img, x1, y1, x2, y2, col)
+			dy, e, slope = 2*dy, dx, 2*dx
+			for ; dx != 0; dx-- {
+				img[imgHeight-y1][x1] = 1
+				x1++
+				e -= dy
+				if e < 0 {
+					y1--
+					e += slope
+				}
+			}
+		}
+		img[imgHeight-y1][x1] = 1
+
+	// higher than wide.
+	default:
+		if y1 < y2 {
+			// BresenhamDyXRYD(img, x1, y1, x2, y2, col)
+			dx, e, slope = 2*dx, dy, 2*dy
+			for ; dy != 0; dy-- {
+				img[imgHeight-y1][x1] = 1
+				y1++
+				e -= dx
+				if e < 0 {
+					x1++
+					e += slope
+				}
+			}
+		} else {
+			// BresenhamDyXRYU(img, x1, y1, x2, y2, col)
+			dx, e, slope = 2*dx, dy, 2*dy
+			for ; dy != 0; dy-- {
+				img[imgHeight-y1][x1] = 1
+				y1--
+				e -= dx
+				if e < 0 {
+					x1++
+					e += slope
+				}
+			}
+		}
+		img[imgHeight-y1][x1] = 1
 	}
 	return img
 }
@@ -173,13 +242,115 @@ func (n *Nimbus) Line(opt LineOptions, coordList []XyCoord) {
 			maxY = coord.Y
 		}
 	}
-	log.Printf("min %d, %d max %d, %d", minX, minY, maxX, maxY)
 	imgWidth := (maxX - minX) + 1
-	imgHeight := (maxY - minY)
+	imgHeight := (maxY - minY) + 1
 	img := make2dArray(imgWidth, imgHeight)
 	// draw lines
 	for i := 0; i < len(coordList)-1; i++ {
+		//log.Printf("i=%d minXY=(%d, %d) line=(%d, %d)-(%d-%d)", i, minX, minY, coordList[i].X, coordList[i].Y, coordList[i+1].X, coordList[i+1].Y)
 		img = n.drawLine(img, coordList[i].X-minX, coordList[i].Y-minY, coordList[i+1].X-minX, coordList[i+1].Y-minY)
+	}
+	n.drawSprite(n.applyDrawingbox(Sprite{img, minX, minY, opt.Brush, over}, 0))
+}
+
+type AreaOptions struct {
+	Brush int
+	Over  int
+}
+
+// Area draws a filled polygon of coordinates on the screen
+func (n *Nimbus) Area(opt AreaOptions, coordList []XyCoord) {
+	// Handle default values
+	if opt.Brush == -255 {
+		opt.Brush = n.brush
+	}
+	var over bool
+	switch opt.Over {
+	case -255:
+		over = n.over
+	case 0:
+		over = false
+	case -1:
+		over = true
+	}
+	// Find optimal image size and minimum x,y
+	minX := 1000
+	maxX := 0
+	minY := 1000
+	maxY := 0
+	for _, coord := range coordList {
+		if coord.X < minX {
+			minX = coord.X
+		}
+		if coord.X > maxX {
+			maxX = coord.X
+		}
+		if coord.Y < minY {
+			minY = coord.Y
+		}
+		if coord.Y > maxY {
+			maxY = coord.Y
+		}
+	}
+	imgWidth := (maxX - minX) + 10 // deliberately padded for fill algorithm
+	imgHeight := (maxY - minY) + 1
+	img := make2dArray(imgWidth, imgHeight)
+	// draw lines *and close the shape if required*
+	if coordList[0].X != coordList[len(coordList)-1].X || coordList[0].Y != coordList[len(coordList)-1].Y {
+		// shape if open so we need to close it
+		coordList = append(coordList, XyCoord{coordList[0].X, coordList[0].Y})
+	}
+	for i := 0; i < len(coordList)-1; i++ {
+		//log.Printf("i=%d minXY=(%d, %d) line=(%d, %d)-(%d-%d)", i, minX, minY, coordList[i].X, coordList[i].Y, coordList[i+1].X, coordList[i+1].Y)
+		img = n.drawLine(img, coordList[i].X-minX, coordList[i].Y-minY, coordList[i+1].X-minX, coordList[i+1].Y-minY)
+	}
+	// Attempt to fill the shape using odd/even counter to determine if inside or outside shape. If the scanner
+	// reaches the outer edge and the count is odd then fail with "too complicated" error.
+	for y := 0; y < imgHeight; y++ {
+		onLeftEdge := false
+		leavingShape := false
+		inside := false
+		startX := 0
+		for x := 0; x < imgWidth-1; x++ {
+			// reset flags if beyond right-hand edge
+			if leavingShape && img[y][x] == 0 {
+				onLeftEdge = false
+				leavingShape = false
+				inside = false
+				continue
+			}
+			// detect left-hand edge
+			if !leavingShape && !inside && !onLeftEdge && img[y][x] == 1 {
+				// found edge
+				onLeftEdge = true
+				inside = false
+				continue
+			}
+			// detect entering shape
+			if onLeftEdge && img[y][x] == 0 {
+				onLeftEdge = false
+				inside = true
+				startX = x
+			}
+			// detect leaving shape
+			if inside && img[y][x] == 1 {
+				onLeftEdge = false
+				inside = false
+				leavingShape = true
+				continue
+			}
+			// fill if inside shape
+			if inside {
+				img[y][x] = 1
+			}
+		}
+		// Undo if we are still inside the shape at this position, because that's impossible
+		// and probably due to apex of straight line.
+		if inside {
+			for x := startX; x <= imgWidth-1; x++ {
+				img[y][x] = 0
+			}
+		}
 	}
 	n.drawSprite(n.applyDrawingbox(Sprite{img, minX, minY, opt.Brush, over}, 0))
 }

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/game"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/lexer"
 )
 
@@ -29,7 +30,7 @@ func TestLine(t *testing.T) {
 	for _, tt := range tests {
 		l := &lexer.Lexer{}
 		l.Scan(tt.input)
-		p := New(l)
+		p := New(l, &game.Game{})
 
 		line := p.ParseLine()
 		if line == nil {
@@ -96,7 +97,7 @@ func TestBindStatements(t *testing.T) {
 	for _, tt := range tests {
 		l := &lexer.Lexer{}
 		l.Scan(tt.input)
-		p := New(l)
+		p := New(l, &game.Game{})
 
 		stmt := p.parseStatement()
 
@@ -131,7 +132,7 @@ func TestLetStatements(t *testing.T) {
 	for _, tt := range tests {
 		l := &lexer.Lexer{}
 		l.Scan(tt.input)
-		p := New(l)
+		p := New(l, &game.Game{})
 
 		program := p.ParseProgram()
 		checkParserErrors(t, p)
@@ -163,7 +164,7 @@ result 993322
 `
 	l := &lexer.Lexer{}
 	l.Scan(input)
-	p := New(l)
+	p := New(l, &game.Game{})
 
 	program := p.ParseProgram()
 
@@ -194,7 +195,7 @@ func TestIdentifierExpression(t *testing.T) {
 
 	l := &lexer.Lexer{}
 	l.Scan(input)
-	p := New(l)
+	p := New(l, &game.Game{})
 
 	program := p.ParseProgram()
 
@@ -231,7 +232,7 @@ func TestNumericLiteralExpression(t *testing.T) {
 
 	l := &lexer.Lexer{}
 	l.Scan(input)
-	p := New(l)
+	p := New(l, &game.Game{})
 
 	program := p.ParseProgram()
 
@@ -395,7 +396,7 @@ func TestParsingPrefixExpressions(t *testing.T) {
 	for _, tt := range prefixTests {
 		l := &lexer.Lexer{}
 		l.Scan(tt.input)
-		p := New(l)
+		p := New(l, &game.Game{})
 
 		program := p.ParseProgram()
 
@@ -454,7 +455,7 @@ func TestParsingInfixExpressions(t *testing.T) {
 	for _, tt := range infixTests {
 		l := &lexer.Lexer{}
 		l.Scan(tt.input)
-		p := New(l)
+		p := New(l, &game.Game{})
 
 		program := p.ParseProgram()
 
@@ -563,7 +564,7 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 	for _, tt := range tests {
 		l := &lexer.Lexer{}
 		l.Scan(tt.input)
-		p := New(l)
+		p := New(l, &game.Game{})
 
 		program := p.ParseProgram()
 
@@ -592,7 +593,7 @@ func TestBooleanExpression(t *testing.T) {
 	for _, tt := range tests {
 		l := &lexer.Lexer{}
 		l.Scan(tt.input)
-		p := New(l)
+		p := New(l, &game.Game{})
 		program := p.ParseProgram()
 		checkParserErrors(t, p)
 
@@ -625,7 +626,7 @@ func TestIfExpression(t *testing.T) {
 	input := "if x < y then x = 8\n"
 	l := &lexer.Lexer{}
 	l.Scan(input)
-	p := New(l)
+	p := New(l, &game.Game{})
 	program := p.ParseProgram()
 	checkParserErrors(t, p)
 
@@ -638,7 +639,7 @@ func TestIfElseExpression(t *testing.T) {
 	input := "if x < y then x = 0 : b = 3 else y = 2\n"
 	l := &lexer.Lexer{}
 	l.Scan(input)
-	p := New(l)
+	p := New(l, &game.Game{})
 	program := p.ParseLine()
 	checkParserErrors(t, p)
 
@@ -665,7 +666,7 @@ func TestFunctionDefinitionParsing(t *testing.T) {
 	input := `function add(x, y) : x + y ENDFUN`
 	l := &lexer.Lexer{}
 	l.Scan(input)
-	p := New(l)
+	p := New(l, &game.Game{})
 	program := p.ParseProgram()
 	checkParserErrors(t, p)
 	if len(program.Statements) != 1 {
@@ -723,7 +724,7 @@ endfun`,
 	for _, tt := range tests {
 		l := &lexer.Lexer{}
 		l.Scan(tt.input)
-		p := New(l)
+		p := New(l, &game.Game{})
 		program := p.ParseProgram()
 		log.Println(tt.input)
 		checkParserErrors(t, p)
@@ -747,7 +748,7 @@ func TestCallExpressionParsing(t *testing.T) {
 	input := "add(1, 2 * 3, 4 + 5)"
 	l := &lexer.Lexer{}
 	l.Scan(input)
-	p := New(l)
+	p := New(l, &game.Game{})
 	program := p.ParseProgram()
 	checkParserErrors(t, p)
 
@@ -782,7 +783,7 @@ func TestStringLiteralExpression(t *testing.T) {
 	input := `"hello world"`
 	l := &lexer.Lexer{}
 	l.Scan(input)
-	p := New(l)
+	p := New(l, &game.Game{})
 	program := p.ParseProgram()
 	checkParserErrors(t, p)
 

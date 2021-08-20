@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/game"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/lexer"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
@@ -53,6 +54,7 @@ type Parser struct {
 	errors          []string // For debugging only - RM Basic-ish error handling to be implemented separately - or not?
 	errorMsg        string   // This is for the holding parse error.  We don't collect errors before but fail on the first one.
 	ErrorTokenIndex int      // the index of the token where an error occured
+	g               *game.Game
 }
 
 func (p *Parser) peekPrecedence() int {
@@ -82,9 +84,10 @@ func (p *Parser) nextToken() {
 	p.peekToken = p.l.NextToken()
 }
 
-func New(l *lexer.Lexer) *Parser {
+func New(l *lexer.Lexer, g *game.Game) *Parser {
 	p := &Parser{
 		l:               l,
+		g:               g,
 		errors:          []string{},
 		errorMsg:        "",
 		ErrorTokenIndex: -1,
@@ -676,6 +679,69 @@ func (p *Parser) parseLineStatement() *ast.LineStatement {
 	return stmt
 }
 
+func (p *Parser) parseAreaStatement() *ast.AreaStatement {
+	stmt := &ast.AreaStatement{Token: p.curToken}
+	// Handle LINE without args
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		return nil
+	}
+	// Get coordinate list
+	for !p.onEndOfInstruction() {
+		// Get X
+		val, ok := p.requireExpression()
+		if !ok {
+			return nil
+		}
+		stmt.CoordList = append(stmt.CoordList, val)
+		// ,
+		if !p.requireComma() {
+			return nil
+		}
+		// Get y
+		val, ok = p.requireExpression()
+		if !ok {
+			return nil
+		}
+		stmt.CoordList = append(stmt.CoordList, val)
+		// Require ; if more coordinates to follow
+		if p.curTokenIs(token.Comma) {
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.SemicolonSeparatorIsNeeded)
+			return nil
+		}
+		// Break loop if no more coordinates to follow
+		if !p.curTokenIs(token.Semicolon) {
+			break
+		}
+		p.nextToken() // consume ;
+	}
+	// Handle no options list
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// Handle options list
+	for !p.onEndOfInstruction() {
+		tokenType := p.curToken.TokenType
+		switch tokenType {
+		case token.BRUSH:
+			p.nextToken()
+			stmt.Brush = p.parseExpression(LOWEST)
+		case token.OVER:
+			p.nextToken()
+			stmt.Over = p.parseExpression(LOWEST)
+		default:
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.UnknownSetAskAttribute)
+			return nil
+		}
+		p.nextToken()
+	}
+	return stmt
+}
+
 func (p *Parser) parseSaveStatement() *ast.SaveStatement {
 	stmt := &ast.SaveStatement{Token: p.curToken}
 	// Handle SAVE without args
@@ -1086,8 +1152,20 @@ func (p *Parser) JumpToToken(i int) {
 // -- Line
 
 func (p *Parser) PrettyPrint() string {
-	// Collect string
-	lineString := ""
+	indent := "  "
+	lineString := p.g.PrettyPrintIndent
+	// Add indent for following lines
+	if p.curTokenIs(token.REPEAT) {
+		p.g.PrettyPrintIndent += indent
+	}
+	// Remove indent for this and following lines
+	if p.curTokenIs(token.UNTIL) {
+		if len(p.g.PrettyPrintIndent) >= 2 {
+			p.g.PrettyPrintIndent = p.g.PrettyPrintIndent[:len(p.g.PrettyPrintIndent)-2]
+			lineString = p.g.PrettyPrintIndent
+		}
+	}
+	// Build string
 	for {
 		if p.ErrorTokenIndex > 0 {
 			if p.curToken.Index == p.ErrorTokenIndex {
@@ -1123,7 +1201,7 @@ func (p *Parser) PrettyPrint() string {
 		lineString += p.curToken.Literal + " "
 		p.nextToken()
 	}
-	return strings.TrimSpace(lineString)
+	return strings.TrimRight(lineString, " ")
 }
 
 func (p *Parser) ParseLine() *ast.Line {
@@ -1229,6 +1307,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parsePlotStatement()
 	case token.LINE:
 		return p.parseLineStatement()
+	case token.AREA:
+		return p.parseAreaStatement()
 	case token.MOVE:
 		return p.parseMoveStatement()
 	case token.LET:

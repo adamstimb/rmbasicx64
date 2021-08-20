@@ -129,7 +129,7 @@ func (n *Nimbus) Init() {
 	n.basicColours = basicColours
 	n.defaultHighResPalette = defaultHighResPalette
 	n.defaultLowResPalette = defaultLowResPalette
-	n.palette = defaultHighResPalette
+	n.palette = append(n.palette, n.defaultHighResPalette...)
 	n.borderColour = 0
 	n.paperColour = 0
 	n.penColour = 3

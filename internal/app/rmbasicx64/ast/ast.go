@@ -621,6 +621,23 @@ func (ps *LineStatement) String() string {
 	return out.String()
 }
 
+type AreaStatement struct {
+	Token     token.Token
+	CoordList []Expression
+	Brush     Expression
+	Over      Expression
+}
+
+func (ps *AreaStatement) statementNode() {}
+func (ps *AreaStatement) TokenLiteral() string {
+	return ps.Token.Literal
+}
+func (ps *AreaStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(ps.TokenLiteral() + " ")
+	return out.String()
+}
+
 type SaveStatement struct {
 	Token token.Token
 	Value Expression
