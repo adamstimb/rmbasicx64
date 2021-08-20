@@ -911,6 +911,21 @@ func (p *Parser) parseSetDegStatement() *ast.SetDegStatement {
 	return nil
 }
 
+func (p *Parser) parseSetConfigBootStatement() *ast.SetConfigBootStatement {
+	stmt := &ast.SetConfigBootStatement{Token: p.curToken}
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index + 1
+		return nil
+	}
+	p.nextToken()
+	stmt.Value = p.parseExpression(LOWEST)
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parseSetRadStatement() *ast.SetRadStatement {
 	stmt := &ast.SetRadStatement{Token: p.curToken}
 	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
@@ -1296,6 +1311,12 @@ func (p *Parser) parseStatement() ast.Statement {
 			return p.parseSetRadStatement()
 		case token.CURPOS:
 			return p.parseSetCurposStatement()
+		case token.CONFIG:
+			p.nextToken()
+			switch p.curToken.TokenType {
+			case token.BOOT:
+				return p.parseSetConfigBootStatement()
+			}
 		default:
 			p.errorMsg = syntaxerror.ErrorMessage((syntaxerror.WrongSetAskAttribute))
 			p.ErrorTokenIndex = p.curToken.Index

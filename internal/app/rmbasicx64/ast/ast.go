@@ -518,6 +518,21 @@ func (s *HomeStatement) String() string {
 	return out.String()
 }
 
+type SetConfigBootStatement struct {
+	Token token.Token
+	Value Expression
+}
+
+func (s *SetConfigBootStatement) statementNode() {}
+func (s *SetConfigBootStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *SetConfigBootStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
 type SetDegStatement struct {
 	Token token.Token
 	Value Expression
