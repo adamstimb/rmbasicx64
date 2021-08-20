@@ -18,7 +18,8 @@ type AppConfig struct {
 type Game struct {
 	Count int
 	nimgobus.Nimbus
-	Config AppConfig
+	Config            AppConfig
+	PrettyPrintIndent string
 }
 
 // LoadConfig attempts to load settings from the config file.  If the file does not
@@ -28,7 +29,7 @@ func (g *Game) LoadConfig() {
 	g.Config = AppConfig{Boot: true}
 	// Attempt to load settings from config file
 	c, err := g.readConf()
-	if err != nil {
+	if err == nil {
 		// Overwrite default settings
 		g.Config = c
 	}
@@ -41,17 +42,23 @@ func (g *Game) readConf() (AppConfig, error) {
 	}
 	// Try to load and parse config file
 	buf, err := ioutil.ReadFile(filepath.Join(exeDir, "rmbasicx64config.yaml"))
-	c := AppConfig{}
+	data := make(map[interface{}]interface{})
+	c := AppConfig{Boot: true}
 	if err != nil {
 		log.Printf("Error loading config file: %v", err)
 		return c, err
 	}
-	err = yaml.Unmarshal(buf, c)
+	err = yaml.Unmarshal(buf, &data)
 	if err != nil {
 		log.Printf("Error parsing config file: %v", err)
 		return c, err
 	}
 	// Success
+	for k, v := range data {
+		if k == "Boot" {
+			c.Boot = v.(bool)
+		}
+	}
 	return c, nil
 }
 

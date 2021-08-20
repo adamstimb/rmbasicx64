@@ -580,6 +580,64 @@ func (ps *PrintStatement) String() string {
 	return out.String()
 }
 
+type PlotStatement struct {
+	Token     token.Token
+	Value     Expression
+	X         Expression
+	Y         Expression
+	Brush     Expression
+	Direction Expression
+	SizeX     Expression
+	SizeY     Expression
+	Font      Expression
+	Over      Expression
+}
+
+func (ps *PlotStatement) statementNode() {}
+func (ps *PlotStatement) TokenLiteral() string {
+	return ps.Token.Literal
+}
+func (ps *PlotStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(ps.TokenLiteral() + " ")
+	out.WriteString(ps.Value.String())
+	return out.String()
+}
+
+type LineStatement struct {
+	Token     token.Token
+	CoordList []Expression
+	Brush     Expression
+	Over      Expression
+}
+
+func (ps *LineStatement) statementNode() {}
+func (ps *LineStatement) TokenLiteral() string {
+	return ps.Token.Literal
+}
+func (ps *LineStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(ps.TokenLiteral() + " ")
+	return out.String()
+}
+
+type AreaStatement struct {
+	Token     token.Token
+	CoordList []Expression
+	Brush     Expression
+	Over      Expression
+}
+
+func (ps *AreaStatement) statementNode() {}
+func (ps *AreaStatement) TokenLiteral() string {
+	return ps.Token.Literal
+}
+func (ps *AreaStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(ps.TokenLiteral() + " ")
+	return out.String()
+}
+
 type SaveStatement struct {
 	Token token.Token
 	Value Expression

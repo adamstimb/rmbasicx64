@@ -53,9 +53,9 @@ func repl(g *game.Game) {
 		if !g.BreakInterruptDetected {
 			// Don't execute if break detected
 			l.Scan(code)
-			p := parser.New(l)
+			p := parser.New(l, g)
 			line := p.ParseLine()
-			// Check of parser errors here.  Parser errors are handled just like evaluation errors but
+			// Check for parser errors here.  Parser errors are handled just like evaluation errors but
 			// obviously we'll skip evaluation if parsing already failed.
 			if errorMsg, hasError := p.GetError(); hasError {
 				g.Print(errorMsg)
@@ -114,6 +114,10 @@ func repl(g *game.Game) {
 // StartUi is called by the ebiten App.  It draws the welcome screen then starts the
 // the REPL.
 func StartUi(g *game.Game) {
+	if g.Config.Boot {
+		g.Boot()
+	}
+	g.PrettyPrintIndent = ""
 	welcomeScreen(g)
 	repl(g)
 }
