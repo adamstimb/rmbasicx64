@@ -898,12 +898,12 @@ func (p *Parser) parseMoveStatement() *ast.MoveStatement {
 
 func (p *Parser) parseSetDegStatement() *ast.SetDegStatement {
 	stmt := &ast.SetDegStatement{Token: p.curToken}
-	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+	p.nextToken()
+	if p.onEndOfInstruction() {
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
-		p.ErrorTokenIndex = p.curToken.Index + 1
+		p.ErrorTokenIndex = p.curToken.Index
 		return nil
 	}
-	p.nextToken()
 	stmt.Value = p.parseExpression(LOWEST)
 	if p.endOfInstruction() {
 		return stmt
@@ -913,12 +913,12 @@ func (p *Parser) parseSetDegStatement() *ast.SetDegStatement {
 
 func (p *Parser) parseSetConfigBootStatement() *ast.SetConfigBootStatement {
 	stmt := &ast.SetConfigBootStatement{Token: p.curToken}
-	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+	p.nextToken()
+	if p.onEndOfInstruction() {
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
-		p.ErrorTokenIndex = p.curToken.Index + 1
+		p.ErrorTokenIndex = p.curToken.Index
 		return nil
 	}
-	p.nextToken()
 	stmt.Value = p.parseExpression(LOWEST)
 	if p.endOfInstruction() {
 		return stmt

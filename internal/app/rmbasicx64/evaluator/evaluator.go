@@ -688,8 +688,8 @@ func evalSetDegStatement(g *game.Game, stmt *ast.SetDegStatement, env *object.En
 	if _, ok := obj.(*object.Error); ok {
 		return obj
 	}
-	if val, ok := obj.(*object.Boolean); ok {
-		env.Degrees = val.Value
+	if _, ok := obj.(*object.Numeric); ok {
+		env.Degrees = isTruthy(obj)
 		return obj
 	} else {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
@@ -702,12 +702,12 @@ func evalSetConfigBootStatement(g *game.Game, stmt *ast.SetConfigBootStatement, 
 	if _, ok := obj.(*object.Error); ok {
 		return obj
 	}
-	if val, ok := obj.(*object.Boolean); ok {
+	if _, ok := obj.(*object.Numeric); ok {
 		c, err := g.ReadConf()
 		if err != nil {
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure), ErrorTokenIndex: 0}
 		}
-		c.Boot = val.Value
+		c.Boot = isTruthy(obj)
 		if !g.WriteConf(c) {
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure), ErrorTokenIndex: 0}
 		}
