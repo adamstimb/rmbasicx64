@@ -60,6 +60,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalSetRadStatement(g, node, env)
 	case *ast.SetCurposStatement:
 		return evalSetCurposStatement(g, node, env)
+	case *ast.SetConfigBootStatement:
+		return evalSetConfigBootStatement(g, node, env)
 	case *ast.MoveStatement:
 		return evalMoveStatement(g, node, env)
 	case *ast.PrintStatement:
@@ -686,8 +688,29 @@ func evalSetDegStatement(g *game.Game, stmt *ast.SetDegStatement, env *object.En
 	if _, ok := obj.(*object.Error); ok {
 		return obj
 	}
-	if val, ok := obj.(*object.Boolean); ok {
-		env.Degrees = val.Value
+	if _, ok := obj.(*object.Numeric); ok {
+		env.Degrees = isTruthy(obj)
+		return obj
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+}
+
+func evalSetConfigBootStatement(g *game.Game, stmt *ast.SetConfigBootStatement, env *object.Environment) object.Object {
+	obj := Eval(g, stmt.Value, env)
+	// return error if evaluation failed
+	if _, ok := obj.(*object.Error); ok {
+		return obj
+	}
+	if _, ok := obj.(*object.Numeric); ok {
+		c, err := g.ReadConf()
+		if err != nil {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure), ErrorTokenIndex: 0}
+		}
+		c.Boot = isTruthy(obj)
+		if !g.WriteConf(c) {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure), ErrorTokenIndex: 0}
+		}
 		return obj
 	} else {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}

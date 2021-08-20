@@ -28,22 +28,49 @@ func (g *Game) LoadConfig() {
 	// Default settings
 	g.Config = AppConfig{Boot: true}
 	// Attempt to load settings from config file
-	c, err := g.readConf()
+	c, err := g.ReadConf()
 	if err == nil {
 		// Overwrite default settings
 		g.Config = c
 	}
 }
-func (g *Game) readConf() (AppConfig, error) {
+
+func (g *Game) WriteConf(c AppConfig) bool {
+	exeDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		log.Printf("Error resolving directory of executable: %v", err)
+		return false
+	}
+	configPath := filepath.Join(exeDir, "rmbasicx64config.yaml")
+	data, err := yaml.Marshal(&c)
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+	err = ioutil.WriteFile(configPath, data, 0666)
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+	return true
+}
+
+func (g *Game) ReadConf() (AppConfig, error) {
 	// Try to get directory of executable
 	exeDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
 		log.Printf("Error resolving directory of executable: %v", err)
 	}
-	// Try to load and parse config file
-	buf, err := ioutil.ReadFile(filepath.Join(exeDir, "rmbasicx64config.yaml"))
-	data := make(map[interface{}]interface{})
+	// If the config file doesn't exist, create one with default settings
 	c := AppConfig{Boot: true}
+	configPath := filepath.Join(exeDir, "rmbasicx64config.yaml")
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		g.WriteConf(c)
+		return c, nil
+	}
+	// If the config file exists, try to load and parse it
+	buf, err := ioutil.ReadFile(configPath)
+	data := make(map[interface{}]interface{})
 	if err != nil {
 		log.Printf("Error loading config file: %v", err)
 		return c, err
@@ -53,10 +80,15 @@ func (g *Game) readConf() (AppConfig, error) {
 		log.Printf("Error parsing config file: %v", err)
 		return c, err
 	}
-	// Success
+	// Successfully opened and parsed the yaml.  Now try to match it
+	// up with config keys but fail silently if the keys don't match.
 	for k, v := range data {
-		if k == "Boot" {
-			c.Boot = v.(bool)
+		switch k {
+		case "boot":
+			bootVal, ok := v.(bool)
+			if ok {
+				c.Boot = bootVal
+			}
 		}
 	}
 	return c, nil

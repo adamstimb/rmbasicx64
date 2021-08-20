@@ -237,6 +237,8 @@ const (
 	XOR        = "XOR"
 	SET        = "SET"
 	STEP       = "STEP"
+	CONFIG     = "CONFIG"
+	BOOT       = "BOOT"
 )
 
 // IsKeyword returns true if a TokenType represents a keyword
@@ -421,6 +423,8 @@ func IsKeyword(testString string) bool {
 		XOR,
 		SET,
 		STEP,
+		CONFIG,
+		BOOT,
 	}
 	for _, keyword := range keywords {
 		if testString == keyword {
