@@ -258,6 +258,9 @@ var builtins = map[string]*object.Builtin{
 						timeout = time.Duration(100) * time.Millisecond * time.Duration(int(arg.Value))
 						useTimeout = true
 					}
+					if arg.Value == 0 {
+						timeout = time.Duration(0)
+					}
 				default:
 					return newError("argument to `GET` not supported, got %s", args[0].Type())
 				}
@@ -271,6 +274,10 @@ var builtins = map[string]*object.Builtin{
 					return &object.Numeric{
 						Value: float64(c),
 					}
+				}
+				// Handle zero timeout
+				if timeout == time.Duration(0) {
+					break
 				}
 				time.Sleep(100 * time.Millisecond)
 				elapsedTime += 100 * time.Millisecond

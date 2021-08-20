@@ -599,10 +599,11 @@ func (p *Parser) parsePlotStatement() *ast.PlotStatement {
 		case token.SIZE:
 			p.nextToken()
 			stmt.SizeX = p.parseExpression(LOWEST)
+			p.nextToken()
 			if p.curTokenIs(token.Comma) {
 				p.nextToken()
 				stmt.SizeY = p.parseExpression(LOWEST)
-				p.nextToken()
+				//p.nextToken()
 			} else {
 				stmt.SizeY = stmt.SizeX
 			}
@@ -1213,7 +1214,13 @@ func (p *Parser) PrettyPrint() string {
 			}
 		}
 		// Otherwise add literal with trailing space
-		lineString += p.curToken.Literal + " "
+		curLiteral := p.curToken.Literal
+		_, ok := lexer.Builtins[curLiteral]
+		if ok {
+			lineString += p.curToken.Literal
+		} else {
+			lineString += p.curToken.Literal + " "
+		}
 		p.nextToken()
 	}
 	return strings.TrimRight(lineString, " ")

@@ -289,7 +289,11 @@ func evalPlotStatement(g *game.Game, stmt *ast.PlotStatement, env *object.Enviro
 	} else {
 		obj := Eval(g, stmt.SizeX, env)
 		if val, ok := obj.(*object.Numeric); ok {
-			SizeX = int(val.Value)
+			if int(val.Value) > 0 {
+				SizeX = int(val.Value)
+			} else {
+				SizeX = 1
+			}
 		} else {
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
@@ -299,7 +303,11 @@ func evalPlotStatement(g *game.Game, stmt *ast.PlotStatement, env *object.Enviro
 	} else {
 		obj := Eval(g, stmt.SizeY, env)
 		if val, ok := obj.(*object.Numeric); ok {
-			SizeY = int(val.Value)
+			if int(val.Value) > 0 {
+				SizeY = int(val.Value)
+			} else {
+				SizeY = 1
+			}
 		} else {
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
