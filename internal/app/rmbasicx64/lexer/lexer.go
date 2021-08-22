@@ -165,7 +165,7 @@ func (s *Lexer) getNumber(firstRune rune) {
 }
 
 // This is a bit hacky:
-var builtins = map[string]string{
+var Builtins = map[string]string{
 	"LEN": "LEN",
 	"ABS": "ABS",
 	"ATN": "ATN",
@@ -198,7 +198,7 @@ func (s *Lexer) getIdentifier(firstRune rune) {
 	if token.IsKeyword(strings.ToUpper(string(stringVal))) {
 		// is a keyword but if it corresponds to a built-in function we have to
 		// bump it to identifier literal
-		_, ok := builtins[strings.ToUpper(string(stringVal))]
+		_, ok := Builtins[strings.ToUpper(string(stringVal))]
 		if ok {
 			// is built-in
 			s.addToken(token.IdentifierLiteral, strings.ToUpper(string(stringVal)))

@@ -116,7 +116,7 @@ func (j *jumpStack) New() {
 func (j *jumpStack) Peek() interface{} {
 
 	if len(j.items) > 0 {
-		return j.items[0]
+		return j.items[len(j.items)-1]
 	}
 	return nil
 }
@@ -125,7 +125,7 @@ func (j *jumpStack) Push(item interface{}) {
 }
 func (j *jumpStack) Pop() interface{} {
 	if len(j.items) > 0 {
-		item := j.items[0]
+		item := j.items[len(j.items)-1]
 		j.items = j.items[:len(j.items)-1]
 		return item
 	}
