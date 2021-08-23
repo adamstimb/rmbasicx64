@@ -264,14 +264,14 @@ func (n *Nimbus) drawCircle(r int, img [][]int) [][]int {
 	// Loop x from 0 to the line x==y. Start y at r and each time
 	// around the loop either keep it the same or decrement it.
 	for x <= y {
-		img[r+y][r+x] = 1 //putPixel(x, y)
-		img[r+x][r+y] = 1 //putPixel(y, x)
-		img[r+y][r-x] = 1 //putPixel(-x, y)
-		img[r+x][r-y] = 1 //putPixel(-y, x)
-		img[r-y][r+x] = 1 //putPixel(x, -y)
-		img[r-x][r+y] = 1 //putPixel(y, -x)
-		img[r-y][r-x] = 1 //putPixel(-x, -y)
-		img[r-x][r-y] = 1 //putPixel(-y, -x)
+		img[r+y][r+x] = 1
+		img[r+x][r+y] = 1
+		img[r+y][r-x] = 1
+		img[r+x][r-y] = 1
+		img[r-y][r+x] = 1
+		img[r-x][r+y] = 1
+		img[r-y][r-x] = 1
+		img[r-x][r-y] = 1
 
 		// New x^2 = (x+1)^2 = x^2 + 2x + 1
 		xsq = xsq + 2*x + 1

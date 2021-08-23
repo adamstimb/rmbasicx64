@@ -636,6 +636,24 @@ func (ps *LineStatement) String() string {
 	return out.String()
 }
 
+type CircleStatement struct {
+	Token     token.Token
+	Radius    Expression
+	CoordList []Expression
+	Brush     Expression
+	Over      Expression
+}
+
+func (s *CircleStatement) statementNode() {}
+func (s *CircleStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *CircleStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	return out.String()
+}
+
 type AreaStatement struct {
 	Token     token.Token
 	CoordList []Expression

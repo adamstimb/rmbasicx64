@@ -680,6 +680,84 @@ func (p *Parser) parseLineStatement() *ast.LineStatement {
 	return stmt
 }
 
+func (p *Parser) parseCircleStatement() *ast.CircleStatement {
+	stmt := &ast.CircleStatement{Token: p.curToken}
+	// Handle CIRCLE without args
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		return nil
+	}
+	// Get radius
+	val, ok := p.requireExpression()
+	if !ok {
+		return nil
+	}
+	stmt.Radius = val
+	// ,
+	if !p.requireComma() {
+		return nil
+	}
+	// Get coordinate list
+	if p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		return nil
+	}
+	for !p.onEndOfInstruction() {
+		// Get X
+		val, ok := p.requireExpression()
+		if !ok {
+			return nil
+		}
+		stmt.CoordList = append(stmt.CoordList, val)
+		// ,
+		if !p.requireComma() {
+			return nil
+		}
+		// Get y
+		val, ok = p.requireExpression()
+		if !ok {
+			return nil
+		}
+		stmt.CoordList = append(stmt.CoordList, val)
+		// Require ; if more coordinates to follow
+		if p.curTokenIs(token.Comma) {
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.SemicolonSeparatorIsNeeded)
+			return nil
+		}
+		// Break loop if no more coordinates to follow
+		if !p.curTokenIs(token.Semicolon) {
+			break
+		}
+		p.nextToken() // consume ;
+	}
+	// Handle no options list
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// Handle options list
+	for !p.onEndOfInstruction() {
+		tokenType := p.curToken.TokenType
+		switch tokenType {
+		case token.BRUSH:
+			p.nextToken()
+			stmt.Brush = p.parseExpression(LOWEST)
+		case token.OVER:
+			p.nextToken()
+			stmt.Over = p.parseExpression(LOWEST)
+		default:
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.UnknownSetAskAttribute)
+			return nil
+		}
+		p.nextToken()
+	}
+	return stmt
+}
+
 func (p *Parser) parseAreaStatement() *ast.AreaStatement {
 	stmt := &ast.AreaStatement{Token: p.curToken}
 	// Handle LINE without args
@@ -1414,6 +1492,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseLineStatement()
 	case token.AREA:
 		return p.parseAreaStatement()
+	case token.CIRCLE:
+		return p.parseCircleStatement()
 	case token.MOVE:
 		return p.parseMoveStatement()
 	case token.LET:
