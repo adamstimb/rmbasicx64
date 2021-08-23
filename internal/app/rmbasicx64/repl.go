@@ -11,6 +11,7 @@ import (
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/object"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/parser"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
+	"github.com/adamstimb/rmbasicx64/pkg/nimgobus"
 	"github.com/elastic/go-sysinfo"
 )
 
@@ -40,20 +41,15 @@ func welcomeScreen(g *game.Game) {
 	workspaceAvailable := fmt.Sprintf("%dG bytes workspace available.", bToGb(memInfo.Available))
 	g.Print(workspaceAvailable)
 	g.Put(13)
+	opt := nimgobus.CircleOptions{Brush: 2, Over: -255}
+	g.Circle(opt, 50, 100, 100)
 }
 
 // repl is the REPL that handles input
 func repl(g *game.Game) {
 	l := &lexer.Lexer{}
 	env := object.NewEnvironment()
-	//opt := nimgobus.PlotOptions{Brush: 2, SizeX: 1, SizeY: 1, Over: -1, Font: 1}
-	//lastTPS := 0
 	for {
-		//opt.Brush = 0
-		//g.Plot(opt, fmt.Sprintf("TPS: %d", lastTPS), 0, 239)
-		//opt.Brush = 2
-		//lastTPS := g.GetTPS()
-		//g.Plot(opt, fmt.Sprintf("TPS: %d", lastTPS), 0, 239)
 		g.Print(":")
 		rawInput := g.Input("")
 		code := strings.TrimSpace(rawInput)
