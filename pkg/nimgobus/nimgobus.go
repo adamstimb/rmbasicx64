@@ -112,8 +112,8 @@ func (n *Nimbus) Init() {
 	// in case any randomonia is required we can run a seed on startup
 	rand.Seed(time.Now().UnixNano())
 
-	// should next exceed 60tps
-	ebiten.SetMaxTPS(60)
+	// should next exceed 50tps
+	ebiten.SetMaxTPS(50)
 
 	// Load Nimbus logo image and both charsets
 	n.loadLogoImage()

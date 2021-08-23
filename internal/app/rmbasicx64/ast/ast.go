@@ -738,6 +738,47 @@ func (ls *LetStatement) String() string {
 	return out.String()
 }
 
+type ForStatement struct {
+	Token           token.Token // the token.Let token
+	Name            *Identifier
+	BindToken       token.Token
+	Start           Expression
+	Stop            Expression
+	Step            Expression
+	LineNumber      int
+	StatementNumber int
+	StartValue      float64
+	StopValue       float64
+	StepValue       float64
+}
+
+func (s *ForStatement) statementNode() {}
+func (s *ForStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *ForStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	out.WriteString(s.Name.String())
+	return out.String()
+}
+
+type NextStatement struct {
+	Token token.Token // the token.Let token
+	Name  *Identifier
+}
+
+func (s *NextStatement) statementNode() {}
+func (s *NextStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *NextStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	out.WriteString(s.Name.String())
+	return out.String()
+}
+
 type BindStatement struct {
 	Name  *Identifier
 	Token token.Token // the token.Equal or token.Assign

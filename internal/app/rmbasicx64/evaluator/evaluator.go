@@ -78,6 +78,10 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalRepeatStatement(g, node, env)
 	case *ast.UntilStatement:
 		return evalUntilStatement(g, node, env)
+	case *ast.ForStatement:
+		return evalForStatement(g, node, env)
+	case *ast.NextStatement:
+		return evalNextStatement(g, node, env)
 	case *ast.Program:
 		return evalProgram(g, node, env)
 	case *ast.ExpressionStatement:
@@ -753,6 +757,108 @@ func evalRepeatStatement(g *game.Game, stmt *ast.RepeatStatement, env *object.En
 	}
 	env.JumpStack.Push(stmt)
 	return nil
+}
+
+func evalForStatement(g *game.Game, stmt *ast.ForStatement, env *object.Environment) object.Object {
+	stmt.LineNumber = env.Program.GetLineNumber()
+	stmt.StatementNumber = env.Program.CurrentStatementNumber
+	// don't repush the same Repeat
+	if forStmt, ok := env.JumpStack.Peek().(*ast.ForStatement); ok {
+		if forStmt.LineNumber == stmt.LineNumber && forStmt.StatementNumber == stmt.StatementNumber {
+			return nil
+		}
+	}
+	// Otherwise evaluate start, stop, step expressions, bind counting variable, and push to stack
+	var start, stop, step float64
+	// Start
+	obj := Eval(g, stmt.Start, env)
+	if _, ok := obj.(*object.Error); ok {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		start = val.Value
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Stop
+	obj = Eval(g, stmt.Stop, env)
+	if _, ok := obj.(*object.Error); ok {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		stop = val.Value
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Step (Default=1)
+	if stmt.Step == nil {
+		step = 1.0
+	} else {
+		obj := Eval(g, stmt.Step, env)
+		if _, ok := obj.(*object.Error); ok {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			step = val.Value
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	// Flip step sign if counting down
+	if stop < start {
+		step *= -1.0
+	}
+	// Bind counting variable (must be numeric)
+	if stmt.Name.Value[len(stmt.Name.Value)-1:] == "$" {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericVariableNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	env.Set(stmt.Name.Value, &object.Numeric{Value: start})
+	// Update ast with evaluated stop and step values, then push to stack
+	stmt.StartValue = start
+	stmt.StopValue = stop
+	stmt.StepValue = step
+	env.JumpStack.Push(stmt)
+	return nil
+}
+
+func evalNextStatement(g *game.Game, stmt *ast.NextStatement, env *object.Environment) object.Object {
+	// Ensure we're inside the FOR loop before evaluating condition
+	if forStmt, ok := env.JumpStack.Peek().(*ast.ForStatement); ok {
+		// Get value of counter variable
+		var counterVal float64
+		if obj, ok := env.Get(stmt.Name.Value); ok {
+			if val, ok := obj.(*object.Numeric); ok {
+				counterVal = val.Value
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index}
+			}
+		} else {
+			// TODO: Set warning, somehow
+			env.Set(stmt.Name.Value, &object.Numeric{Value: 0})
+			counterVal = 0
+		}
+		// Evaluate condition
+		conditionMet := false
+		if forStmt.StartValue < forStmt.StopValue && counterVal+forStmt.StepValue > forStmt.StopValue {
+			conditionMet = true
+		}
+		if forStmt.StartValue > forStmt.StopValue && counterVal+forStmt.StepValue < forStmt.StopValue {
+			conditionMet = true
+		}
+		if !conditionMet {
+			// increment counter and loop again
+			counterVal += forStmt.StepValue
+			env.Set(stmt.Name.Value, &object.Numeric{Value: counterVal})
+			env.Program.Jump(forStmt.LineNumber, forStmt.StatementNumber)
+			return nil
+		} else {
+			// drop through loop
+			env.JumpStack.Pop()
+			return nil
+		}
+	}
+	return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.UntilWithoutAnyRepeat), ErrorTokenIndex: stmt.Token.Index}
+
 }
 
 func evalUntilStatement(g *game.Game, stmt *ast.UntilStatement, env *object.Environment) object.Object {
