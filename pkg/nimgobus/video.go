@@ -1,6 +1,7 @@
 package nimgobus
 
 import (
+	"image"
 	"math"
 	"time"
 
@@ -292,11 +293,13 @@ func (n *Nimbus) putSpriteOn2dArray(targetArray [][]int, thisSprite Sprite) {
 func (n *Nimbus) updateVideoImage() {
 	// assume the drawQueue is locked!
 	maxX, maxY := n.videoImage.Size()
+	img := image.NewRGBA(image.Rect(0, 0, maxX, maxY))
 	for x := 0; x < maxX; x++ {
 		for y := 0; y < maxY; y++ {
-			n.videoImage.Set(x, y, n.basicColours[n.palette[n.videoMemoryOverlay[y][x]]])
+			img.Set(x, y, n.basicColours[n.palette[n.videoMemoryOverlay[y][x]]])
 		}
 	}
+	n.videoImage = ebiten.NewImageFromImage(img)
 }
 
 // updateVideoMemory writes all sprites in the drawQueue to videoMemory
@@ -313,7 +316,8 @@ func (n *Nimbus) updateVideoMemory() {
 	if n.cursorFlashEnabled {
 		n.drawCursor()
 	}
-	// and update videoImage
+	// flush drawQueue and update videoImage
+	n.drawQueue = []Sprite{}
 	n.updateVideoImage()
 	n.muDrawQueue.Unlock()
 }

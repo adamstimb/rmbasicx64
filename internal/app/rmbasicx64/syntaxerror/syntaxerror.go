@@ -43,6 +43,7 @@ const (
 	WrongNumberOfSubscripts
 	ArrayAlreadyDimensioned
 	ArraySubscriptIsWrong
+	ToIsNeededBeforeValue
 )
 
 // ErrorMessage returns the template error message for a given error code
@@ -89,6 +90,7 @@ func ErrorMessage(errorCode int) string {
 		WrongNumberOfSubscripts:                      "Wrong number of subscripts",    // 15
 		ArrayAlreadyDimensioned:                      "Array already dimensioned",     // 16
 		ArraySubscriptIsWrong:                        "Array subscript is wrong",      // 73
+		ToIsNeededBeforeValue:                        "TO is needed before value",     // 26
 	}
 	return errorMessages[errorCode]
 }

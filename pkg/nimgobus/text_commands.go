@@ -1,6 +1,8 @@
 package nimgobus
 
 import (
+	"time"
+
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -390,6 +392,8 @@ func (n *Nimbus) Input(prepopulateBuffer string) string {
 
 	// now loop to received and edit the input string until enter is pressed
 	for !n.BreakInterruptDetected {
+		// dwell to prevent cooking the CPU
+		time.Sleep(100 * time.Microsecond)
 		// get most recent keyboard input
 		char := n.Get()
 		if char == -1 {

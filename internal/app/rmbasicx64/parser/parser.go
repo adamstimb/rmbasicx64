@@ -743,6 +743,79 @@ func (p *Parser) parseAreaStatement() *ast.AreaStatement {
 	return stmt
 }
 
+func (p *Parser) parseForStatement() *ast.ForStatement {
+	stmt := &ast.ForStatement{Token: p.curToken}
+	p.nextToken() // consume FOR
+	// Require variable name
+	if !p.curTokenIs(token.IdentifierLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+		return nil
+	}
+	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	// Require assignment
+	if !p.peekTokenIs(token.Assign) && !p.peekTokenIs(token.Equal) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.InvalidExpressionFound)
+		p.ErrorTokenIndex = p.curToken.Index + 1
+		return nil
+	}
+	p.nextToken()
+	stmt.BindToken = p.curToken
+	p.nextToken()
+	// Require start value
+	val, ok := p.requireExpression()
+	if !ok {
+		return nil
+	}
+	stmt.Start = val
+	// Require TO token
+	if !p.curTokenIs(token.TO) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.ToIsNeededBeforeValue)
+		p.ErrorTokenIndex = p.curToken.Index
+		return nil
+	}
+	p.nextToken()
+	// Require stop value
+	val, ok = p.requireExpression()
+	if !ok {
+		return nil
+	}
+	stmt.Stop = val
+	// Detect optional STEP
+	stmt.Step = nil
+	if p.curTokenIs(token.STEP) {
+		p.nextToken()
+		// Require step value
+		val, ok = p.requireExpression()
+		if !ok {
+			return nil
+		}
+		stmt.Step = val
+	}
+	// Require end of instruction
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseNextStatement() *ast.NextStatement {
+	stmt := &ast.NextStatement{Token: p.curToken}
+	p.nextToken() // consume NEXT
+	// Require variable name
+	if !p.curTokenIs(token.IdentifierLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+		return nil
+	}
+	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	// Require end of instruction
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parseSaveStatement() *ast.SaveStatement {
 	stmt := &ast.SaveStatement{Token: p.curToken}
 	// Handle SAVE without args
@@ -1171,11 +1244,11 @@ func (p *Parser) PrettyPrint() string {
 	indent := "  "
 	lineString := p.g.PrettyPrintIndent
 	// Add indent for following lines
-	if p.curTokenIs(token.REPEAT) {
+	if p.curTokenIs(token.REPEAT) || p.curTokenIs(token.FOR) {
 		p.g.PrettyPrintIndent += indent
 	}
 	// Remove indent for this and following lines
-	if p.curTokenIs(token.UNTIL) {
+	if p.curTokenIs(token.UNTIL) || p.curTokenIs(token.NEXT) {
 		if len(p.g.PrettyPrintIndent) >= 2 {
 			p.g.PrettyPrintIndent = p.g.PrettyPrintIndent[:len(p.g.PrettyPrintIndent)-2]
 			lineString = p.g.PrettyPrintIndent
@@ -1301,6 +1374,10 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseRepeatStatement()
 	case token.UNTIL:
 		return p.parseUntilStatement()
+	case token.FOR:
+		return p.parseForStatement()
+	case token.NEXT:
+		return p.parseNextStatement()
 	case token.SET:
 		p.nextToken()
 		switch p.curToken.TokenType {

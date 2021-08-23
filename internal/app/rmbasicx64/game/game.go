@@ -22,6 +22,10 @@ type Game struct {
 	PrettyPrintIndent string
 }
 
+func (g *Game) GetTPS() int {
+	return int(ebiten.CurrentTPS())
+}
+
 // LoadConfig attempts to load settings from the config file.  If the file does not
 // exist or is unreadable it will be ignored and default settings will be used.
 func (g *Game) LoadConfig() {
@@ -104,7 +108,6 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-
 	// Draw the Nimbus monitor on the screen and scale to current window size.
 	monitorWidth, monitorHeight := g.Monitor.Size()
 
