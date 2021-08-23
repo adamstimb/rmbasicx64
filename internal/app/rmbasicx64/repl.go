@@ -11,7 +11,6 @@ import (
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/object"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/parser"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
-	"github.com/adamstimb/rmbasicx64/pkg/nimgobus"
 	"github.com/elastic/go-sysinfo"
 )
 
@@ -35,14 +34,12 @@ func welcomeScreen(g *game.Game) {
 	g.Print("This is a tribute project and is in no way linked to or endorsed by RM plc.")
 	g.Put(13)
 	g.Put(13)
-	g.Print("RM BASICx64 Version 0.01B 21st July 2021")
+	g.Print("RM BASICx64 Version 0.10A 23rd August 2021")
 	g.Put(13)
 	// Generate and print workspace available notification
 	workspaceAvailable := fmt.Sprintf("%dG bytes workspace available.", bToGb(memInfo.Available))
 	g.Print(workspaceAvailable)
 	g.Put(13)
-	opt := nimgobus.CircleOptions{Brush: 2, Over: -255}
-	g.Circle(opt, 50, 100, 100)
 }
 
 // repl is the REPL that handles input

@@ -126,9 +126,9 @@ func (n *Nimbus) Init() {
 	n.drawQueue = []Sprite{}
 	n.redrawComplete = true
 	n.videoImage = ebiten.NewImage(640, 250)
-	n.basicColours = basicColours
-	n.defaultHighResPalette = defaultHighResPalette
-	n.defaultLowResPalette = defaultLowResPalette
+	n.basicColours = append(n.basicColours, basicColours...)
+	n.defaultHighResPalette = append(n.defaultHighResPalette, defaultHighResPalette...)
+	n.defaultLowResPalette = append(n.defaultLowResPalette, defaultLowResPalette...)
 	n.palette = append(n.palette, n.defaultHighResPalette...)
 	n.borderColour = 0
 	n.paperColour = 0
