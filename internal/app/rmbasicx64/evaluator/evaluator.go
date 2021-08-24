@@ -46,6 +46,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalClsStatement(g, node, env)
 	case *ast.HomeStatement:
 		return evalHomeStatement(g, node, env)
+	case *ast.SetMouseStatement:
+		return evalSetMouseStatement(g, node, env)
 	case *ast.SetModeStatement:
 		return evalSetModeStatement(g, node, env)
 	case *ast.SetPaperStatement:
@@ -84,6 +86,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalForStatement(g, node, env)
 	case *ast.NextStatement:
 		return evalNextStatement(g, node, env)
+	case *ast.AskMouseStatement:
+		return evalAskMouseStatement(g, node, env)
 	case *ast.Program:
 		return evalProgram(g, node, env)
 	case *ast.ExpressionStatement:
@@ -867,7 +871,7 @@ func evalForStatement(g *game.Game, stmt *ast.ForStatement, env *object.Environm
 	if stop < start {
 		step *= -1.0
 	}
-	// Bind counting variable (must be numeric)
+	// Bind counting variable (must be numeric) --- TODO this should be handled by parser!
 	if stmt.Name.Value[len(stmt.Name.Value)-1:] == "$" {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericVariableNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
@@ -917,6 +921,21 @@ func evalNextStatement(g *game.Game, stmt *ast.NextStatement, env *object.Enviro
 		}
 	}
 	return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.UntilWithoutAnyRepeat), ErrorTokenIndex: stmt.Token.Index}
+}
+
+func evalAskMouseStatement(g *game.Game, stmt *ast.AskMouseStatement, env *object.Environment) object.Object {
+	// Handle no args
+	if stmt.XName == nil && stmt.YName == nil {
+		return nil
+	}
+	// Set X, Y
+	env.Set(stmt.XName.Value, &object.Numeric{Value: float64(g.MouseX)})
+	env.Set(stmt.YName.Value, &object.Numeric{Value: float64(g.MouseY)})
+	// Handle button if required
+	if stmt.BName != nil {
+		env.Set(stmt.BName.Value, &object.Numeric{Value: float64(g.MouseButton)})
+	}
+	return nil
 }
 
 func evalUntilStatement(g *game.Game, stmt *ast.UntilStatement, env *object.Environment) object.Object {
@@ -1031,6 +1050,11 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 func evalClsStatement(g *game.Game, stmt *ast.ClsStatement, env *object.Environment) object.Object {
 	g.Cls()
 	g.SetCurpos(1, 1)
+	return nil
+}
+
+func evalSetMouseStatement(g *game.Game, stmt *ast.SetMouseStatement, env *object.Environment) object.Object {
+	g.SetMouse(true)
 	return nil
 }
 

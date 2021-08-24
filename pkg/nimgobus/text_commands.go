@@ -1,7 +1,6 @@
 package nimgobus
 
 import (
-	"log"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -154,7 +153,6 @@ func (n *Nimbus) SetMode(columns int) {
 	n.muVideoMemory.Unlock()
 	n.muDrawQueue.Unlock()
 	n.Cls()
-	log.Printf("SET MODE complete")
 }
 
 // convertColRow receives a Nimbus-style column, row position and returns a

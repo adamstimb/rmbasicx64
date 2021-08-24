@@ -309,7 +309,7 @@ func (n *Nimbus) Circle(opt CircleOptions, r, x, y int) {
 	case -1:
 		over = true
 	}
-	img := make2dArray((2*r)+10, (2*r)+10)
+	img := make2dArray((2*r)+10, (2*r)+1)
 	sx := x - r
 	sy := y - r
 	// draw circle outline

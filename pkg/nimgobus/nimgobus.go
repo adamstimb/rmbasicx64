@@ -57,6 +57,9 @@ type repeatingChar struct {
 // Nimbus acts as a container for all the components of the Nimbus monitor.  You
 // only need to call the Init() method after declaring a new Nimbus.
 type Nimbus struct {
+	PaddingX               int
+	PaddingY               int
+	Scale                  float64
 	Monitor                *ebiten.Image     // The Monitor image including background
 	muVideoMemory          sync.Mutex        //
 	videoMemory            [250][640]int     // Represents the video memory, basically a 640x250 array of integers represents the Nimbus colour index of each pixel
@@ -103,7 +106,11 @@ type Nimbus struct {
 	muKeyBuffer            sync.Mutex        //
 	keyBuffer              []int             // Nimgobus needs it's own key buffer since ebiten's only deals with printable chars
 	charRepeat             repeatingChar     // Used by the keyBuffer to dynamically limit key presses
-	BreakInterruptDetected bool              // Flag is set to true if user makes a <BREAK>
+	MouseX                 int
+	MouseY                 int
+	MouseButton            int
+	MouseOn                bool
+	BreakInterruptDetected bool // Flag is set to true if user makes a <BREAK>
 }
 
 // Init initializes a new Nimbus.  You must call this method after declaring a
@@ -153,6 +160,10 @@ func (n *Nimbus) Init() {
 	n.selectedDrawingBox = 0
 	n.keyBuffer = []int{}
 	n.charRepeat = repeatingChar{0, 0}
+	n.MouseX = 0
+	n.MouseY = 0
+	n.MouseButton = 0
+	n.MouseOn = false
 	n.muBorderImage.Lock()
 	n.borderImage.Fill(n.basicColours[n.palette[n.borderColour]])
 	n.muBorderImage.Unlock()
@@ -174,12 +185,15 @@ func (n *Nimbus) Init() {
 	// Set break int
 	n.BreakInterruptDetected = false
 
-	// Start tickers
+	// Start tickers, etc.
 	go n.cursorFlashTicker()
 }
 
 // Update is called by every Draw() call from ebiten
-func (n *Nimbus) Update() {
+func (n *Nimbus) Update(PaddingX, PaddingY int, Scale float64) {
+	n.PaddingX = PaddingX
+	n.PaddingY = PaddingY
+	n.Scale = Scale
 	n.updateKeyBuffer()
 	n.updateVideoMemory()
 	n.redraw()

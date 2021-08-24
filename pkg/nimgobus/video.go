@@ -128,7 +128,7 @@ func (n *Nimbus) writeSprite(thisSprite Sprite) {
 				continue
 			}
 			for y := spriteOffsetY; y < yLimit; y++ {
-				// don't draw if it's below the screen
+				// don't draw if it's above the screen (y is flipped here, remember)
 				if y < 0 {
 					spriteY++
 					continue
