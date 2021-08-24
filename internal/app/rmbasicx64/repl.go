@@ -34,7 +34,7 @@ func welcomeScreen(g *game.Game) {
 	g.Print("This is a tribute project and is in no way linked to or endorsed by RM plc.")
 	g.Put(13)
 	g.Put(13)
-	g.Print("RM BASICx64 Version 0.01B 21st July 2021")
+	g.Print("RM BASICx64 Version 0.10A 23rd August 2021")
 	g.Put(13)
 	// Generate and print workspace available notification
 	workspaceAvailable := fmt.Sprintf("%dG bytes workspace available.", bToGb(memInfo.Available))
@@ -46,14 +46,7 @@ func welcomeScreen(g *game.Game) {
 func repl(g *game.Game) {
 	l := &lexer.Lexer{}
 	env := object.NewEnvironment()
-	//opt := nimgobus.PlotOptions{Brush: 2, SizeX: 1, SizeY: 1, Over: -1, Font: 1}
-	//lastTPS := 0
 	for {
-		//opt.Brush = 0
-		//g.Plot(opt, fmt.Sprintf("TPS: %d", lastTPS), 0, 239)
-		//opt.Brush = 2
-		//lastTPS := g.GetTPS()
-		//g.Plot(opt, fmt.Sprintf("TPS: %d", lastTPS), 0, 239)
 		g.Print(":")
 		rawInput := g.Input("")
 		code := strings.TrimSpace(rawInput)

@@ -97,6 +97,8 @@ func (n *Nimbus) SetMode(columns int) {
 	n.ForceRedraw()
 	n.muDrawQueue.Lock()
 	n.muBorderImage.Lock()
+	n.muVideoMemory.Lock()
+	n.muVideoMemoryOverlay.Lock()
 	if columns == 40 {
 		// low-resolution, high-colour mode (320x250)
 		n.videoImage = ebiten.NewImage(320, 250)
@@ -143,7 +145,12 @@ func (n *Nimbus) SetMode(columns int) {
 		}
 	}
 	n.imageBlocks = [16]*ebiten.Image{}
+	n.drawQueue = []Sprite{} // flush drawqueue
+	n.videoMemory = [250][640]int{}
+	n.videoMemoryOverlay = [250][640]int{}
 	n.muBorderImage.Unlock()
+	n.muVideoMemoryOverlay.Unlock()
+	n.muVideoMemory.Unlock()
 	n.muDrawQueue.Unlock()
 	n.Cls()
 }

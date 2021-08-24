@@ -20,6 +20,9 @@ type Game struct {
 	nimgobus.Nimbus
 	Config            AppConfig
 	PrettyPrintIndent string
+	PaddingX          int
+	PaddingY          int
+	Scale             float64
 }
 
 func (g *Game) GetTPS() int {
@@ -99,7 +102,7 @@ func (g *Game) ReadConf() (AppConfig, error) {
 }
 
 func (g *Game) Update() error {
-	g.Nimbus.Update()
+	g.Nimbus.Update(g.PaddingX, g.PaddingY, g.Scale)
 	return nil
 }
 
@@ -132,6 +135,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		offsetX = 0
 		offsetY = (float64(windowHeight) - float64(monitorHeight)*scale) / 2
 	}
+	g.PaddingX = int(offsetX)
+	g.PaddingY = int(offsetY)
+	g.Scale = scale
 
 	// Apply scale and centre monitor on screen
 	op := &ebiten.DrawImageOptions{}

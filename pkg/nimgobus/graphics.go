@@ -253,6 +253,119 @@ func (n *Nimbus) Line(opt LineOptions, coordList []XyCoord) {
 	n.drawSprite(n.applyDrawingbox(Sprite{img, minX, minY, opt.Brush, over}, 0))
 }
 
+// Draw implements a "Bresenham-ish" circle drawing algorithm adapted from
+// https://github.com/benhoyt/circle/blob/master/circle.go
+func (n *Nimbus) drawCircle(r int, img [][]int) [][]int {
+	x := 0
+	y := r
+	xsq := 0
+	rsq := r * r
+	ysq := rsq
+	// Loop x from 0 to the line x==y. Start y at r and each time
+	// around the loop either keep it the same or decrement it.
+	for x <= y {
+		img[r+y][r+x] = 1
+		img[r+x][r+y] = 1
+		img[r+y][r-x] = 1
+		img[r+x][r-y] = 1
+		img[r-y][r+x] = 1
+		img[r-x][r+y] = 1
+		img[r-y][r-x] = 1
+		img[r-x][r-y] = 1
+
+		// New x^2 = (x+1)^2 = x^2 + 2x + 1
+		xsq = xsq + 2*x + 1
+		x++
+		// Potential new y^2 = (y-1)^2 = y^2 - 2y + 1
+		y1sq := ysq - 2*y + 1
+		// Choose y or y-1, whichever gives smallest error
+		a := xsq + ysq
+		b := xsq + y1sq
+		if a-rsq >= rsq-b {
+			y--
+			ysq = y1sq
+		}
+	}
+	return img
+}
+
+type CircleOptions struct {
+	Brush int
+	Over  int
+}
+
+// Circle draws a a filled circle
+func (n *Nimbus) Circle(opt CircleOptions, r, x, y int) {
+	// Handle default values
+	if opt.Brush == -255 {
+		opt.Brush = n.brush
+	}
+	var over bool
+	switch opt.Over {
+	case -255:
+		over = n.over
+	case 0:
+		over = false
+	case -1:
+		over = true
+	}
+	img := make2dArray((2*r)+10, (2*r)+1)
+	sx := x - r
+	sy := y - r
+	// draw circle outline
+	img = n.drawCircle(r, img)
+	// Fill the shape using odd/even counter to determine if inside or outside shape.
+	imgHeight := len(img)
+	imgWidth := len(img[0])
+	for y := 0; y < imgHeight; y++ {
+		onLeftEdge := false
+		leavingShape := false
+		inside := false
+		startX := 0
+		for x := 0; x < imgWidth-1; x++ {
+			// reset flags if beyond right-hand edge
+			if leavingShape && img[y][x] == 0 {
+				onLeftEdge = false
+				leavingShape = false
+				inside = false
+				continue
+			}
+			// detect left-hand edge
+			if !leavingShape && !inside && !onLeftEdge && img[y][x] == 1 {
+				// found edge
+				onLeftEdge = true
+				inside = false
+				continue
+			}
+			// detect entering shape
+			if onLeftEdge && img[y][x] == 0 {
+				onLeftEdge = false
+				inside = true
+				startX = x
+			}
+			// detect leaving shape
+			if inside && img[y][x] == 1 {
+				onLeftEdge = false
+				inside = false
+				leavingShape = true
+				continue
+			}
+			// fill if inside shape
+			if inside {
+				img[y][x] = 1
+			}
+		}
+		// Undo if we are still inside the shape at this position, because that's impossible
+		// and probably due to apex of straight line.
+		if inside {
+			for x := startX; x <= imgWidth-1; x++ {
+				img[y][x] = 0
+			}
+		}
+	}
+	n.drawSprite(n.applyDrawingbox(Sprite{img, sx, sy, opt.Brush, over}, 0))
+}
+
 type AreaOptions struct {
 	Brush int
 	Over  int

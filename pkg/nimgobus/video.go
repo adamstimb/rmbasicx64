@@ -2,6 +2,7 @@ package nimgobus
 
 import (
 	"image"
+	"log"
 	"math"
 	"time"
 
@@ -127,7 +128,7 @@ func (n *Nimbus) writeSprite(thisSprite Sprite) {
 				continue
 			}
 			for y := spriteOffsetY; y < yLimit; y++ {
-				// don't draw if it's below the screen
+				// don't draw if it's above the screen (y is flipped here, remember)
 				if y < 0 {
 					spriteY++
 					continue
@@ -296,7 +297,12 @@ func (n *Nimbus) updateVideoImage() {
 	img := image.NewRGBA(image.Rect(0, 0, maxX, maxY))
 	for x := 0; x < maxX; x++ {
 		for y := 0; y < maxY; y++ {
-			img.Set(x, y, n.basicColours[n.palette[n.videoMemoryOverlay[y][x]]])
+			if len(n.palette) <= n.videoMemoryOverlay[y][x] {
+				log.Printf("basicColours %d, palette %d, colour %d", len(n.basicColours), len(n.palette), n.videoMemoryOverlay[y][x])
+				img.Set(x, y, n.basicColours[n.palette[1]])
+			} else {
+				img.Set(x, y, n.basicColours[n.palette[n.videoMemoryOverlay[y][x]]])
+			}
 		}
 	}
 	n.videoImage = ebiten.NewImageFromImage(img)

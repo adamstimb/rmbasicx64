@@ -680,6 +680,84 @@ func (p *Parser) parseLineStatement() *ast.LineStatement {
 	return stmt
 }
 
+func (p *Parser) parseCircleStatement() *ast.CircleStatement {
+	stmt := &ast.CircleStatement{Token: p.curToken}
+	// Handle CIRCLE without args
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		return nil
+	}
+	// Get radius
+	val, ok := p.requireExpression()
+	if !ok {
+		return nil
+	}
+	stmt.Radius = val
+	// ,
+	if !p.requireComma() {
+		return nil
+	}
+	// Get coordinate list
+	if p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		return nil
+	}
+	for !p.onEndOfInstruction() {
+		// Get X
+		val, ok := p.requireExpression()
+		if !ok {
+			return nil
+		}
+		stmt.CoordList = append(stmt.CoordList, val)
+		// ,
+		if !p.requireComma() {
+			return nil
+		}
+		// Get y
+		val, ok = p.requireExpression()
+		if !ok {
+			return nil
+		}
+		stmt.CoordList = append(stmt.CoordList, val)
+		// Require ; if more coordinates to follow
+		if p.curTokenIs(token.Comma) {
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.SemicolonSeparatorIsNeeded)
+			return nil
+		}
+		// Break loop if no more coordinates to follow
+		if !p.curTokenIs(token.Semicolon) {
+			break
+		}
+		p.nextToken() // consume ;
+	}
+	// Handle no options list
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// Handle options list
+	for !p.onEndOfInstruction() {
+		tokenType := p.curToken.TokenType
+		switch tokenType {
+		case token.BRUSH:
+			p.nextToken()
+			stmt.Brush = p.parseExpression(LOWEST)
+		case token.OVER:
+			p.nextToken()
+			stmt.Over = p.parseExpression(LOWEST)
+		default:
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.UnknownSetAskAttribute)
+			return nil
+		}
+		p.nextToken()
+	}
+	return stmt
+}
+
 func (p *Parser) parseAreaStatement() *ast.AreaStatement {
 	stmt := &ast.AreaStatement{Token: p.curToken}
 	// Handle LINE without args
@@ -816,6 +894,57 @@ func (p *Parser) parseNextStatement() *ast.NextStatement {
 	return nil
 }
 
+func (p *Parser) parseAskMouseStatement() *ast.AskMouseStatement {
+	stmt := &ast.AskMouseStatement{Token: p.curToken}
+	p.nextToken() // consume MOUSE
+	// Handle no arguments
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// Otherwise require e1, e2
+	// e1
+	if !p.curTokenIs(token.IdentifierLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+		return nil
+	}
+	stmt.XName = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	p.nextToken()
+	// ,
+	if !p.requireComma() {
+		return nil
+	}
+	// e2
+	if !p.curTokenIs(token.IdentifierLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+		return nil
+	}
+	stmt.YName = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	p.nextToken()
+	// Handle no button argument
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// Handle optional button argument
+	if !p.requireComma() {
+		return nil
+	}
+	// e3
+	if !p.curTokenIs(token.IdentifierLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+		return nil
+	}
+	stmt.BName = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	p.nextToken()
+	// Require end of instruction
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parseSaveStatement() *ast.SaveStatement {
 	stmt := &ast.SaveStatement{Token: p.curToken}
 	// Handle SAVE without args
@@ -902,6 +1031,15 @@ func (p *Parser) parseSetPenStatement() *ast.SetPenStatement {
 	}
 	p.nextToken()
 	stmt.Value = p.parseExpression(LOWEST)
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseSetMouseStatement() *ast.SetMouseStatement {
+	stmt := &ast.SetMouseStatement{Token: p.curToken}
+	p.nextToken()
 	if p.endOfInstruction() {
 		return stmt
 	}
@@ -1281,7 +1419,25 @@ func (p *Parser) PrettyPrint() string {
 		if len(lineString) > 0 {
 			if lineString[len(lineString)-1] == ' ' && p.curToken.TokenType == token.RightParen {
 				lineString = lineString[0 : len(lineString)-1]
-				lineString += ")"
+				lineString += ") "
+				p.nextToken()
+				continue
+			}
+		}
+		// Remove trailing space if ,
+		if len(lineString) > 0 {
+			if lineString[len(lineString)-1] == ' ' && p.curToken.TokenType == token.Comma {
+				lineString = lineString[0 : len(lineString)-1]
+				lineString += ", "
+				p.nextToken()
+				continue
+			}
+		}
+		// Remove trailing space if ;
+		if len(lineString) > 0 {
+			if lineString[len(lineString)-1] == ' ' && p.curToken.TokenType == token.Comma {
+				lineString = lineString[0 : len(lineString)-1]
+				lineString += "; "
 				p.nextToken()
 				continue
 			}
@@ -1378,9 +1534,17 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseForStatement()
 	case token.NEXT:
 		return p.parseNextStatement()
+	case token.ASK:
+		p.nextToken()
+		switch p.curToken.TokenType {
+		case token.MOUSE:
+			return p.parseAskMouseStatement()
+		}
 	case token.SET:
 		p.nextToken()
 		switch p.curToken.TokenType {
+		case token.MOUSE:
+			return p.parseSetMouseStatement()
 		case token.MODE:
 			return p.parseSetModeStatement()
 		case token.PAPER:
@@ -1414,6 +1578,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseLineStatement()
 	case token.AREA:
 		return p.parseAreaStatement()
+	case token.CIRCLE:
+		return p.parseCircleStatement()
 	case token.MOVE:
 		return p.parseMoveStatement()
 	case token.LET:

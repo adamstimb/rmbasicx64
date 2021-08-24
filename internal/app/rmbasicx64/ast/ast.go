@@ -457,6 +457,21 @@ func (s *SetPenStatement) String() string {
 	return out.String()
 }
 
+type SetMouseStatement struct {
+	Token token.Token
+	Value Expression
+}
+
+func (s *SetMouseStatement) statementNode() {}
+func (s *SetMouseStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *SetMouseStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
 type GetStatement struct {
 	Token token.Token
 	Value Expression
@@ -636,6 +651,24 @@ func (ps *LineStatement) String() string {
 	return out.String()
 }
 
+type CircleStatement struct {
+	Token     token.Token
+	Radius    Expression
+	CoordList []Expression
+	Brush     Expression
+	Over      Expression
+}
+
+func (s *CircleStatement) statementNode() {}
+func (s *CircleStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *CircleStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	return out.String()
+}
+
 type AreaStatement struct {
 	Token     token.Token
 	CoordList []Expression
@@ -776,6 +809,23 @@ func (s *NextStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(s.TokenLiteral() + " ")
 	out.WriteString(s.Name.String())
+	return out.String()
+}
+
+type AskMouseStatement struct {
+	Token token.Token // the token.Let token
+	XName *Identifier
+	YName *Identifier
+	BName *Identifier
+}
+
+func (s *AskMouseStatement) statementNode() {}
+func (s *AskMouseStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *AskMouseStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
 	return out.String()
 }
 
