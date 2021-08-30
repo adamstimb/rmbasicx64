@@ -47,7 +47,7 @@ func (n *Nimbus) Cls(p ...int) {
 }
 
 // SetColour assigns one of the basic colours to a slot in the current palette
-func (n *Nimbus) SetColour(paletteSlot, basicColour int) {
+func (n *Nimbus) SetColour(paletteSlot, basicColour, flashSpeed, flashColour int) {
 	// Validate basicColour and paletteSlot
 	if basicColour < 0 || basicColour > 16 {
 		panic("basicColour is out of range")
@@ -56,6 +56,7 @@ func (n *Nimbus) SetColour(paletteSlot, basicColour int) {
 	// Validation passed, assign colour
 	n.palette[paletteSlot] = basicColour
 	n.SetBorder(n.borderColour) // need to force border to update
+	n.colourFlashSettings[paletteSlot] = colourFlashSetting{speed: flashSpeed, flashColour: flashColour}
 }
 
 // SetPaper sets paperColour
@@ -93,6 +94,7 @@ func (n *Nimbus) SetMode(columns int) {
 	n.cursorChar = 95
 	n.cursorCharset = 0
 	n.cursorFlashEnabled = true
+	n.initColourFlashSettings()
 	// Need to manipulate videoImage so force redraw and get the lock
 	n.ForceRedraw()
 	n.muDrawQueue.Lock()
@@ -115,6 +117,7 @@ func (n *Nimbus) SetMode(columns int) {
 		// reinit border image and fill with new colour
 		n.borderImage = ebiten.NewImage(640+(n.borderSize*2), 500+(n.borderSize*2))
 		n.borderImage.Fill(n.basicColours[n.palette[n.borderColour]])
+		n.mode = 40
 	}
 	if columns == 80 {
 		// high-resolutions, low-colour mode (640x250)
@@ -132,6 +135,7 @@ func (n *Nimbus) SetMode(columns int) {
 		// reinit border image and fill with new colour
 		n.borderImage = ebiten.NewImage(640+(n.borderSize*2), 500+(n.borderSize*2))
 		n.borderImage.Fill(n.basicColours[n.palette[n.borderColour]])
+		n.mode = 80
 	}
 	n.cursorPosition = colRow{1, 1} // Relocate cursor
 	// Redefine textboxes, imageBlocks and clear screen

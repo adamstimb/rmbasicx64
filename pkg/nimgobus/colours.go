@@ -46,3 +46,12 @@ var (
 		15, // white
 	}
 )
+
+// initialize colour flash settings so that nothing flashes and the flash colour is the same
+// as the normal colour
+func (n *Nimbus) initColourFlashSettings() {
+	n.colourFlashSettings = []colourFlashSetting{}
+	for i := 0; i < 16; i++ {
+		n.colourFlashSettings = append(n.colourFlashSettings, colourFlashSetting{speed: 0, flashColour: i})
+	}
+}
