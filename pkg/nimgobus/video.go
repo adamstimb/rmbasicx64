@@ -2,7 +2,6 @@ package nimgobus
 
 import (
 	"image"
-	"log"
 	"math"
 	"time"
 
@@ -61,28 +60,67 @@ func (n *Nimbus) rotateSprite(thisSprite Sprite, r int) Sprite {
 	return thisSprite
 }
 
-// applyDrawingbox applies a drawing box to the sprite (translate + truncate)
-func (n *Nimbus) applyDrawingbox(thisSprite Sprite, d int) Sprite {
-
-	// Get translation vector
-	xt := n.drawingBoxes[d].x1
-	yt := n.drawingBoxes[d].y1
-	// Truncate sprite
-	img := thisSprite.pixels
-	imgWidth := len(img[0])
-	imgHeight := len(img)
-	newImg := make2dArray(imgWidth, imgHeight)
-	for x := 0; x < len(img[0]); x++ {
-		for y := 0; y < len(img); y++ {
-			absoluteX := thisSprite.x + x + xt
-			absoluteY := thisSprite.y + y + yt
-			if absoluteX >= xt && absoluteY >= yt && absoluteX <= n.drawingBoxes[d].x2 && absoluteY <= n.drawingBoxes[d].y2 {
-				newImg[y][x] = img[y][x]
+func (n *Nimbus) applyDrawingbox(thisSprite Sprite, d int) (Sprite, bool) {
+	box := n.drawingBoxes[d]
+	spriteWidth := len(thisSprite.pixels[0])
+	spriteHeight := len(thisSprite.pixels)
+	xt := box.x1
+	yt := box.y1
+	// Get max x,y within drawingbox
+	maxX := box.x2 - box.x1
+	maxY := box.y2 - box.y1
+	// Reject off-screen sprites
+	if thisSprite.y > maxY || thisSprite.x > maxX || thisSprite.y+spriteHeight < 0 || thisSprite.x+spriteWidth < 0 {
+		return thisSprite, false
+	}
+	// Truncate as necessary
+	if thisSprite.x < 0 {
+		// truncate left
+		chop := thisSprite.x * -1
+		newImg := make2dArray(len(thisSprite.pixels[0])-chop, len(thisSprite.pixels))
+		for x := 0; x < len(newImg[0]); x++ {
+			for y := 0; y < len(newImg); y++ {
+				newImg[y][x] = thisSprite.pixels[y][x+chop]
 			}
 		}
+		thisSprite.pixels = newImg
+		thisSprite.x = 0
 	}
-	// Return truncated sprite with applied translation
-	return Sprite{pixels: newImg, x: thisSprite.x + xt, y: thisSprite.y + yt, colour: thisSprite.colour, over: thisSprite.over}
+	if thisSprite.y+len(thisSprite.pixels) > maxY {
+		// truncate top
+		chop := thisSprite.y + len(thisSprite.pixels) - maxY
+		newImg := make2dArray(len(thisSprite.pixels[0]), len(thisSprite.pixels)-chop)
+		for x := 0; x < len(newImg[0]); x++ {
+			for y := 0; y < len(newImg); y++ {
+				newImg[y][x] = thisSprite.pixels[y][x]
+			}
+		}
+		thisSprite.pixels = newImg
+	}
+	if thisSprite.x+len(thisSprite.pixels[0]) > maxX {
+		// truncate right
+		chop := thisSprite.x + len(thisSprite.pixels[0]) - maxX
+		newImg := make2dArray(len(thisSprite.pixels[0])-chop, len(thisSprite.pixels))
+		for x := 0; x < len(newImg[0]); x++ {
+			for y := 0; y < len(newImg); y++ {
+				newImg[y][x] = thisSprite.pixels[y][x]
+			}
+		}
+		thisSprite.pixels = newImg
+	}
+	if thisSprite.y < 0 {
+		// truncate below
+		chop := thisSprite.y * -1
+		newImg := make2dArray(len(thisSprite.pixels[0]), len(thisSprite.pixels)-chop)
+		for x := 0; x < len(newImg[0]); x++ {
+			for y := 0; y < len(newImg); y++ {
+				newImg[y][x] = thisSprite.pixels[y][x]
+			}
+		}
+		thisSprite.pixels = newImg
+		thisSprite.y = 0
+	}
+	return Sprite{pixels: thisSprite.pixels, x: thisSprite.x + xt, y: thisSprite.y + yt, colour: thisSprite.colour, over: thisSprite.over}, true
 }
 
 // drawSprite waits until the drawQueue is unlocked then adds a sprite for drawing to the drawQueue
@@ -92,6 +130,39 @@ func (n *Nimbus) drawSprite(thisSprite Sprite) {
 	// add to queue and unlock
 	n.drawQueue = append(n.drawQueue, thisSprite)
 	n.muDrawQueue.Unlock()
+}
+
+// handleColourFlash handles flashing colours and returns the palette slot of the colour that
+// should be displayed if flashing
+func (n *Nimbus) handleColourFlash(c int) int {
+	// get basic colours first
+	var basicColours []int
+	switch n.mode {
+	case 40:
+		basicColours = n.defaultLowResPalette
+	case 80:
+		basicColours = n.defaultLowResPalette
+	}
+	switch n.colourFlashSettings[c].speed {
+	case 0:
+		// not flashing
+		return c
+	case 1:
+		// slow flash
+		if n.colourFlash <= 1 {
+			return c
+		} else {
+			return basicColours[n.colourFlashSettings[c].flashColour]
+		}
+	case 2:
+		// fast flash
+		if n.colourFlash == 0 || n.colourFlash == 2 {
+			return c
+		} else {
+			return basicColours[n.colourFlashSettings[c].flashColour]
+		}
+	}
+	return c
 }
 
 // writeSprite writes a sprite directly to videoMemory
@@ -147,11 +218,16 @@ func (n *Nimbus) writeSprite(thisSprite Sprite) {
 			spriteX++
 		}
 	} else {
-		// over==false, i.e XOR mode
+		// over==false, i.e XOR mode -- I think we disregard colour flashing in this mode
 		spriteX := 0
 		for x := spriteOffsetX; x < xLimit; x++ {
 			spriteY := 0
 			for y := spriteOffsetY; y < yLimit; y++ {
+				// don't draw if it's off the left-hand side
+				if x < 0 {
+					spriteX++
+					continue
+				}
 				if thisSprite.pixels[spriteY][spriteX] == 1 {
 					n.videoMemory[y][x] = n.videoMemory[y][x] ^ thisSprite.colour
 				}
@@ -298,10 +374,10 @@ func (n *Nimbus) updateVideoImage() {
 	for x := 0; x < maxX; x++ {
 		for y := 0; y < maxY; y++ {
 			if len(n.palette) <= n.videoMemoryOverlay[y][x] {
-				log.Printf("basicColours %d, palette %d, colour %d", len(n.basicColours), len(n.palette), n.videoMemoryOverlay[y][x])
 				img.Set(x, y, n.basicColours[n.palette[1]])
 			} else {
-				img.Set(x, y, n.basicColours[n.palette[n.videoMemoryOverlay[y][x]]])
+				//img.Set(x, y, n.basicColours[n.palette[n.videoMemoryOverlay[y][x]]])
+				img.Set(x, y, n.basicColours[n.handleColourFlash(n.palette[n.videoMemoryOverlay[y][x]])])
 			}
 		}
 	}

@@ -599,11 +599,10 @@ func (p *Parser) parsePlotStatement() *ast.PlotStatement {
 		case token.SIZE:
 			p.nextToken()
 			stmt.SizeX = p.parseExpression(LOWEST)
-			p.nextToken()
-			if p.curTokenIs(token.Comma) {
+			if p.peekTokenIs(token.Comma) {
+				p.nextToken()
 				p.nextToken()
 				stmt.SizeY = p.parseExpression(LOWEST)
-				//p.nextToken()
 			} else {
 				stmt.SizeY = stmt.SizeX
 			}

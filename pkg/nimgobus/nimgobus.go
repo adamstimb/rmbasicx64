@@ -54,58 +54,67 @@ type repeatingChar struct {
 	counter int
 }
 
+// colourFlashSetting is used to store colour flash settings for individual pallete slots
+type colourFlashSetting struct {
+	speed       int // 0 no flash, 1 slow, 2 fast
+	flashColour int // the palette slot to of the flash colour
+}
+
 // Nimbus acts as a container for all the components of the Nimbus monitor.  You
 // only need to call the Init() method after declaring a new Nimbus.
 type Nimbus struct {
 	PaddingX               int
 	PaddingY               int
 	Scale                  float64
-	Monitor                *ebiten.Image     // The Monitor image including background
-	muVideoMemory          sync.Mutex        //
-	videoMemory            [250][640]int     // Represents the video memory, basically a 640x250 array of integers represents the Nimbus colour index of each pixel
-	muVideoMemoryOverlay   sync.Mutex        //
-	videoMemoryOverlay     [250][640]int     // A copy of the video memory where temporal things like cursors can be drawn
-	videoImage             *ebiten.Image     // An ebiten image derived from videoMemoryOverlay
-	muDrawQueue            sync.Mutex        //
-	drawQueue              []Sprite          // A queue of sprites to be written to videoMemory
-	redrawComplete         bool              // Flag to indicate if nimgobus is working on the drawQueue
-	muBorderImage          sync.Mutex        //
-	borderImage            *ebiten.Image     // An ebiten image representing the Nimbus monitor's background
-	basicColours           []color.RGBA      // An array of the Nimbus's 16 built-in colours
-	textBoxes              [10]textBox       // All defined textboxes
-	drawingBoxes           [10]drawingBox    // All define drawing boxes
-	imageBlocks            [16]*ebiten.Image // Images loaded into memory as "blocks"
-	logoImage              [][]int           // The "RM Nimbus" branding image
-	charImages0            [256][][]int      // An array of 2d arrays for each char in this charset
-	charImages1            [256][][]int      // as above
-	borderSize             int               // The width of the border in pixels
-	borderColour           int               // The current border colour
-	paperColour            int               // The current paper colour
-	penColour              int               // The current pen colour
-	charset                int               // The current char set (0 or 1)
-	cursorCharset          int               // The current cursor char set (0 or 1)
-	cursorChar             int               // The current cursor char
-	brush                  int               // The current drawing/plot brush
-	plotDirection          int               // The current plot direction
-	plotFont               int               // The current plot font
-	plotSizeX              int               // The current plot size x
-	plotSizeY              int               // The current plot size y
-	over                   bool              // The drawing mode (XOR)
-	selectedTextBox        int               // The current textbox
-	selectedDrawingBox     int               // The current drawing box
-	defaultHighResPalette  []int             // The default palette for high-res (mode 80)
-	defaultLowResPalette   []int             // The default palette for low-res (mode 40)
-	palette                []int             // The current palette
-	cursorPosition         colRow            // The current cursor position
-	cursorMode             int               // The current cursor mode
-	muCursorFlash          sync.Mutex        //
-	cursorFlash            bool              // Cursor flash flag: Everytime this changes the cursor with flash if enabled
-	cursorFlashEnabled     bool              // Flag to indicate if cursor flash is enabled
-	deleteMode             bool              // true if delete mode selected
-	deleteModeCursorImage  [][]int           // The special cursor for delete mode
-	muKeyBuffer            sync.Mutex        //
-	keyBuffer              []int             // Nimgobus needs it's own key buffer since ebiten's only deals with printable chars
-	charRepeat             repeatingChar     // Used by the keyBuffer to dynamically limit key presses
+	Monitor                *ebiten.Image        // The Monitor image including background
+	muVideoMemory          sync.Mutex           //
+	videoMemory            [250][640]int        // Represents the video memory, basically a 640x250 array of integers represents the Nimbus colour index of each pixel
+	muVideoMemoryOverlay   sync.Mutex           //
+	videoMemoryOverlay     [250][640]int        // A copy of the video memory where temporal things like cursors can be drawn
+	videoImage             *ebiten.Image        // An ebiten image derived from videoMemoryOverlay
+	muDrawQueue            sync.Mutex           //
+	drawQueue              []Sprite             // A queue of sprites to be written to videoMemory
+	redrawComplete         bool                 // Flag to indicate if nimgobus is working on the drawQueue
+	muBorderImage          sync.Mutex           //
+	borderImage            *ebiten.Image        // An ebiten image representing the Nimbus monitor's background
+	mode                   int                  // The current screen mode as set by SET MODE
+	basicColours           []color.RGBA         // An array of the Nimbus's 16 built-in colours
+	textBoxes              [10]textBox          // All defined textboxes
+	drawingBoxes           [10]drawingBox       // All define drawing boxes
+	imageBlocks            [16]*ebiten.Image    // Images loaded into memory as "blocks"
+	logoImage              [][]int              // The "RM Nimbus" branding image
+	charImages0            [256][][]int         // An array of 2d arrays for each char in this charset
+	charImages1            [256][][]int         // as above
+	borderSize             int                  // The width of the border in pixels
+	borderColour           int                  // The current border colour
+	paperColour            int                  // The current paper colour
+	penColour              int                  // The current pen colour
+	charset                int                  // The current char set (0 or 1)
+	cursorCharset          int                  // The current cursor char set (0 or 1)
+	cursorChar             int                  // The current cursor char
+	brush                  int                  // The current drawing/plot brush
+	plotDirection          int                  // The current plot direction
+	plotFont               int                  // The current plot font
+	plotSizeX              int                  // The current plot size x
+	plotSizeY              int                  // The current plot size y
+	over                   bool                 // The drawing mode (XOR)
+	selectedTextBox        int                  // The current textbox
+	selectedDrawingBox     int                  // The current drawing box
+	defaultHighResPalette  []int                // The default palette for high-res (mode 80)
+	defaultLowResPalette   []int                // The default palette for low-res (mode 40)
+	palette                []int                // The current palette
+	colourFlashSettings    []colourFlashSetting // Colour flash settings for each palette slot
+	cursorPosition         colRow               // The current cursor position
+	cursorMode             int                  // The current cursor mode
+	muCursorFlash          sync.Mutex           //
+	cursorFlash            bool                 // Cursor flash flag: Everytime this changes the cursor with flash if enabled
+	cursorFlashEnabled     bool                 // Flag to indicate if cursor flash is enabled
+	colourFlash            int                  // The colour flash counter
+	deleteMode             bool                 // true if delete mode selected
+	deleteModeCursorImage  [][]int              // The special cursor for delete mode
+	muKeyBuffer            sync.Mutex           //
+	keyBuffer              []int                // Nimgobus needs it's own key buffer since ebiten's only deals with printable chars
+	charRepeat             repeatingChar        // Used by the keyBuffer to dynamically limit key presses
 	MouseX                 int
 	MouseY                 int
 	MouseButton            int
@@ -133,10 +142,12 @@ func (n *Nimbus) Init() {
 	n.drawQueue = []Sprite{}
 	n.redrawComplete = true
 	n.videoImage = ebiten.NewImage(640, 250)
+	n.mode = 80
 	n.basicColours = append(n.basicColours, basicColours...)
 	n.defaultHighResPalette = append(n.defaultHighResPalette, defaultHighResPalette...)
 	n.defaultLowResPalette = append(n.defaultLowResPalette, defaultLowResPalette...)
 	n.palette = append(n.palette, n.defaultHighResPalette...)
+	n.initColourFlashSettings()
 	n.borderColour = 0
 	n.paperColour = 0
 	n.penColour = 3
@@ -187,6 +198,8 @@ func (n *Nimbus) Init() {
 
 	// Start tickers, etc.
 	go n.cursorFlashTicker()
+	n.colourFlash = 0
+	go n.colourFlashTicker()
 }
 
 // Update is called by every Draw() call from ebiten
@@ -313,6 +326,17 @@ func (n *Nimbus) cursorFlashTicker() {
 			n.muCursorFlash.Lock()
 			n.cursorFlash = !n.cursorFlash
 			n.muCursorFlash.Unlock()
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+}
+
+// colourFlashTicker increments the colourFlash counter every 500 ms
+func (n *Nimbus) colourFlashTicker() {
+	for {
+		n.colourFlash++
+		if n.colourFlash > 3 {
+			n.colourFlash = 0
 		}
 		time.Sleep(500 * time.Millisecond)
 	}

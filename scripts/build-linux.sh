@@ -1,4 +1,4 @@
-# The script builds the 64-bit Windows executable
+# The script builds the 64-bit Linux executable
 
 echo "Building RM BASICx64 for 64-bit Linux: build/rmbasicx64"
 export GOOS=linux

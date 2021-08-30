@@ -50,7 +50,7 @@ func (n *Nimbus) Boot() {
 	n.Plot(plotOpts, "Loading operating system", 224, 100)
 	randDelay(2500, 3500)
 	n.SetMode(80)
-	n.SetColour(0, 0)
+	n.SetColour(0, 0, 0, 0)
 	n.SetCursor(1)
 	// Mimick an old MS-DOS boot
 	// Print platform information
@@ -120,8 +120,8 @@ func drawBackground(n *Nimbus) {
 
 	// Red frame, light blue paper, Nimbus logo in a red frame
 	n.SetMode(80)
-	n.SetColour(0, 0)
-	n.SetColour(1, 9)
+	n.SetColour(0, 0, 0, 0)
+	n.SetColour(1, 9, 0, 9)
 	n.SetPaper(1)
 	n.SetBorder(1)
 	n.SetCursor(0)
