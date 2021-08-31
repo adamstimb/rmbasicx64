@@ -12,6 +12,7 @@ import (
 
 	"github.com/adamstimb/rmbasicx64/pkg/nimgobus/images"
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/audio"
 )
 
 // colRow defines a column, row position
@@ -103,6 +104,7 @@ type Nimbus struct {
 	defaultHighResPalette  []int                // The default palette for high-res (mode 80)
 	defaultLowResPalette   []int                // The default palette for low-res (mode 40)
 	palette                []int                // The current palette
+	muColourFlashSettings  sync.Mutex           //
 	colourFlashSettings    []colourFlashSetting // Colour flash settings for each palette slot
 	cursorPosition         colRow               // The current cursor position
 	cursorMode             int                  // The current cursor mode
@@ -115,11 +117,17 @@ type Nimbus struct {
 	muKeyBuffer            sync.Mutex           //
 	keyBuffer              []int                // Nimgobus needs it's own key buffer since ebiten's only deals with printable chars
 	charRepeat             repeatingChar        // Used by the keyBuffer to dynamically limit key presses
-	MouseX                 int
-	MouseY                 int
-	MouseButton            int
-	MouseOn                bool
-	BreakInterruptDetected bool // Flag is set to true if user makes a <BREAK>
+	MouseX                 int                  // Mouse position and button press
+	MouseY                 int                  //
+	MouseButton            int                  //
+	MouseOn                bool                 //
+	sound                  bool                 // 3-channel Nimbus synth chip goodness
+	voice1                 voice                //
+	voice2                 voice                //
+	voice3                 voice                //
+	envelopes              []envelope           //
+	selectedVoice          int                  //
+	BreakInterruptDetected bool                 // Flag is set to true if user makes a <BREAK>
 }
 
 // Init initializes a new Nimbus.  You must call this method after declaring a
@@ -178,6 +186,7 @@ func (n *Nimbus) Init() {
 	n.muBorderImage.Lock()
 	n.borderImage.Fill(n.basicColours[n.palette[n.borderColour]])
 	n.muBorderImage.Unlock()
+	n.sound = false
 
 	// Draw delete mode cursor
 	n.deleteModeCursorImage = make2dArray(8, 10)
@@ -202,8 +211,43 @@ func (n *Nimbus) Init() {
 	go n.colourFlashTicker()
 }
 
-// Update is called by every Draw() call from ebiten
+// Update is called by every game.Update()
 func (n *Nimbus) Update(PaddingX, PaddingY int, Scale float64) {
+	// sound
+	if n.sound {
+		// NewContext only needs to come from one voice
+		if n.voice1.audioContext == nil {
+			n.voice1.audioContext = audio.NewContext(sampleRate)
+		}
+		if n.voice1.player == nil {
+			var err error
+			n.voice1.player, err = audio.NewPlayer(n.voice1.audioContext, &stream{voice: &n.voice1})
+			if err != nil {
+				log.Printf("Could not start voice1 audio: %e", err)
+			} else {
+				n.voice1.player.Play()
+			}
+		}
+		if n.voice2.player == nil {
+			var err error
+			n.voice2.player, err = audio.NewPlayer(n.voice1.audioContext, &stream{voice: &n.voice2})
+			if err != nil {
+				log.Printf("Could not start voice2 audio: %e", err)
+			} else {
+				n.voice2.player.Play()
+			}
+		}
+		if n.voice3.player == nil {
+			var err error
+			n.voice3.player, err = audio.NewPlayer(n.voice1.audioContext, &stream{voice: &n.voice3})
+			if err != nil {
+				log.Printf("Could not start voice3 audio: %e", err)
+			} else {
+				n.voice2.player.Play()
+			}
+		}
+	}
+	// video
 	n.PaddingX = PaddingX
 	n.PaddingY = PaddingY
 	n.Scale = Scale

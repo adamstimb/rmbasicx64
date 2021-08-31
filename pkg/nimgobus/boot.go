@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/elastic/go-sysinfo"
@@ -57,6 +58,10 @@ func (n *Nimbus) Boot() {
 	platform, _, version, _ := host.PlatformInformation()
 	randDelay(1000, 2000)
 	info := fmt.Sprintf("      %s - Version %s      ", platform, version)
+	copyright := ""
+	if strings.Contains(platform, "darwin") {
+		copyright = "Copyright (c) Apple Inc. All rights reserved."
+	}
 	n.SetPaper(3)
 	n.Print(info)
 	n.Put(13)
@@ -72,9 +77,12 @@ func (n *Nimbus) Boot() {
 	n.SetPaper(0)
 	n.Put(13)
 	n.Put(13)
+	n.Print(copyright)
+	n.Put(13)
+	n.Put(13)
 	randDelay(2000, 3000)
 	n.Print("C>")
-	randDelay(1000, 2000)
+	randDelay(500, 1000)
 	// Try to get directory of executable (doesn't matter if it doesn't)
 	exeDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
@@ -85,7 +93,7 @@ func (n *Nimbus) Boot() {
 	n.Put(13)
 	randDelay(1000, 2000)
 	n.Print("C>")
-	randDelay(1000, 2000)
+	randDelay(500, 1000)
 	n.Print("rmbasicx64")
 	n.Put(13)
 	randDelay(3000, 4000)
@@ -120,20 +128,21 @@ func drawBackground(n *Nimbus) {
 
 	// Red frame, light blue paper, Nimbus logo in a red frame
 	n.SetMode(80)
+	n.SetCursor(0)
 	n.SetColour(0, 0, 0, 0)
+	n.SetSound(true)
+	n.Bell()
 	n.SetColour(1, 9, 0, 9)
 	n.SetPaper(1)
 	n.SetBorder(1)
-	n.SetCursor(0)
 	n.Cls()
+
 	areaOpts := AreaOptions{
 		Brush: 2,
 		Over:  -1,
 	}
-	//n.Area(areaOpts, 0, 0, 639, 0, 639, 249, 0, 249, 0, 0)
 	n.Area(areaOpts, []XyCoord{{0, 0}, {639, 0}, {639, 249}, {0, 249}, {0, 0}})
 	areaOpts.Brush = 1
-	//n.Area(areaOpts, 3, 2, 636, 2, 636, 247, 3, 247, 3, 2)
 	n.Area(areaOpts, []XyCoord{{3, 2}, {636, 2}, {636, 247}, {3, 247}, {3, 2}})
 	xl := 10
 	yl := 212

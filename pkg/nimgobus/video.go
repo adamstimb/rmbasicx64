@@ -141,27 +141,34 @@ func (n *Nimbus) handleColourFlash(c int) int {
 	case 40:
 		basicColours = n.defaultLowResPalette
 	case 80:
-		basicColours = n.defaultLowResPalette
+		basicColours = n.defaultHighResPalette
 	}
+	n.muColourFlashSettings.Lock()
 	switch n.colourFlashSettings[c].speed {
 	case 0:
 		// not flashing
+		n.muColourFlashSettings.Unlock()
 		return c
 	case 1:
 		// slow flash
 		if n.colourFlash <= 1 {
+			n.muColourFlashSettings.Unlock()
 			return c
 		} else {
+			n.muColourFlashSettings.Unlock()
 			return basicColours[n.colourFlashSettings[c].flashColour]
 		}
 	case 2:
 		// fast flash
 		if n.colourFlash == 0 || n.colourFlash == 2 {
+			n.muColourFlashSettings.Unlock()
 			return c
 		} else {
+			n.muColourFlashSettings.Unlock()
 			return basicColours[n.colourFlashSettings[c].flashColour]
 		}
 	}
+	n.muColourFlashSettings.Unlock()
 	return c
 }
 
