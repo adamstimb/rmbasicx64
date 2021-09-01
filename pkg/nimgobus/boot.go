@@ -62,6 +62,9 @@ func (n *Nimbus) Boot() {
 	if strings.Contains(platform, "darwin") {
 		copyright = "Copyright (c) Apple Inc. All rights reserved."
 	}
+	if strings.Contains(platform, "Windows") {
+		copyright = "(c) Microsoft Corporation. All rights reserved."
+	}
 	n.SetPaper(3)
 	n.Print(info)
 	n.Put(13)
