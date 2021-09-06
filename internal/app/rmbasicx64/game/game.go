@@ -23,6 +23,7 @@ type Game struct {
 	PaddingX          int
 	PaddingY          int
 	Scale             float64
+	WorkspacePath     string
 }
 
 func (g *Game) GetTPS() int {
@@ -99,6 +100,22 @@ func (g *Game) ReadConf() (AppConfig, error) {
 		}
 	}
 	return c, nil
+}
+
+// EnsureWorkspace makes sure the workspace folder exists and sets its location
+func (g *Game) EnsureWorkspace() {
+	// Determine if workspace path exists and it's a directory
+	// If either is wrong then we need to create the directory
+	exeDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		log.Printf("Error resolving directory of executable: %v", err)
+	}
+	workspacePath := filepath.Join(exeDir, "workspace")
+	err = os.MkdirAll(workspacePath, os.ModePerm)
+	if err != nil {
+		log.Fatalf("Error creating workspace folder %q: %v", workspacePath, err)
+	}
+	g.WorkspacePath = workspacePath
 }
 
 func (g *Game) Update() error {

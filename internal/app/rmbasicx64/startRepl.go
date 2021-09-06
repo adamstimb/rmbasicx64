@@ -13,6 +13,7 @@ func NewGame() *game.Game {
 	g := &game.Game{}
 	g.Init()
 	g.LoadConfig()
+	g.EnsureWorkspace()
 	go App(g)
 	return g
 }

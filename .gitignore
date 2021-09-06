@@ -1,5 +1,6 @@
 build/rmbasicx64
 build/rmbasicx64.exe
 build/rmbasicx64setup.exe
+build/workspace/*.BAS
 scripts/*.BAS
 .env

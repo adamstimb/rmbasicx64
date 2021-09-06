@@ -1,10 +1,14 @@
 package evaluator
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -46,6 +50,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalClsStatement(g, node, env)
 	case *ast.HomeStatement:
 		return evalHomeStatement(g, node, env)
+	case *ast.DirStatement:
+		return evalDirStatement(g, node, env)
 	case *ast.SetMouseStatement:
 		return evalSetMouseStatement(g, node, env)
 	case *ast.SetModeStatement:
@@ -58,6 +64,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalSetPenStatement(g, node, env)
 	case *ast.SetDegStatement:
 		return evalSetDegStatement(g, node, env)
+	case *ast.SetColourStatement:
+		return evalSetColourStatement(g, node, env)
 	case *ast.SetRadStatement:
 		return evalSetRadStatement(g, node, env)
 	case *ast.SetCurposStatement:
@@ -78,6 +86,10 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalCircleStatement(g, node, env)
 	case *ast.GotoStatement:
 		return evalGotoStatement(g, node, env)
+	case *ast.EditStatement:
+		return evalEditStatement(g, node, env)
+	case *ast.RenumberStatement:
+		return evalRenumberStatement(g, node, env)
 	case *ast.RepeatStatement:
 		return evalRepeatStatement(g, node, env)
 	case *ast.UntilStatement:
@@ -252,7 +264,7 @@ func evalPrintStatement(g *game.Game, stmt *ast.PrintStatement, env *object.Envi
 
 func evalPlotStatement(g *game.Game, stmt *ast.PlotStatement, env *object.Environment) object.Object {
 	// Handle defaults
-	var Brush, Direction, Font, Over, SizeX, SizeY, X, Y int
+	var Brush, Direction, Font, Over, SizeX, SizeY int
 	var Text string
 	if stmt.Brush == nil {
 		Brush = -255
@@ -322,20 +334,20 @@ func evalPlotStatement(g *game.Game, stmt *ast.PlotStatement, env *object.Enviro
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
 	}
-	// Handle text and coordinates
-	obj := Eval(g, stmt.X, env)
-	if val, ok := obj.(*object.Numeric); ok {
-		X = int(val.Value)
-	} else {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
-	}
-	obj = Eval(g, stmt.Y, env)
-	if val, ok := obj.(*object.Numeric); ok {
-		Y = int(val.Value)
-	} else {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
-	}
-	obj = Eval(g, stmt.Value, env)
+	// Handle text string
+	//obj := Eval(g, stmt.X, env)
+	//if val, ok := obj.(*object.Numeric); ok {
+	//	X = int(val.Value)
+	//} else {
+	//	return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	//}
+	//obj = Eval(g, stmt.Y, env)
+	//if val, ok := obj.(*object.Numeric); ok {
+	//	Y = int(val.Value)
+	//} else {
+	//	return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	//}
+	obj := Eval(g, stmt.Value, env)
 	if val, ok := obj.(*object.Numeric); ok {
 		Text = fmt.Sprintf("%g", val.Value)
 	}
@@ -349,9 +361,29 @@ func evalPlotStatement(g *game.Game, stmt *ast.PlotStatement, env *object.Enviro
 	if val, ok := obj.(*object.String); ok {
 		Text = val.Value
 	}
+	// Handle coord list
+	var coordList []nimgobus.XyCoord
+	var X, Y int
+	for i := 0; i < len(stmt.CoordList)-1; i += 2 {
+		obj := Eval(g, stmt.CoordList[i], env)
+		if val, ok := obj.(*object.Numeric); ok {
+			X = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+		obj = Eval(g, stmt.CoordList[i+1], env)
+		if val, ok := obj.(*object.Numeric); ok {
+			Y = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+		coordList = append(coordList, nimgobus.XyCoord{X, Y})
+	}
 	// Execute
-	opt := nimgobus.PlotOptions{Brush: Brush, Direction: Direction, Font: Font, SizeX: SizeX, SizeY: SizeY, Over: Over}
-	g.Plot(opt, Text, X, Y)
+	for _, coord := range coordList {
+		opt := nimgobus.PlotOptions{Brush: Brush, Direction: Direction, Font: Font, SizeX: SizeX, SizeY: SizeY, Over: Over}
+		g.Plot(opt, Text, coord.X, coord.Y)
+	}
 	return nil
 }
 
@@ -518,9 +550,64 @@ func evalSaveStatement(g *game.Game, stmt *ast.SaveStatement, env *object.Enviro
 	} else {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
+	// Don't allow * or ?
+	if strings.Contains(filename, "*") || strings.Contains(filename, "?") {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ExactFilenameIsNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
 	// Add .BAS if necessary
-	if !strings.HasSuffix(filename, ".BAS") {
+	if !strings.HasSuffix(strings.ToUpper(filename), ".BAS") {
 		filename += ".BAS"
+	}
+	// Preprend workspace folder
+	fullpath := filepath.Join(g.WorkspacePath, filename)
+	// Don't allow directories
+	if isDirectory(fullpath) {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FilenameIsADirectory), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Warn if file already exists
+	_, err := ioutil.ReadFile(fullpath)
+	if !errors.Is(err, os.ErrNotExist) {
+		// Warn user and ask to abort
+		g.Print("Named file already exists")
+		var abort bool
+		var gotAnswer bool
+		for !gotAnswer {
+			g.Put(13)
+			g.Print("Abort command? (Y/N): ")
+			waiting := true
+			for waiting {
+				key := g.Get()
+				if key < 0 {
+					time.Sleep(100 * time.Millisecond)
+					continue
+				}
+				g.Put(key)
+				switch key {
+				case 89: // Y
+					abort = true
+					gotAnswer = true
+					waiting = false
+				case 121: // y
+					abort = true
+					gotAnswer = true
+					waiting = false
+				case 78: // N
+					abort = false
+					gotAnswer = true
+					waiting = false
+				case 110: // n
+					abort = false
+					gotAnswer = true
+					waiting = false
+				default:
+					waiting = false
+				}
+			}
+		}
+		g.Put(13)
+		if abort {
+			return nil
+		}
 	}
 	// Save the program
 	file, err := os.Create(filename)
@@ -532,6 +619,16 @@ func evalSaveStatement(g *game.Game, stmt *ast.SaveStatement, env *object.Enviro
 		file.WriteString(fmt.Sprintf("%s\n", lineString))
 	}
 	return obj
+}
+
+// isDirectory determines if a file represented by `path` is a directory or not
+// https://freshman.tech/snippets/go/check-if-file-is-dir/
+func isDirectory(path string) bool {
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return fileInfo.IsDir()
 }
 
 func evalLoadStatement(g *game.Game, stmt *ast.LoadStatement, env *object.Environment) object.Object {
@@ -546,14 +643,29 @@ func evalLoadStatement(g *game.Game, stmt *ast.LoadStatement, env *object.Enviro
 	} else {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
+	// Don't allow * or ?
+	if strings.Contains(filename, "*") || strings.Contains(filename, "?") {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ExactFilenameIsNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
 	// Add .BAS if necessary
-	if !strings.HasSuffix(filename, ".BAS") {
+	if !strings.HasSuffix(strings.ToUpper(filename), ".BAS") {
 		filename += ".BAS"
 	}
+	// Preprend workspace folder
+	fullpath := filepath.Join(g.WorkspacePath, filename)
+	// Don't allow directories
+	if isDirectory(fullpath) {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FilenameIsADirectory), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
 	// Load the program
-	fileBytes, err := ioutil.ReadFile(filename)
+	fileBytes, err := ioutil.ReadFile(fullpath)
+	// Handle file doesn't exist
+	if errors.Is(err, os.ErrNotExist) {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.UnableToOpenNamedFile), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Handle any other errors
 	if err != nil {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure)}
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 	// To read into the program space we just pretend the code is being manually keyed it (I think that's how it worked originally)
 	sliceData := strings.Split(string(fileBytes), "\n")
@@ -771,6 +883,60 @@ func evalSetDegStatement(g *game.Game, stmt *ast.SetDegStatement, env *object.En
 	}
 }
 
+func evalSetColourStatement(g *game.Game, stmt *ast.SetColourStatement, env *object.Environment) object.Object {
+	obj := Eval(g, stmt.PaletteSlot, env)
+	var paletteSlot, basicColour, flashSpeed, flashColour int
+	// paletteSlot
+	if _, ok := obj.(*object.Error); ok {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		paletteSlot = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// basicColour
+	obj = Eval(g, stmt.BasicColour, env)
+	if _, ok := obj.(*object.Error); ok {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		basicColour = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 3}
+	}
+	// optionals
+	if stmt.FlashSpeed == nil || stmt.FlashColour == nil {
+		flashSpeed = 0
+		flashColour = 0
+	} else {
+		// flashSpeed
+		obj = Eval(g, stmt.FlashSpeed, env)
+		if _, ok := obj.(*object.Error); ok {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			flashSpeed = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 5} // <-- this is wrong...
+		}
+		// flashColour
+		obj = Eval(g, stmt.FlashColour, env)
+		if _, ok := obj.(*object.Error); ok {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			flashColour = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 7} // <-- so's this!
+		}
+	}
+	// execute
+	log.Printf("SetColour(paletteSlot=%d, basicColour=%d, flashSpeed=%d, flashColour=%d)", paletteSlot, basicColour, flashSpeed, flashColour)
+	g.SetColour(paletteSlot, basicColour, flashSpeed, flashColour)
+	return nil
+}
+
 func evalSetConfigBootStatement(g *game.Game, stmt *ast.SetConfigBootStatement, env *object.Environment) object.Object {
 	obj := Eval(g, stmt.Value, env)
 	// return error if evaluation failed
@@ -793,20 +959,48 @@ func evalSetConfigBootStatement(g *game.Game, stmt *ast.SetConfigBootStatement, 
 }
 
 func evalGotoStatement(g *game.Game, stmt *ast.GotoStatement, env *object.Environment) object.Object {
-	obj := Eval(g, stmt.Value, env)
-	// return error if evaluation failed
-	if _, ok := obj.(*object.Error); ok {
-		return obj
+	// Get line number direct from literal
+	val, _ := strconv.ParseFloat(stmt.Linenumber.Literal, 64)
+	lineNumber := int(val)
+	if env.Program.Jump(lineNumber, 0) {
+		return nil
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.LineNumberDoesNotExist), ErrorTokenIndex: stmt.Linenumber.Index}
 	}
-	if val, ok := obj.(*object.Numeric); ok {
-		if env.Program.Jump(int(val.Value), 0) {
-			return obj
+}
+
+func evalEditStatement(g *game.Game, stmt *ast.EditStatement, env *object.Environment) object.Object {
+	// TODO: Handle no line number so try to get line of last error
+	if stmt.Linenumber.Literal == "" {
+		return nil
+	}
+	// Get line number direct from literal
+	val, _ := strconv.ParseFloat(stmt.Linenumber.Literal, 64)
+	lineNumber := int(val)
+	// Edit the line if it exists
+	if line, ok := env.Program.GetLineForEditing(lineNumber); ok {
+		g.Print(fmt.Sprintf("%d ", lineNumber))
+		rawLine := g.Input(line)
+		if rawLine == "" {
+			// cancel edit
+			return nil
 		} else {
-			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.LineNumberDoesNotExist), ErrorTokenIndex: stmt.Token.Index + 1}
+			// tokenize and save changes
+			l := &lexer.Lexer{}
+			l.Scan(fmt.Sprintf("%d %s", lineNumber, rawLine))
+			p := parser.New(l, g)
+			line := p.ParseLine()
+			env.Program.AddLine(lineNumber, line.LineString)
 		}
 	} else {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.LineNumberDoesNotExist), ErrorTokenIndex: stmt.Linenumber.Index}
 	}
+	return nil
+}
+
+func evalRenumberStatement(g *game.Game, stmt *ast.RenumberStatement, env *object.Environment) object.Object {
+	env.Program.Renumber()
+	return nil
 }
 
 func evalRepeatStatement(g *game.Game, stmt *ast.RepeatStatement, env *object.Environment) object.Object {
@@ -1060,6 +1254,27 @@ func evalSetMouseStatement(g *game.Game, stmt *ast.SetMouseStatement, env *objec
 
 func evalHomeStatement(g *game.Game, stmt *ast.HomeStatement, env *object.Environment) object.Object {
 	g.SetCurpos(0, 0)
+	return nil
+}
+
+func evalDirStatement(g *game.Game, stmt *ast.DirStatement, env *object.Environment) object.Object {
+	// TODO: Handle select different path
+	files, err := ioutil.ReadDir(g.WorkspacePath)
+	if err != nil {
+		return nil // TODO: io error
+	}
+	g.Print(fmt.Sprintf("Directory of %s", g.WorkspacePath))
+	g.Put(13)
+	g.Put(13)
+	for _, f := range files {
+		if !strings.HasSuffix(f.Name(), ".BAS") {
+			continue
+		}
+		timeString := fmt.Sprintf("%s", f.ModTime().Round(time.Second))[:19]
+		g.Print(fmt.Sprintf("%16s %6d Bytes %16s", f.Name(), f.Size(), timeString))
+		g.Put(13)
+	}
+	g.Put(13)
 	return nil
 }
 
