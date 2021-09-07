@@ -1,5 +1,17 @@
 package nimgobus
 
+// ValidateColour validates if a colour/palette slot is valid for the current screen mode
+func (n *Nimbus) ValidateColour(c int) bool {
+	maxC := 15
+	if n.mode == 80 {
+		maxC = 3
+	}
+	if c < 0 || c > maxC {
+		return false
+	}
+	return true
+}
+
 // PlonkLogo draws the RM Nimbus logo
 func (n *Nimbus) PlonkLogo(x, y int) {
 	n.drawSprite(Sprite{n.logoImage, x, y, -1, true})

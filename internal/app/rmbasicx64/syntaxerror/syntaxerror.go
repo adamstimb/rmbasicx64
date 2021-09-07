@@ -44,6 +44,9 @@ const (
 	ArrayAlreadyDimensioned
 	ArraySubscriptIsWrong
 	ToIsNeededBeforeValue
+	PositiveValueRequired
+	NumberNotAllowedInRange
+	StepValueNotLargeEnough
 )
 
 // ErrorMessage returns the template error message for a given error code
@@ -91,6 +94,9 @@ func ErrorMessage(errorCode int) string {
 		ArrayAlreadyDimensioned:                      "Array already dimensioned",     // 16
 		ArraySubscriptIsWrong:                        "Array subscript is wrong",      // 73
 		ToIsNeededBeforeValue:                        "TO is needed before value",     // 26
+		PositiveValueRequired:                        "Positive value required",
+		NumberNotAllowedInRange:                      "Number not allowed in range",
+		StepValueNotLargeEnough:                      "Step value not large enough",
 	}
 	return errorMessages[errorCode]
 }

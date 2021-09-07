@@ -2,7 +2,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "RM BASICx64"
-!define PRODUCT_VERSION "0.01B"
+!define PRODUCT_VERSION "0.10A"
 !define PRODUCT_PUBLISHER "Tim Adams"
 !define PRODUCT_WEB_SITE "https://adamstimb.github.io/rmbasicx64site"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\rmbasicx64.exe"

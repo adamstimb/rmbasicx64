@@ -2,3 +2,4 @@
 
 echo "Building RM BASICx64 for this platform: build/rmbasicx64"
 go build -o ../build/rmbasicx64 ../cmd/rmbasicx64/main.go
+rm -rf ../build/workspace

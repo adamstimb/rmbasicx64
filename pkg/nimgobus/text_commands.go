@@ -56,7 +56,9 @@ func (n *Nimbus) SetColour(paletteSlot, basicColour, flashSpeed, flashColour int
 	// Validation passed, assign colour
 	n.palette[paletteSlot] = basicColour
 	n.SetBorder(n.borderColour) // need to force border to update
+	n.muColourFlashSettings.Lock()
 	n.colourFlashSettings[paletteSlot] = colourFlashSetting{speed: flashSpeed, flashColour: flashColour}
+	n.muColourFlashSettings.Unlock()
 }
 
 // SetPaper sets paperColour
@@ -255,6 +257,11 @@ func (n *Nimbus) Put(c int) {
 	absCurPos.col = relCurPos.col + box.col1 - 1
 	absCurPos.row = relCurPos.row + box.row1 - 1
 	curX, curY := n.convertColRow(absCurPos)
+	// Handle bell char (doesn't print anything, just does a BEEEP!)
+	if c == 7 {
+		n.Bell()
+		return
+	}
 	// Draw the char (unless CR) and advance the cursor
 	if c != 13 {
 		var charPixels [][]int

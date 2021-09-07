@@ -383,6 +383,20 @@ func (s *NewStatement) String() string {
 	return out.String()
 }
 
+type RenumberStatement struct {
+	Token token.Token // the token.Bye token
+}
+
+func (s *RenumberStatement) statementNode() {}
+func (s *RenumberStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *RenumberStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
 type ClsStatement struct {
 	Token token.Token
 }
@@ -533,6 +547,20 @@ func (s *HomeStatement) String() string {
 	return out.String()
 }
 
+type DirStatement struct {
+	Token token.Token
+}
+
+func (s *DirStatement) statementNode() {}
+func (s *DirStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *DirStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
 type SetConfigBootStatement struct {
 	Token token.Token
 	Value Expression
@@ -543,6 +571,24 @@ func (s *SetConfigBootStatement) TokenLiteral() string {
 	return s.Token.Literal
 }
 func (s *SetConfigBootStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type SetColourStatement struct {
+	Token       token.Token
+	PaletteSlot Expression
+	BasicColour Expression
+	FlashSpeed  Expression
+	FlashColour Expression
+}
+
+func (s *SetColourStatement) statementNode() {}
+func (s *SetColourStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *SetColourStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(s.TokenLiteral())
 	return out.String()
@@ -613,8 +659,7 @@ func (ps *PrintStatement) String() string {
 type PlotStatement struct {
 	Token     token.Token
 	Value     Expression
-	X         Expression
-	Y         Expression
+	CoordList []Expression
 	Brush     Expression
 	Direction Expression
 	SizeX     Expression
@@ -719,8 +764,8 @@ func (s *LoadStatement) String() string {
 }
 
 type GotoStatement struct {
-	Token token.Token
-	Value Expression
+	Token      token.Token
+	Linenumber token.Token
 }
 
 func (s *GotoStatement) statementNode() {}
@@ -728,6 +773,21 @@ func (s *GotoStatement) TokenLiteral() string {
 	return s.Token.Literal
 }
 func (s *GotoStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type EditStatement struct {
+	Token      token.Token
+	Linenumber token.Token
+}
+
+func (s *EditStatement) statementNode() {}
+func (s *EditStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *EditStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(s.TokenLiteral())
 	return out.String()

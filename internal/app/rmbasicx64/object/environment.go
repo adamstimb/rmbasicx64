@@ -76,6 +76,13 @@ func (p *program) GetLine() string {
 		return ""
 	}
 }
+func (p *program) GetLineForEditing(lineNumber int) (string, bool) {
+	if p.Jump(lineNumber, 0) {
+		return p.lines[p.sortedIndex[p.curLineIndex+1]], true
+	} else {
+		return "", false
+	}
+}
 func (p *program) AddLine(lineNumber int, line string) {
 	if line == "" {
 		// delete line if it exists
@@ -103,6 +110,25 @@ func (p *program) List() []string {
 		listing = append(listing, fmt.Sprintf("%d %s", p.sortedIndex[i], p.lines[p.sortedIndex[i]]))
 	}
 	return listing
+}
+func (p *program) Renumber() {
+	// TODO: Handle line numbers in GOTO statements
+	// TODO: Handle optional params
+	firstLineNumber := 10
+	increment := 10
+	p.Sort()
+	p.Start()
+	newLineNumber := firstLineNumber
+	// populate new line map then replace the old line map
+	newLines := make(map[int]string)
+	for !p.EndOfProgram() {
+		newLines[newLineNumber] = p.GetLine()
+		newLineNumber += increment
+		p.Next()
+	}
+	p.lines = make(map[int]string)
+	p.lines = newLines
+	p.Sort()
 }
 
 // JumpStack is used to store all the return points and parameters for loops and function/procedure calls
