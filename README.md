@@ -8,7 +8,7 @@ RM BASICx64 is a re-implementation of RM Basic, a dialect of BASIC developed by 
 
 ## Status
 
-A preliminary release is available featuring the original RM Basic user interface, expression evaluation and some simple text commands.  Click the "Watch" button on the top right to get notifications of new releases!
+Roughly half of the original language specification is implemented.  The code has not been hardened so may crash unexpectedly or produce strange errors.  Click the "Watch" button on the top right to get notifications of new releases!
 
 ## I want it now!
 
