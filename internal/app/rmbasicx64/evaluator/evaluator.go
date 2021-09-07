@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math"
 	"os"
 	"path/filepath"
@@ -163,7 +162,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		if isError(right) {
 			return right
 		}
-		return evalInfixExpression(node.Operator, left, right)
+		result := evalInfixExpression(node.Operator, left, right)
+		return result
 	case *ast.Identifier:
 		// If a warning is returned, print the warning *then* re-run the evaluation and return
 		obj := evalIdentifier(node, env)
@@ -243,6 +243,9 @@ func evalPrintStatement(g *game.Game, stmt *ast.PrintStatement, env *object.Envi
 			continue
 		}
 		obj := Eval(g, val.(ast.Node), env)
+		if isError(obj) {
+			return obj
+		}
 		if numericVal, ok := obj.(*object.Numeric); ok {
 			printStr += fmt.Sprintf("%g", numericVal.Value)
 		}
@@ -270,8 +273,15 @@ func evalPlotStatement(g *game.Game, stmt *ast.PlotStatement, env *object.Enviro
 		Brush = -255
 	} else {
 		obj := Eval(g, stmt.Brush, env)
+		if isError(obj) {
+			return obj
+		}
 		if val, ok := obj.(*object.Numeric); ok {
-			Brush = int(val.Value)
+			if g.ValidateColour(int(val.Value)) {
+				Brush = int(val.Value)
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
 		} else {
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
@@ -280,6 +290,9 @@ func evalPlotStatement(g *game.Game, stmt *ast.PlotStatement, env *object.Enviro
 		Direction = -255
 	} else {
 		obj := Eval(g, stmt.Direction, env)
+		if isError(obj) {
+			return obj
+		}
 		if val, ok := obj.(*object.Numeric); ok {
 			Direction = int(val.Value)
 		} else {
@@ -290,6 +303,9 @@ func evalPlotStatement(g *game.Game, stmt *ast.PlotStatement, env *object.Enviro
 		Font = -255
 	} else {
 		obj := Eval(g, stmt.Font, env)
+		if isError(obj) {
+			return obj
+		}
 		if val, ok := obj.(*object.Numeric); ok {
 			Font = int(val.Value)
 		} else {
@@ -300,6 +316,9 @@ func evalPlotStatement(g *game.Game, stmt *ast.PlotStatement, env *object.Enviro
 		Over = -255
 	} else {
 		obj := Eval(g, stmt.Over, env)
+		if isError(obj) {
+			return obj
+		}
 		if val, ok := obj.(*object.Numeric); ok {
 			Over = int(val.Value)
 		} else {
@@ -310,6 +329,9 @@ func evalPlotStatement(g *game.Game, stmt *ast.PlotStatement, env *object.Enviro
 		SizeX = -255
 	} else {
 		obj := Eval(g, stmt.SizeX, env)
+		if isError(obj) {
+			return obj
+		}
 		if val, ok := obj.(*object.Numeric); ok {
 			if int(val.Value) > 0 {
 				SizeX = int(val.Value)
@@ -324,6 +346,9 @@ func evalPlotStatement(g *game.Game, stmt *ast.PlotStatement, env *object.Enviro
 		SizeY = -255
 	} else {
 		obj := Eval(g, stmt.SizeY, env)
+		if isError(obj) {
+			return obj
+		}
 		if val, ok := obj.(*object.Numeric); ok {
 			if int(val.Value) > 0 {
 				SizeY = int(val.Value)
@@ -335,19 +360,10 @@ func evalPlotStatement(g *game.Game, stmt *ast.PlotStatement, env *object.Enviro
 		}
 	}
 	// Handle text string
-	//obj := Eval(g, stmt.X, env)
-	//if val, ok := obj.(*object.Numeric); ok {
-	//	X = int(val.Value)
-	//} else {
-	//	return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
-	//}
-	//obj = Eval(g, stmt.Y, env)
-	//if val, ok := obj.(*object.Numeric); ok {
-	//	Y = int(val.Value)
-	//} else {
-	//	return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
-	//}
 	obj := Eval(g, stmt.Value, env)
+	if isError(obj) {
+		return obj
+	}
 	if val, ok := obj.(*object.Numeric); ok {
 		Text = fmt.Sprintf("%g", val.Value)
 	}
@@ -366,6 +382,9 @@ func evalPlotStatement(g *game.Game, stmt *ast.PlotStatement, env *object.Enviro
 	var X, Y int
 	for i := 0; i < len(stmt.CoordList)-1; i += 2 {
 		obj := Eval(g, stmt.CoordList[i], env)
+		if isError(obj) {
+			return obj
+		}
 		if val, ok := obj.(*object.Numeric); ok {
 			X = int(val.Value)
 		} else {
@@ -394,8 +413,15 @@ func evalLineStatement(g *game.Game, stmt *ast.LineStatement, env *object.Enviro
 		Brush = -255
 	} else {
 		obj := Eval(g, stmt.Brush, env)
+		if isError(obj) {
+			return obj
+		}
 		if val, ok := obj.(*object.Numeric); ok {
-			Brush = int(val.Value)
+			if g.ValidateColour(int(val.Value)) {
+				Brush = int(val.Value)
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
 		} else {
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
@@ -404,6 +430,9 @@ func evalLineStatement(g *game.Game, stmt *ast.LineStatement, env *object.Enviro
 		Over = -255
 	} else {
 		obj := Eval(g, stmt.Over, env)
+		if isError(obj) {
+			return obj
+		}
 		if val, ok := obj.(*object.Numeric); ok {
 			Over = int(val.Value)
 		} else {
@@ -415,6 +444,9 @@ func evalLineStatement(g *game.Game, stmt *ast.LineStatement, env *object.Enviro
 	var X, Y int
 	for i := 0; i < len(stmt.CoordList)-1; i += 2 {
 		obj := Eval(g, stmt.CoordList[i], env)
+		if isError(obj) {
+			return obj
+		}
 		if val, ok := obj.(*object.Numeric); ok {
 			X = int(val.Value)
 		} else {
@@ -441,8 +473,15 @@ func evalCircleStatement(g *game.Game, stmt *ast.CircleStatement, env *object.En
 		Brush = -255
 	} else {
 		obj := Eval(g, stmt.Brush, env)
+		if isError(obj) {
+			return obj
+		}
 		if val, ok := obj.(*object.Numeric); ok {
-			Brush = int(val.Value)
+			if g.ValidateColour(int(val.Value)) {
+				Brush = int(val.Value)
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
 		} else {
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
@@ -451,6 +490,9 @@ func evalCircleStatement(g *game.Game, stmt *ast.CircleStatement, env *object.En
 		Over = -255
 	} else {
 		obj := Eval(g, stmt.Over, env)
+		if isError(obj) {
+			return obj
+		}
 		if val, ok := obj.(*object.Numeric); ok {
 			Over = int(val.Value)
 		} else {
@@ -460,6 +502,9 @@ func evalCircleStatement(g *game.Game, stmt *ast.CircleStatement, env *object.En
 	// Handle radius
 	var radius int
 	obj := Eval(g, stmt.Radius, env)
+	if isError(obj) {
+		return obj
+	}
 	if val, ok := obj.(*object.Numeric); ok {
 		radius = int(val.Value)
 	} else {
@@ -470,6 +515,9 @@ func evalCircleStatement(g *game.Game, stmt *ast.CircleStatement, env *object.En
 	var X, Y int
 	for i := 0; i < len(stmt.CoordList)-1; i += 2 {
 		obj := Eval(g, stmt.CoordList[i], env)
+		if isError(obj) {
+			return obj
+		}
 		if val, ok := obj.(*object.Numeric); ok {
 			X = int(val.Value)
 		} else {
@@ -498,8 +546,15 @@ func evalAreaStatement(g *game.Game, stmt *ast.AreaStatement, env *object.Enviro
 		Brush = -255
 	} else {
 		obj := Eval(g, stmt.Brush, env)
+		if isError(obj) {
+			return obj
+		}
 		if val, ok := obj.(*object.Numeric); ok {
-			Brush = int(val.Value)
+			if g.ValidateColour(int(val.Value)) {
+				Brush = int(val.Value)
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
 		} else {
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
@@ -508,6 +563,9 @@ func evalAreaStatement(g *game.Game, stmt *ast.AreaStatement, env *object.Enviro
 		Over = -255
 	} else {
 		obj := Eval(g, stmt.Over, env)
+		if isError(obj) {
+			return obj
+		}
 		if val, ok := obj.(*object.Numeric); ok {
 			Over = int(val.Value)
 		} else {
@@ -519,6 +577,9 @@ func evalAreaStatement(g *game.Game, stmt *ast.AreaStatement, env *object.Enviro
 	var X, Y int
 	for i := 0; i < len(stmt.CoordList)-1; i += 2 {
 		obj := Eval(g, stmt.CoordList[i], env)
+		if isError(obj) {
+			return obj
+		}
 		if val, ok := obj.(*object.Numeric); ok {
 			X = int(val.Value)
 		} else {
@@ -540,8 +601,7 @@ func evalAreaStatement(g *game.Game, stmt *ast.AreaStatement, env *object.Enviro
 
 func evalSaveStatement(g *game.Game, stmt *ast.SaveStatement, env *object.Environment) object.Object {
 	obj := Eval(g, stmt.Value, env)
-	// return error if evaluation failed
-	if _, ok := obj.(*object.Error); ok {
+	if isError(obj) {
 		return obj
 	}
 	filename := ""
@@ -610,7 +670,7 @@ func evalSaveStatement(g *game.Game, stmt *ast.SaveStatement, env *object.Enviro
 		}
 	}
 	// Save the program
-	file, err := os.Create(filename)
+	file, err := os.Create(fullpath)
 	if err != nil {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure)}
 	}
@@ -633,8 +693,7 @@ func isDirectory(path string) bool {
 
 func evalLoadStatement(g *game.Game, stmt *ast.LoadStatement, env *object.Environment) object.Object {
 	obj := Eval(g, stmt.Value, env)
-	// return error if evaluation failed
-	if _, ok := obj.(*object.Error); ok {
+	if isError(obj) {
 		return obj
 	}
 	filename := ""
@@ -724,8 +783,7 @@ func evalLoadStatement(g *game.Game, stmt *ast.LoadStatement, env *object.Enviro
 
 func evalSetModeStatement(g *game.Game, stmt *ast.SetModeStatement, env *object.Environment) object.Object {
 	obj := Eval(g, stmt.Value, env)
-	// return error if evaluation failed
-	if _, ok := obj.(*object.Error); ok {
+	if isError(obj) {
 		return obj
 	}
 	if val, ok := obj.(*object.Numeric); ok {
@@ -738,80 +796,53 @@ func evalSetModeStatement(g *game.Game, stmt *ast.SetModeStatement, env *object.
 
 func evalSetPaperStatement(g *game.Game, stmt *ast.SetPaperStatement, env *object.Environment) object.Object {
 	obj := Eval(g, stmt.Value, env)
-	// return error if evaluation failed
-	if _, ok := obj.(*object.Error); ok {
+	if isError(obj) {
 		return obj
 	}
 	if val, ok := obj.(*object.Numeric); ok {
-		// We have to restrict the value range depending on screen mode.  RM Basic didn't quite handle it
-		// like this so TODO is to implement this properly.
-		highestColour := 3
-		if g.AskMode() == 40 {
-			highestColour = 15
+		if g.ValidateColour(int(val.Value)) {
+			g.SetPaper(int(val.Value))
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
-		if val.Value < 0 {
-			val.Value = 0
-		}
-		if val.Value > float64(highestColour) {
-			val.Value = float64(highestColour)
-		}
-		g.SetPaper(int(val.Value))
-		return obj
 	} else {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
+	return nil
 }
 
 func evalSetBorderStatement(g *game.Game, stmt *ast.SetBorderStatement, env *object.Environment) object.Object {
 	obj := Eval(g, stmt.Value, env)
-	// return error if evaluation failed
-	if _, ok := obj.(*object.Error); ok {
+	if isError(obj) {
 		return obj
 	}
 	if val, ok := obj.(*object.Numeric); ok {
-		// We have to restrict the value range depending on screen mode.  RM Basic didn't quite handle it
-		// like this so TODO is to implement this properly.
-		highestColour := 3
-		if g.AskMode() == 40 {
-			highestColour = 15
+		if g.ValidateColour(int(val.Value)) {
+			g.SetBorder(int(val.Value))
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
-		if val.Value < 0 {
-			val.Value = 0
-		}
-		if val.Value > float64(highestColour) {
-			val.Value = float64(highestColour)
-		}
-		g.SetBorder(int(val.Value))
-		return obj
 	} else {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
+	return nil
 }
 
 func evalSetPenStatement(g *game.Game, stmt *ast.SetPenStatement, env *object.Environment) object.Object {
 	obj := Eval(g, stmt.Value, env)
-	// return error if evaluation failed
-	if _, ok := obj.(*object.Error); ok {
+	if isError(obj) {
 		return obj
 	}
 	if val, ok := obj.(*object.Numeric); ok {
-		// We have to restrict the value range depending on screen mode.  RM Basic didn't quite handle it
-		// like this so TODO is to implement this properly.
-		highestColour := 3
-		if g.AskMode() == 40 {
-			highestColour = 15
+		if g.ValidateColour(int(val.Value)) {
+			g.SetPen(int(val.Value))
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
-		if val.Value < 0 {
-			val.Value = 0
-		}
-		if val.Value > float64(highestColour) {
-			val.Value = float64(highestColour)
-		}
-		g.SetPen(int(val.Value))
-		return obj
 	} else {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
+	return nil
 }
 
 func evalSetCurposStatement(g *game.Game, stmt *ast.SetCurposStatement, env *object.Environment) object.Object {
@@ -828,6 +859,7 @@ func evalSetCurposStatement(g *game.Game, stmt *ast.SetCurposStatement, env *obj
 	} else {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
+
 	// evaluate row
 	if _, ok := row.(*object.Error); ok {
 		return col
@@ -871,8 +903,7 @@ func evalMoveStatement(g *game.Game, stmt *ast.MoveStatement, env *object.Enviro
 
 func evalSetDegStatement(g *game.Game, stmt *ast.SetDegStatement, env *object.Environment) object.Object {
 	obj := Eval(g, stmt.Value, env)
-	// return error if evaluation failed
-	if _, ok := obj.(*object.Error); ok {
+	if isError(obj) {
 		return obj
 	}
 	if _, ok := obj.(*object.Numeric); ok {
@@ -885,13 +916,20 @@ func evalSetDegStatement(g *game.Game, stmt *ast.SetDegStatement, env *object.En
 
 func evalSetColourStatement(g *game.Game, stmt *ast.SetColourStatement, env *object.Environment) object.Object {
 	obj := Eval(g, stmt.PaletteSlot, env)
+	if isError(obj) {
+		return obj
+	}
 	var paletteSlot, basicColour, flashSpeed, flashColour int
 	// paletteSlot
 	if _, ok := obj.(*object.Error); ok {
 		return obj
 	}
 	if val, ok := obj.(*object.Numeric); ok {
-		paletteSlot = int(val.Value)
+		if g.ValidateColour(int(val.Value)) {
+			paletteSlot = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
 	} else {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
@@ -902,6 +940,9 @@ func evalSetColourStatement(g *game.Game, stmt *ast.SetColourStatement, env *obj
 	}
 	if val, ok := obj.(*object.Numeric); ok {
 		basicColour = int(val.Value)
+		if basicColour < 0 || basicColour > 15 {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
 	} else {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 3}
 	}
@@ -917,6 +958,9 @@ func evalSetColourStatement(g *game.Game, stmt *ast.SetColourStatement, env *obj
 		}
 		if val, ok := obj.(*object.Numeric); ok {
 			flashSpeed = int(val.Value)
+			if flashSpeed < 0 || flashSpeed > 2 {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
 		} else {
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 5} // <-- this is wrong...
 		}
@@ -926,19 +970,24 @@ func evalSetColourStatement(g *game.Game, stmt *ast.SetColourStatement, env *obj
 			return obj
 		}
 		if val, ok := obj.(*object.Numeric); ok {
+			if flashColour < 0 || flashColour > 15 {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
 			flashColour = int(val.Value)
 		} else {
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 7} // <-- so's this!
 		}
 	}
 	// execute
-	log.Printf("SetColour(paletteSlot=%d, basicColour=%d, flashSpeed=%d, flashColour=%d)", paletteSlot, basicColour, flashSpeed, flashColour)
 	g.SetColour(paletteSlot, basicColour, flashSpeed, flashColour)
 	return nil
 }
 
 func evalSetConfigBootStatement(g *game.Game, stmt *ast.SetConfigBootStatement, env *object.Environment) object.Object {
 	obj := Eval(g, stmt.Value, env)
+	if isError(obj) {
+		return obj
+	}
 	// return error if evaluation failed
 	if _, ok := obj.(*object.Error); ok {
 		return obj
@@ -962,6 +1011,9 @@ func evalGotoStatement(g *game.Game, stmt *ast.GotoStatement, env *object.Enviro
 	// Get line number direct from literal
 	val, _ := strconv.ParseFloat(stmt.Linenumber.Literal, 64)
 	lineNumber := int(val)
+	if lineNumber < 0 {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.PositiveValueRequired), ErrorTokenIndex: stmt.Linenumber.Index}
+	}
 	if env.Program.Jump(lineNumber, 0) {
 		return nil
 	} else {
@@ -977,6 +1029,9 @@ func evalEditStatement(g *game.Game, stmt *ast.EditStatement, env *object.Enviro
 	// Get line number direct from literal
 	val, _ := strconv.ParseFloat(stmt.Linenumber.Literal, 64)
 	lineNumber := int(val)
+	if lineNumber < 0 {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.PositiveValueRequired), ErrorTokenIndex: stmt.Linenumber.Index}
+	}
 	// Edit the line if it exists
 	if line, ok := env.Program.GetLineForEditing(lineNumber); ok {
 		g.Print(fmt.Sprintf("%d ", lineNumber))
@@ -1029,7 +1084,7 @@ func evalForStatement(g *game.Game, stmt *ast.ForStatement, env *object.Environm
 	var start, stop, step float64
 	// Start
 	obj := Eval(g, stmt.Start, env)
-	if _, ok := obj.(*object.Error); ok {
+	if isError(obj) {
 		return obj
 	}
 	if val, ok := obj.(*object.Numeric); ok {
@@ -1052,11 +1107,17 @@ func evalForStatement(g *game.Game, stmt *ast.ForStatement, env *object.Environm
 		step = 1.0
 	} else {
 		obj := Eval(g, stmt.Step, env)
-		if _, ok := obj.(*object.Error); ok {
+		if isError(obj) {
 			return obj
 		}
 		if val, ok := obj.(*object.Numeric); ok {
 			step = val.Value
+			if step < 0 {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.PositiveValueRequired), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
+			if step == 0 {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StepValueNotLargeEnough), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
 		} else {
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
@@ -1154,8 +1215,7 @@ func evalUntilStatement(g *game.Game, stmt *ast.UntilStatement, env *object.Envi
 
 func evalSetRadStatement(g *game.Game, stmt *ast.SetRadStatement, env *object.Environment) object.Object {
 	obj := Eval(g, stmt.Value, env)
-	// return error if evaluation failed
-	if _, ok := obj.(*object.Error); ok {
+	if isError(obj) {
 		return obj
 	}
 	if val, ok := obj.(*object.Boolean); ok {
@@ -1339,7 +1399,7 @@ func evalIfStatement(g *game.Game, ie *ast.IfStatement, env *object.Environment)
 	if isTruthy(condition) {
 		for _, stmt := range ie.Consequence.Statements {
 			obj := Eval(g, stmt, env)
-			if _, ok := obj.(*object.Error); ok {
+			if isError(obj) {
 				return obj
 			}
 		}
@@ -1347,7 +1407,7 @@ func evalIfStatement(g *game.Game, ie *ast.IfStatement, env *object.Environment)
 	} else if ie.Alternative != nil {
 		for _, stmt := range ie.Alternative.Statements {
 			obj := Eval(g, stmt, env)
-			if _, ok := obj.(*object.Error); ok {
+			if isError(obj) {
 				return obj
 			}
 		}
@@ -1452,11 +1512,28 @@ func evalNumericInfixExpression(operator string, left, right object.Object) obje
 	case "*":
 		return &object.Numeric{Value: leftVal * rightVal}
 	case "/":
-		return &object.Numeric{Value: leftVal / rightVal}
+		// catch divide by zero
+		if rightVal == 0 {
+			return newError(syntaxerror.ErrorMessage(syntaxerror.TryingToDivideByZero))
+		} else {
+			return &object.Numeric{Value: leftVal / rightVal}
+		}
 	case "<":
 		return nativeBoolToBooleanObject(leftVal < rightVal)
+	case "<=":
+		return nativeBoolToBooleanObject(leftVal <= rightVal)
+	case "=<":
+		return nativeBoolToBooleanObject(leftVal <= rightVal)
+	case "<>":
+		return nativeBoolToBooleanObject(leftVal != rightVal)
+	case "><":
+		return nativeBoolToBooleanObject(leftVal != rightVal)
 	case ">":
 		return nativeBoolToBooleanObject(leftVal > rightVal)
+	case ">=":
+		return nativeBoolToBooleanObject(leftVal >= rightVal)
+	case "=>":
+		return nativeBoolToBooleanObject(leftVal >= rightVal)
 	case "=":
 		return nativeBoolToBooleanObject(leftVal == rightVal)
 	case "AND":

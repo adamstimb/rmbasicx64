@@ -135,41 +135,31 @@ func (n *Nimbus) drawSprite(thisSprite Sprite) {
 // handleColourFlash handles flashing colours and returns the palette slot of the colour that
 // should be displayed if flashing
 func (n *Nimbus) handleColourFlash(c int) int {
-	// get basic colours first
-	var basicColours []int
-	switch n.mode {
-	case 40:
-		basicColours = n.defaultLowResPalette
-	case 80:
-		basicColours = n.defaultHighResPalette
-	}
+	var retVal int
 	n.muColourFlashSettings.Lock()
-	switch n.colourFlashSettings[c].speed {
+	flashSpeed := n.colourFlashSettings[c].speed
+	flashColour := n.colourFlashSettings[c].flashColour
+	n.muColourFlashSettings.Unlock()
+	switch flashSpeed {
 	case 0:
 		// not flashing
-		n.muColourFlashSettings.Unlock()
-		return c
+		retVal = n.palette[c]
 	case 1:
 		// slow flash
 		if n.colourFlash <= 1 {
-			n.muColourFlashSettings.Unlock()
-			return c
+			retVal = n.palette[c]
 		} else {
-			n.muColourFlashSettings.Unlock()
-			return basicColours[n.colourFlashSettings[c].flashColour]
+			retVal = flashColour
 		}
 	case 2:
 		// fast flash
 		if n.colourFlash == 0 || n.colourFlash == 2 {
-			n.muColourFlashSettings.Unlock()
-			return c
+			retVal = n.palette[c]
 		} else {
-			n.muColourFlashSettings.Unlock()
-			return basicColours[n.colourFlashSettings[c].flashColour]
+			retVal = flashColour
 		}
 	}
-	n.muColourFlashSettings.Unlock()
-	return c
+	return retVal
 }
 
 // writeSprite writes a sprite directly to videoMemory
@@ -384,7 +374,8 @@ func (n *Nimbus) updateVideoImage() {
 				img.Set(x, y, n.basicColours[n.palette[1]])
 			} else {
 				//img.Set(x, y, n.basicColours[n.palette[n.videoMemoryOverlay[y][x]]])
-				img.Set(x, y, n.basicColours[n.handleColourFlash(n.palette[n.videoMemoryOverlay[y][x]])])
+				//img.Set(x, y, n.basicColours[n.handleColourFlash(n.palette[n.videoMemoryOverlay[y][x]])])
+				img.Set(x, y, n.basicColours[n.handleColourFlash(n.videoMemoryOverlay[y][x])])
 			}
 		}
 	}

@@ -56,7 +56,9 @@ func (n *Nimbus) SetColour(paletteSlot, basicColour, flashSpeed, flashColour int
 	// Validation passed, assign colour
 	n.palette[paletteSlot] = basicColour
 	n.SetBorder(n.borderColour) // need to force border to update
+	n.muColourFlashSettings.Lock()
 	n.colourFlashSettings[paletteSlot] = colourFlashSetting{speed: flashSpeed, flashColour: flashColour}
+	n.muColourFlashSettings.Unlock()
 }
 
 // SetPaper sets paperColour

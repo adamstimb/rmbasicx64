@@ -26,18 +26,21 @@ const (
 )
 
 var precedences = map[string]int{
-	token.Equal:              EQUALS,
-	token.LessThan:           LESSGREATER,
-	token.GreaterThan:        LESSGREATER,
-	token.Plus:               SUM,
-	token.Minus:              SUM,
-	token.Star:               PRODUCT,
-	token.ForwardSlash:       PRODUCT,
-	token.LeftParen:          CALL,
-	token.AND:                LOGICAL,
-	token.OR:                 LOGICAL,
-	token.XOR:                LOGICAL,
-	token.InterestinglyEqual: EQUALS,
+	token.Equal:               EQUALS,
+	token.LessThan:            LESSGREATER,
+	token.GreaterThan:         LESSGREATER,
+	token.LessThanEqualTo1:    LESSGREATER,
+	token.GreaterThanEqualTo1: LESSGREATER,
+	token.Inequality1:         LESSGREATER,
+	token.Plus:                SUM,
+	token.Minus:               SUM,
+	token.Star:                PRODUCT,
+	token.ForwardSlash:        PRODUCT,
+	token.LeftParen:           CALL,
+	token.AND:                 LOGICAL,
+	token.OR:                  LOGICAL,
+	token.XOR:                 LOGICAL,
+	token.InterestinglyEqual:  EQUALS,
 }
 
 type (
@@ -115,7 +118,13 @@ func New(l *lexer.Lexer, g *game.Game) *Parser {
 	p.registerInfix(token.Equal, p.parseInfixExpression)
 	p.registerInfix(token.Assign, p.parseInfixExpression)
 	p.registerInfix(token.LessThan, p.parseInfixExpression)
+	p.registerInfix(token.LessThanEqualTo1, p.parseInfixExpression)
+	p.registerInfix(token.LessThanEqualTo2, p.parseInfixExpression)
+	p.registerInfix(token.Inequality1, p.parseInfixExpression)
+	p.registerInfix(token.Inequality2, p.parseInfixExpression)
 	p.registerInfix(token.GreaterThan, p.parseInfixExpression)
+	p.registerInfix(token.GreaterThanEqualTo1, p.parseInfixExpression)
+	p.registerInfix(token.GreaterThanEqualTo2, p.parseInfixExpression)
 	p.registerInfix(token.LeftParen, p.parseCallExpression)
 	p.registerInfix(token.AND, p.parseInfixExpression)
 	p.registerInfix(token.OR, p.parseInfixExpression)
@@ -783,7 +792,7 @@ func (p *Parser) parseCircleStatement() *ast.CircleStatement {
 		return stmt
 	}
 	// Handle options list
-	for !p.onEndOfInstruction() {
+	for !p.onEndOfInstruction() && !p.curTokenIs(token.ELSE) {
 		tokenType := p.curToken.TokenType
 		switch tokenType {
 		case token.BRUSH:

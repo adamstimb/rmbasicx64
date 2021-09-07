@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/game/examples"
 	"github.com/adamstimb/rmbasicx64/pkg/nimgobus"
 	"github.com/hajimehoshi/ebiten/v2"
 	"gopkg.in/yaml.v3"
@@ -116,6 +117,7 @@ func (g *Game) EnsureWorkspace() {
 		log.Fatalf("Error creating workspace folder %q: %v", workspacePath, err)
 	}
 	g.WorkspacePath = workspacePath
+	examples.WriteExamples(g.WorkspacePath)
 }
 
 func (g *Game) Update() error {
