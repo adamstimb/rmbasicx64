@@ -726,6 +726,8 @@ func evalLoadStatement(g *game.Game, stmt *ast.LoadStatement, env *object.Enviro
 	if err != nil {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
+	// Committed to load the program so erase any existing program in memory
+	env.Program.New()
 	// To read into the program space we just pretend the code is being manually keyed it (I think that's how it worked originally)
 	sliceData := strings.Split(string(fileBytes), "\n")
 	l := &lexer.Lexer{}

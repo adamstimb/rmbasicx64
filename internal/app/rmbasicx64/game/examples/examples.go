@@ -55,7 +55,7 @@ func WriteExamples(workspacePath string) {
 			filename: "mandelbrot.BAS",
 			program: `10 REM Render the Mandelbrot set
 20 REM Adapted from https://rosettacode.org/wiki/Mandelbrot_set#BASIC
-30 SET MODE 40
+30 SET MODE 40 : SET BORDER 1
 40 Maxiteration% := 150
 50 FOR X0 := -2 TO 2 STEP 0.01
 60   FOR Y0 := -1.5 TO 1.5 STEP 0.01
@@ -72,9 +72,11 @@ func WriteExamples(workspacePath string) {
 170    Xpos% := 50 + ((X0 + 2) * 80)
 180    Ypos% := (Y0 + 1.5) * 80
 190    Col% := C% / (Maxiteration% / 15)
-200    CIRCLE 1, Xpos%, Ypos% BRUSH Col%
+200    CIRCLE 0, Xpos%, Ypos% BRUSH Col%
 210   NEXT Y0
-220 NEXT X0`,
+220 NEXT X0
+230 PLOT "The Mandelbrot Set", 90, 2 BRUSH 1
+240 PLOT "The Mandelbrot Set", 91, 3 BRUSH 13`,
 		},
 	}
 

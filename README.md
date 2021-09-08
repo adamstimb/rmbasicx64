@@ -12,7 +12,9 @@ Roughly half of the original language specification is implemented.  The code ha
 
 ## I want it now!
 
-Ok, but don't say I didn't warn you.  Here's how to build RM BASICx64 from source on Windows or Linux:
+Ok, but don't say I didn't warn you.  A Windows installer can be downloaded from the [RM BASICx64 website](https://adamstimb.github.io/rmbasicx64site/).  
+
+Alternatively you can build RM BASICx64 from source on Windows, Linux or macOS:
 
 ### Prerequisites
 
