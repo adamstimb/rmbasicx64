@@ -53,13 +53,21 @@ If you get a message saying "Windows protected your PC" click "More info" then "
 
 ## Screenshots
 
-![RM BASICx64 running on Ubuntu](https://github.com/adamstimb/rmbasicx64/blob/main/docs/screenshots/interpreter-loaded.png)
+![RM BASICx64 running on Windows 10](https://github.com/adamstimb/rmbasicx64/blob/main/docs/screenshots/interpreter-loaded.png)
 
-RM BASICx64 running on Ubuntu
+RM BASICx64 running on Windows 10
 
-![Some lyrics from "Bike" by The Pink Floyd printed with string evaluation](https://github.com/adamstimb/rmbasicx64/blob/main/docs/screenshots/bike-lyrics.png)
+![Editing a program](https://github.com/adamstimb/rmbasicx64/blob/main/docs/screenshots/editing-a-program.png)
 
-Some lyrics from "Bike" by The Pink Floyd printed with string evaluation
+Editing a program
+
+![Greetings](https://github.com/adamstimb/rmbasicx64/blob/main/docs/screenshots/greetings.png)
+
+Using big fonts to say hello
+
+![Mandelbrot Set](https://github.com/adamstimb/rmbasicx64/blob/main/docs/screenshots/mandelbrot-set.png)
+
+The Mandelbrot Set
 
 ## Links
 
