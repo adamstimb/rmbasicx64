@@ -292,8 +292,8 @@ func (n *Nimbus) updateKeyBuffer() {
 		n.keyBuffer = append(n.keyBuffer, int(r))
 	}
 	// Evaluate control keys
-	// handle BREAK interrupt first (Ctrl+ScrollLock)
-	if ebiten.IsKeyPressed(ebiten.KeyControl) && ebiten.IsKeyPressed(ebiten.KeyScrollLock) {
+	// handle BREAK interrupt first (Ctrl+ScrollLock or Ctrl+B for computers without ScrollLock)
+	if ebiten.IsKeyPressed(ebiten.KeyControl) && (ebiten.IsKeyPressed(ebiten.KeyScrollLock) || ebiten.IsKeyPressed(ebiten.KeyB)) {
 		n.BreakInterruptDetected = true
 		n.muKeyBuffer.Unlock()
 		return
