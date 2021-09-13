@@ -714,6 +714,75 @@ func (s *CircleStatement) String() string {
 	return out.String()
 }
 
+type PointsStatement struct {
+	Token     token.Token
+	CoordList []Expression
+	Style     Expression
+	Brush     Expression
+	Over      Expression
+}
+
+func (s *PointsStatement) statementNode() {}
+func (s *PointsStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *PointsStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	return out.String()
+}
+
+type FloodStatement struct {
+	Token         token.Token
+	CoordList     []Expression
+	Brush         Expression
+	UseEdgeColour Expression
+	EdgeColour    Expression
+}
+
+func (s *FloodStatement) statementNode() {}
+func (s *FloodStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *FloodStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	return out.String()
+}
+
+type FetchStatement struct {
+	Token token.Token
+	Block int
+	Path  string
+}
+
+func (s *FetchStatement) statementNode() {}
+func (s *FetchStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *FetchStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	return out.String()
+}
+
+type WriteblockStatement struct {
+	Token token.Token
+	Block int
+	X     int
+	Y     int
+}
+
+func (s *WriteblockStatement) statementNode() {}
+func (s *WriteblockStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *WriteblockStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	return out.String()
+}
+
 type AreaStatement struct {
 	Token     token.Token
 	CoordList []Expression

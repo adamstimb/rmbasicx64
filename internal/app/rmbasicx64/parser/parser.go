@@ -811,6 +811,147 @@ func (p *Parser) parseCircleStatement() *ast.CircleStatement {
 	return stmt
 }
 
+func (p *Parser) parsePointsStatement() *ast.PointsStatement {
+	stmt := &ast.PointsStatement{Token: p.curToken}
+	// Handle POINTS without args
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		return nil
+	}
+	// Get coordinate list
+	for !p.onEndOfInstruction() {
+		// Get X
+		val, ok := p.requireExpression()
+		if !ok {
+			return nil
+		}
+		stmt.CoordList = append(stmt.CoordList, val)
+		// ,
+		if !p.requireComma() {
+			return nil
+		}
+		// Get y
+		val, ok = p.requireExpression()
+		if !ok {
+			return nil
+		}
+		stmt.CoordList = append(stmt.CoordList, val)
+		// Require ; if more coordinates to follow
+		if p.curTokenIs(token.Comma) {
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.SemicolonSeparatorIsNeeded)
+			return nil
+		}
+		// Break loop if no more coordinates to follow
+		if !p.curTokenIs(token.Semicolon) {
+			break
+		}
+		p.nextToken() // consume ;
+	}
+	// Handle no options list
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// Handle options list
+	for !p.onEndOfInstruction() && !p.curTokenIs(token.ELSE) {
+		tokenType := p.curToken.TokenType
+		switch tokenType {
+		case token.STYLE:
+			p.nextToken()
+			stmt.Style = p.parseExpression(LOWEST)
+		case token.BRUSH:
+			p.nextToken()
+			stmt.Brush = p.parseExpression(LOWEST)
+		case token.OVER:
+			p.nextToken()
+			stmt.Over = p.parseExpression(LOWEST)
+		default:
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.UnknownSetAskAttribute)
+			return nil
+		}
+		p.nextToken()
+	}
+	return stmt
+}
+
+func (p *Parser) parseFloodStatement() *ast.FloodStatement {
+	stmt := &ast.FloodStatement{Token: p.curToken}
+	// Handle FLOOD without args
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		return nil
+	}
+	// Get coordinate list
+	for !p.onEndOfInstruction() {
+		// Get X
+		val, ok := p.requireExpression()
+		if !ok {
+			return nil
+		}
+		stmt.CoordList = append(stmt.CoordList, val)
+		// ,
+		if !p.requireComma() {
+			return nil
+		}
+		// Get y
+		val, ok = p.requireExpression()
+		if !ok {
+			return nil
+		}
+		stmt.CoordList = append(stmt.CoordList, val)
+		// Require ; if more coordinates to follow
+		if p.curTokenIs(token.Comma) {
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.SemicolonSeparatorIsNeeded)
+			return nil
+		}
+		// Break loop if no more coordinates to follow
+		if !p.curTokenIs(token.Semicolon) {
+			break
+		}
+		p.nextToken() // consume ;
+	}
+	// Handle no options list
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// Handle options list
+	for !p.onEndOfInstruction() && !p.curTokenIs(token.ELSE) {
+		tokenType := p.curToken.TokenType
+		switch tokenType {
+		case token.BRUSH:
+			p.nextToken()
+			stmt.Brush = p.parseExpression(LOWEST)
+		case token.EDGE:
+			p.nextToken()
+			if val, ok := p.requireExpression(); ok {
+				stmt.UseEdgeColour = val
+			} else {
+				return nil
+			}
+			if !p.requireComma() {
+				return nil
+			}
+			if val, ok := p.requireExpression(); ok {
+				stmt.EdgeColour = val
+			} else {
+				return nil
+			}
+		default:
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.UnknownSetAskAttribute)
+			return nil
+		}
+		p.nextToken()
+	}
+	return stmt
+}
+
 func (p *Parser) parseAreaStatement() *ast.AreaStatement {
 	stmt := &ast.AreaStatement{Token: p.curToken}
 	// Handle LINE without args
@@ -1730,6 +1871,10 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseAreaStatement()
 	case token.CIRCLE:
 		return p.parseCircleStatement()
+	case token.POINTS:
+		return p.parsePointsStatement()
+	case token.FLOOD:
+		return p.parseFloodStatement()
 	case token.MOVE:
 		return p.parseMoveStatement()
 	case token.LET:

@@ -10,9 +10,20 @@ import (
 
 // getPixel waits until the drawQueue is empty gets the colour of a pixel in the video memory
 func (n *Nimbus) GetPixel(x, y int) (colour int) {
-	n.muDrawQueue.Lock()
-	colour = n.videoMemory[x][y]
-	n.muDrawQueue.Unlock()
+	drawQueueNotEmpty := true
+	for drawQueueNotEmpty {
+		n.muDrawQueue.Lock()
+		lenDrawQueue := len(n.drawQueue)
+		n.muDrawQueue.Unlock()
+		if lenDrawQueue > 0 {
+			time.Sleep(1 * time.Microsecond)
+		} else {
+			drawQueueNotEmpty = false
+		}
+	}
+	n.muVideoMemory.Lock()
+	colour = n.videoMemory[249-y][x]
+	n.muVideoMemory.Unlock()
 	return colour
 }
 
@@ -86,20 +97,20 @@ func (n *Nimbus) applyDrawingbox(thisSprite Sprite, d int) (Sprite, bool) {
 		thisSprite.pixels = newImg
 		thisSprite.x = 0
 	}
-	if thisSprite.y+len(thisSprite.pixels) > maxY {
+	if thisSprite.y+len(thisSprite.pixels) > maxY+1 {
 		// truncate top
-		chop := thisSprite.y + len(thisSprite.pixels) - maxY
+		chop := (thisSprite.y + len(thisSprite.pixels)) - (maxY + 1)
 		newImg := make2dArray(len(thisSprite.pixels[0]), len(thisSprite.pixels)-chop)
 		for x := 0; x < len(newImg[0]); x++ {
 			for y := 0; y < len(newImg); y++ {
-				newImg[y][x] = thisSprite.pixels[y][x]
+				newImg[y][x] = thisSprite.pixels[y+chop][x]
 			}
 		}
 		thisSprite.pixels = newImg
 	}
-	if thisSprite.x+len(thisSprite.pixels[0]) > maxX {
+	if thisSprite.x+len(thisSprite.pixels[0]) > maxX+1 {
 		// truncate right
-		chop := thisSprite.x + len(thisSprite.pixels[0]) - maxX
+		chop := thisSprite.x + len(thisSprite.pixels[0]) - (maxX + 1)
 		newImg := make2dArray(len(thisSprite.pixels[0])-chop, len(thisSprite.pixels))
 		for x := 0; x < len(newImg[0]); x++ {
 			for y := 0; y < len(newImg); y++ {
