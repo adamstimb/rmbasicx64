@@ -36,7 +36,7 @@ func WriteExamples(workspacePath string) {
 40 SET MOUSE
 50 REPEAT
 60   ASK MOUSE Xpos%, Ypos%, Button%
-70   CIRCLE 5, Xpos%, Ypos% BRUSH 13
+70   POINTS Xpos%, Ypos% BRUSH 13 STYLE 2
 80 UNTIL Button% > 0`,
 		},
 		{
@@ -72,7 +72,7 @@ func WriteExamples(workspacePath string) {
 170    Xpos% := 50 + ((X0 + 2) * 80)
 180    Ypos% := (Y0 + 1.5) * 80
 190    Col% := C% / (Maxiteration% / 15)
-200    CIRCLE 0, Xpos%, Ypos% BRUSH Col%
+200    POINTS Xpos%, Ypos% BRUSH Col% STYLE 1
 210   NEXT Y0
 220 NEXT X0
 230 PLOT "The Mandelbrot Set", 90, 2 BRUSH 1

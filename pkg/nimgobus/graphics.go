@@ -1,5 +1,15 @@
 package nimgobus
 
+import (
+	"image/color"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
+	"log"
+
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+)
+
 // ValidateColour validates if a colour/palette slot is valid for the current screen mode
 func (n *Nimbus) ValidateColour(c int) bool {
 	maxC := 15
@@ -7,6 +17,14 @@ func (n *Nimbus) ValidateColour(c int) bool {
 		maxC = 3
 	}
 	if c < 0 || c > maxC {
+		return false
+	}
+	return true
+}
+
+// ValidateStyle validates if a style slot is valid
+func (n *Nimbus) ValidateStyle(s int) bool {
+	if s < 1 || s > 5 {
 		return false
 	}
 	return true
@@ -83,7 +101,6 @@ func (n *Nimbus) Plot(opt PlotOptions, text string, x, y int) {
 	if newSprite, ok := n.applyDrawingbox(rotatedSprite, 0); ok {
 		n.drawSprite(newSprite)
 	}
-	//n.drawSprite(n.applyDrawingbox(rotatedSprite, 0))
 }
 
 // drawLine implements Bresenham's line algorithm to draw a line on a 2d array
@@ -91,8 +108,6 @@ func (n *Nimbus) Plot(opt PlotOptions, text string, x, y int) {
 func (n *Nimbus) drawLine(img [][]int, x1, y1, x2, y2 int) [][]int {
 	imgHeight := len(img) - 1
 	var dx, dy, e, slope int
-
-	//log.Printf("drawLine imgHeight=%d (%d, %d)-(%d, %d)", imgHeight, x1, y1, x2, y2)
 
 	// Because drawing p1 -> p2 is equivalent to draw p2 -> p1,
 	// I sort points in x-axis order to handle only half of possible cases.
@@ -384,7 +399,6 @@ func (n *Nimbus) Circle(opt CircleOptions, r, x, y int) {
 	if newSprite, ok := n.applyDrawingbox(Sprite{img, sx, sy, opt.Brush, over}, 0); ok {
 		n.drawSprite(newSprite)
 	}
-	//n.drawSprite(n.applyDrawingbox(Sprite{img, sx, sy, opt.Brush, over}, 0))
 }
 
 type AreaOptions struct {
@@ -489,5 +503,145 @@ func (n *Nimbus) Area(opt AreaOptions, coordList []XyCoord) {
 	if newSprite, ok := n.applyDrawingbox(Sprite{img, minX, minY, opt.Brush, over}, 0); ok {
 		n.drawSprite(newSprite)
 	}
-	//n.drawSprite(n.applyDrawingbox(Sprite{img, minX, minY, opt.Brush, over}, 0))
+}
+
+type PointsOptions struct {
+	Style int
+	Brush int
+	Over  int
+}
+
+// Points draws points at some given coordinates on the screen
+func (n *Nimbus) Points(opt PointsOptions, coordList []XyCoord) {
+	// Handle default values
+	if opt.Brush == -255 {
+		opt.Brush = n.brush
+	}
+	var over bool
+	switch opt.Over {
+	case -255:
+		over = n.over
+	case 0:
+		over = false
+	case -1:
+		over = true
+	}
+	if opt.Style == -255 {
+		opt.Style = n.pointsStyle
+	}
+	// Draw sprites
+	for _, coord := range coordList {
+		if newSprite, ok := n.applyDrawingbox(Sprite{n.pointsStyles[opt.Style-1], coord.X - 4, coord.Y - 4, opt.Brush, over}, 0); ok {
+			n.drawSprite(newSprite)
+		}
+	}
+}
+
+// Flood fill algorithm adapted from https://stackoverflow.com/questions/2783204/flood-fill-using-a-stack
+func (n *Nimbus) floodFillDo(maxX int, hits [250][640]bool, x, y, srcColor, tgtColor int, useEdgeColour bool, edgeColour int) bool {
+	if (y < 0) || (x < 0) || (y > 249) || (x > maxX) {
+		return false
+	}
+	if hits[y][x] {
+		return false
+	}
+	if useEdgeColour {
+		if n.videoMemory[249-y][x] == edgeColour {
+			return false
+		}
+	} else {
+		if n.videoMemory[249-y][x] != srcColor {
+			return false
+		}
+	}
+	// valid, paint it
+	n.videoMemory[249-y][x] = tgtColor
+	return true
+}
+
+func (n *Nimbus) floodFill(x, y, color int, useEdgeColour bool, edgeColour int) {
+	maxX := 639
+	if n.AskMode() == 40 {
+		maxX = 319
+	}
+	srcColor := n.GetPixel(x, y)
+	hits := [250][640]bool{}
+	queue := []XyCoord{}
+	queue = append(queue, XyCoord{x, y})
+	n.muVideoMemory.Lock()
+	for len(queue) > 0 {
+		p := queue[0]
+		queue = queue[1:]
+		result := n.floodFillDo(maxX, hits, p.X, p.Y, srcColor, color, useEdgeColour, edgeColour)
+		if result {
+			hits[p.Y][p.X] = true
+			queue = append(queue, XyCoord{p.X + 1, p.Y + 1})
+			queue = append(queue, XyCoord{p.X - 1, p.Y - 1})
+			queue = append(queue, XyCoord{p.X + 1, p.Y - 1})
+			queue = append(queue, XyCoord{p.X - 1, p.Y + 1})
+			queue = append(queue, XyCoord{p.X - 1, p.Y})
+			queue = append(queue, XyCoord{p.X + 1, p.Y})
+		}
+	}
+	n.muVideoMemory.Unlock()
+}
+
+type FloodOptions struct {
+	Brush         int
+	UseEdgeColour bool
+	EdgeColour    int
+}
+
+// Flood seeds a boundary fill at x, y
+func (n *Nimbus) Flood(opt FloodOptions, coord XyCoord) {
+	// Handle default values
+	if opt.Brush == -255 {
+		opt.Brush = n.brush
+	}
+	// Start fill
+	n.floodFill(coord.X, coord.Y, opt.Brush, opt.UseEdgeColour, opt.EdgeColour)
+}
+
+// Fetch receives an image, downsamples the number of colours to 4 or 16 depending
+// on current screen mode, and assigns it to a Nimbus image block
+func (n *Nimbus) Fetch(b int, path string) bool {
+	// Load image from disk
+	img, _, err := ebitenutil.NewImageFromFile(path)
+	if err != nil {
+		log.Printf("Error loading %s: %e", path, err)
+		return false
+	}
+	width, height := img.Size()
+
+	// Make a temp pallete of the current screen colours
+	rgbaColours := make([]color.Color, len(n.palette))
+	for i := 0; i < len(n.palette); i++ {
+		rgbaColours[i] = n.basicColours[n.palette[i]]
+	}
+	tempPalette := color.Palette(rgbaColours)
+
+	// Replace the colour of each pixel in the image with the nearest Nimbus colour
+	spriteImg := make2dArray(width, height)
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			//newImg.Set(x, y, tempPalette.Convert(img.At(x, y)))
+			nearestRgba := tempPalette.Convert(img.At(x, y))
+			for c := 0; c < len(n.palette); c++ {
+				if nearestRgba == tempPalette[c] {
+					spriteImg[y][x] = c
+					break
+				}
+			}
+		}
+	}
+
+	// Store the image block
+	n.imageBlocks[b] = spriteImg
+	return true
+}
+
+// Writeblock draws an image block on the screen at position x, y
+func (n *Nimbus) Writeblock(b, x, y int) {
+	// Retrieve image block and draw it
+	n.drawSprite(Sprite{pixels: n.imageBlocks[b], x: x, y: y, colour: -1, over: true})
 }

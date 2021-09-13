@@ -83,6 +83,10 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalAreaStatement(g, node, env)
 	case *ast.CircleStatement:
 		return evalCircleStatement(g, node, env)
+	case *ast.PointsStatement:
+		return evalPointsStatement(g, node, env)
+	case *ast.FloodStatement:
+		return evalFloodStatement(g, node, env)
 	case *ast.GotoStatement:
 		return evalGotoStatement(g, node, env)
 	case *ast.EditStatement:
@@ -535,6 +539,163 @@ func evalCircleStatement(g *game.Game, stmt *ast.CircleStatement, env *object.En
 	opt := nimgobus.CircleOptions{Brush: Brush, Over: Over}
 	for _, coord := range coordList {
 		g.Circle(opt, radius, coord.X, coord.Y)
+	}
+	return nil
+}
+
+func evalPointsStatement(g *game.Game, stmt *ast.PointsStatement, env *object.Environment) object.Object {
+	// Handle defaults
+	var Brush, Over, Style int
+	if stmt.Brush == nil {
+		Brush = -255
+	} else {
+		obj := Eval(g, stmt.Brush, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			if g.ValidateColour(int(val.Value)) {
+				Brush = int(val.Value)
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	if stmt.Style == nil {
+		Style = -255
+	} else {
+		obj := Eval(g, stmt.Style, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			if g.ValidateStyle(int(val.Value)) {
+				Style = int(val.Value)
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	if stmt.Over == nil {
+		Over = -255
+	} else {
+		obj := Eval(g, stmt.Over, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			Over = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	// Handle coord list
+	var coordList []nimgobus.XyCoord
+	var X, Y int
+	for i := 0; i < len(stmt.CoordList)-1; i += 2 {
+		obj := Eval(g, stmt.CoordList[i], env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			X = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+		obj = Eval(g, stmt.CoordList[i+1], env)
+		if val, ok := obj.(*object.Numeric); ok {
+			Y = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+		coordList = append(coordList, nimgobus.XyCoord{X, Y})
+	}
+	// Execute
+	opt := nimgobus.PointsOptions{Brush: Brush, Over: Over, Style: Style}
+	g.Points(opt, coordList)
+	return nil
+}
+
+func evalFloodStatement(g *game.Game, stmt *ast.FloodStatement, env *object.Environment) object.Object {
+	// Handle defaults
+	var Brush, EdgeColour int
+	var UseEdgeColour bool
+	if stmt.Brush == nil {
+		Brush = -255
+	} else {
+		obj := Eval(g, stmt.Brush, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			if g.ValidateColour(int(val.Value)) {
+				Brush = int(val.Value)
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	if stmt.UseEdgeColour == nil {
+		UseEdgeColour = false
+	} else {
+		obj := Eval(g, stmt.UseEdgeColour, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			UseEdgeColour = isTruthy(val)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	if stmt.EdgeColour == nil {
+		EdgeColour = -255
+	} else {
+		obj := Eval(g, stmt.EdgeColour, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			if g.ValidateColour(int(val.Value)) {
+				EdgeColour = int(val.Value)
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	// Handle coord list
+	var coordList []nimgobus.XyCoord
+	var X, Y int
+	for i := 0; i < len(stmt.CoordList)-1; i += 2 {
+		obj := Eval(g, stmt.CoordList[i], env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			X = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+		obj = Eval(g, stmt.CoordList[i+1], env)
+		if val, ok := obj.(*object.Numeric); ok {
+			Y = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+		coordList = append(coordList, nimgobus.XyCoord{X, Y})
+	}
+	// Execute
+	opt := nimgobus.FloodOptions{Brush: Brush, UseEdgeColour: UseEdgeColour, EdgeColour: EdgeColour}
+	for _, coord := range coordList {
+		g.Flood(opt, coord)
 	}
 	return nil
 }

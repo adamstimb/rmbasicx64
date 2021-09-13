@@ -82,10 +82,12 @@ type Nimbus struct {
 	basicColours           []color.RGBA         // An array of the Nimbus's 16 built-in colours
 	textBoxes              [10]textBox          // All defined textboxes
 	drawingBoxes           [10]drawingBox       // All define drawing boxes
-	imageBlocks            [16]*ebiten.Image    // Images loaded into memory as "blocks"
+	imageBlocks            [16][][]int          // Images loaded into memory as "blocks"
 	logoImage              [][]int              // The "RM Nimbus" branding image
 	charImages0            [256][][]int         // An array of 2d arrays for each char in this charset
 	charImages1            [256][][]int         // as above
+	pointsStyles           [][][]int            // An array of 2d arrays representing the built-in points styles
+	pointsStyle            int                  // The current points style
 	borderSize             int                  // The width of the border in pixels
 	borderColour           int                  // The current border colour
 	paperColour            int                  // The current paper colour
@@ -144,6 +146,8 @@ func (n *Nimbus) Init() {
 	n.loadCharsetImages(0)
 	n.loadCharsetImages(1)
 	// Set init values of everything else
+	n.pointsStyles = append(n.pointsStyles, defaultPointsStyles...)
+	n.pointsStyle = 1
 	n.borderSize = 50
 	n.borderImage = ebiten.NewImage(640+(n.borderSize*2), 500+(n.borderSize*2))
 	n.Monitor = ebiten.NewImage(640+(n.borderSize*2), 500+(n.borderSize*2))

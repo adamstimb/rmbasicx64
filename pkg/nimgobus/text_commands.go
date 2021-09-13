@@ -95,6 +95,7 @@ func (n *Nimbus) SetMode(columns int) {
 	n.cursorMode = -1
 	n.cursorChar = 95
 	n.cursorCharset = 0
+	n.pointsStyle = 1
 	n.cursorFlashEnabled = true
 	n.initColourFlashSettings()
 	// Need to manipulate videoImage so force redraw and get the lock
@@ -150,7 +151,7 @@ func (n *Nimbus) SetMode(columns int) {
 			n.drawingBoxes[i] = drawingBox{0, 0, 639, 249}
 		}
 	}
-	n.imageBlocks = [16]*ebiten.Image{}
+	n.imageBlocks = [16][][]int{}
 	n.drawQueue = []Sprite{} // flush drawqueue
 	n.videoMemory = [250][640]int{}
 	n.videoMemoryOverlay = [250][640]int{}
