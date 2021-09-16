@@ -241,6 +241,7 @@ const (
 	BOOT       = "BOOT"
 	FETCH      = "FETCH"
 	WRITEBLOCK = "WRITEBLOCK"
+	SQUASH     = "SQUASH"
 )
 
 // IsKeyword returns true if a TokenType represents a keyword
@@ -429,6 +430,7 @@ func IsKeyword(testString string) bool {
 		BOOT,
 		FETCH,
 		WRITEBLOCK,
+		SQUASH,
 	}
 	for _, keyword := range keywords {
 		if testString == keyword {

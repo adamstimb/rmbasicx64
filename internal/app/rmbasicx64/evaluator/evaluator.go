@@ -47,6 +47,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalFetchStatement(g, node, env)
 	case *ast.WriteblockStatement:
 		return evalWriteblockStatement(g, node, env)
+	case *ast.SquashStatement:
+		return evalSquashStatement(g, node, env)
 	case *ast.ListStatement:
 		return evalListStatement(g, node, env)
 	case *ast.ClsStatement:
@@ -1040,6 +1042,50 @@ func evalWriteblockStatement(g *game.Game, stmt *ast.WriteblockStatement, env *o
 	}
 	// Execute
 	g.Writeblock(block, x, y, over)
+	return nil
+}
+
+func evalSquashStatement(g *game.Game, stmt *ast.SquashStatement, env *object.Environment) object.Object {
+	// Block
+	var block int
+	obj := Eval(g, stmt.Block, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		block = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	if block < 0 || block > 99 {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// X
+	var x int
+	obj = Eval(g, stmt.X, env)
+	if val, ok := obj.(*object.Numeric); ok {
+		x = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Y
+	var y int
+	obj = Eval(g, stmt.X, env)
+	if val, ok := obj.(*object.Numeric); ok {
+		y = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Over
+	var over bool
+	obj = Eval(g, stmt.Over, env)
+	if val, ok := obj.(*object.Numeric); ok {
+		over = isTruthy(val)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Execute
+	g.Squash(block, x, y, over)
 	return nil
 }
 

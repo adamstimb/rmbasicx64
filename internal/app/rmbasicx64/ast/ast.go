@@ -784,6 +784,24 @@ func (s *WriteblockStatement) String() string {
 	return out.String()
 }
 
+type SquashStatement struct {
+	Token token.Token
+	Block Expression
+	X     Expression
+	Y     Expression
+	Over  Expression
+}
+
+func (s *SquashStatement) statementNode() {}
+func (s *SquashStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *SquashStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	return out.String()
+}
+
 type AreaStatement struct {
 	Token     token.Token
 	CoordList []Expression

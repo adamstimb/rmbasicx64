@@ -692,7 +692,7 @@ func (n *Nimbus) AskBlocksize(b int) (width, height, mode int) {
 }
 
 // Squash is the same as Writeblock but scales the image by 1/4
-func (n *Nimbus) Squash(b, x, y int) {
+func (n *Nimbus) Squash(b, x, y int, over bool) {
 	// Retrieve image block, rescale and draw it
 	block := n.imageBlocks[b]
 	if !block.deleted {
@@ -700,7 +700,7 @@ func (n *Nimbus) Squash(b, x, y int) {
 		newWidth := int(width / 4)
 		newHeight := int(height / 4)
 		rescaledImg := n.resizeSprite(Sprite{pixels: block.image}, newWidth, newHeight)
-		n.drawSprite(Sprite{pixels: rescaledImg.pixels, x: x, y: y, colour: -1, over: true})
+		n.drawSprite(Sprite{pixels: rescaledImg.pixels, x: x, y: y, colour: -1, over: over})
 	}
 }
 
