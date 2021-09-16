@@ -151,7 +151,6 @@ func (n *Nimbus) SetMode(columns int) {
 			n.drawingBoxes[i] = drawingBox{0, 0, 639, 249}
 		}
 	}
-	n.imageBlocks = [16][][]int{}
 	n.drawQueue = []Sprite{} // flush drawqueue
 	n.videoMemory = [250][640]int{}
 	n.videoMemoryOverlay = [250][640]int{}

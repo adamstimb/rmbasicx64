@@ -1,11 +1,15 @@
 package nimgobus
 
 import (
+	"image"
 	"image/color"
-	_ "image/gif"
+	"image/jpeg"
 	_ "image/jpeg"
+	"image/png"
 	_ "image/png"
+
 	"log"
+	"os"
 
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
@@ -602,13 +606,21 @@ func (n *Nimbus) Flood(opt FloodOptions, coord XyCoord) {
 	n.floodFill(coord.X, coord.Y, opt.Brush, opt.UseEdgeColour, opt.EdgeColour)
 }
 
+// Clearblock resets all the image blocks
+func (n *Nimbus) Clearblock() {
+	n.imageBlocks = [100]imageBlock{}
+	for i := range n.imageBlocks {
+		n.imageBlocks[i].deleted = true
+	}
+}
+
 // Fetch receives an image, downsamples the number of colours to 4 or 16 depending
 // on current screen mode, and assigns it to a Nimbus image block
 func (n *Nimbus) Fetch(b int, path string) bool {
 	// Load image from disk
 	img, _, err := ebitenutil.NewImageFromFile(path)
 	if err != nil {
-		log.Printf("Error loading %s: %e", path, err)
+		log.Printf("Error loading %s: %v", path, err)
 		return false
 	}
 	width, height := img.Size()
@@ -624,7 +636,6 @@ func (n *Nimbus) Fetch(b int, path string) bool {
 	spriteImg := make2dArray(width, height)
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			//newImg.Set(x, y, tempPalette.Convert(img.At(x, y)))
 			nearestRgba := tempPalette.Convert(img.At(x, y))
 			for c := 0; c < len(n.palette); c++ {
 				if nearestRgba == tempPalette[c] {
@@ -636,12 +647,99 @@ func (n *Nimbus) Fetch(b int, path string) bool {
 	}
 
 	// Store the image block
-	n.imageBlocks[b] = spriteImg
+	n.imageBlocks[b] = imageBlock{image: spriteImg, mode: n.AskMode()}
 	return true
 }
 
+// Readblock reads an area x1, y1, x2, y2 of the screen into block b
+func (n *Nimbus) Readblock(b, x1, y1, x2, y2 int) {
+	// Define a 2d array to store the image data
+	width := x2 - x1
+	height := y2 - y1
+	img := make2dArray(width, height)
+	// Use GetPixel to allow the drawqueue to flush then grab the video memory lock
+	_ = n.GetPixel(0, 0)
+	n.muVideoMemory.Lock()
+	// Copy the section, unlock, and bung it in the blocks
+	for x := x1; x <= x2; x++ {
+		for y := y1; y <= y2; y++ {
+			img[y-y1][x-x1] = n.videoMemory[249-y][x]
+		}
+	}
+	n.muVideoMemory.Unlock()
+	n.imageBlocks[b] = imageBlock{image: img, mode: n.AskMode()}
+}
+
 // Writeblock draws an image block on the screen at position x, y
-func (n *Nimbus) Writeblock(b, x, y int) {
+func (n *Nimbus) Writeblock(b, x, y int, over bool) {
 	// Retrieve image block and draw it
-	n.drawSprite(Sprite{pixels: n.imageBlocks[b], x: x, y: y, colour: -1, over: true})
+	block := n.imageBlocks[b]
+	if !block.deleted {
+		n.drawSprite(Sprite{pixels: block.image, x: x, y: y, colour: -1, over: over})
+	}
+}
+
+// AskBlocksize returns the width, height and original screen mode of an image block
+func (n *Nimbus) AskBlocksize(b int) (width, height, mode int) {
+	block := n.imageBlocks[b]
+	if !block.deleted {
+		mode = block.mode
+		width = len(block.image[0])
+		height = len(block.image)
+	}
+	// return all zeroes if block deleted
+	return width, height, mode
+}
+
+// Squash is the same as Writeblock but scales the image by 1/4
+func (n *Nimbus) Squash(b, x, y int) {
+	// Retrieve image block, rescale and draw it
+	block := n.imageBlocks[b]
+	if !block.deleted {
+		width, height, _ := n.AskBlocksize(b)
+		newWidth := int(width / 4)
+		newHeight := int(height / 4)
+		rescaledImg := n.resizeSprite(Sprite{pixels: block.image}, newWidth, newHeight)
+		n.drawSprite(Sprite{pixels: rescaledImg.pixels, x: x, y: y, colour: -1, over: true})
+	}
+}
+
+// Delblock "deletes" an image block by setting it's deleted flag to true
+func (n *Nimbus) Delblock(b int) {
+	n.imageBlocks[b].deleted = true
+}
+
+// Keep saves an image block b with a specific format
+func (n *Nimbus) Keep(b int, format, path string) error {
+	block := n.imageBlocks[b]
+	if block.deleted {
+		return nil
+	}
+	// Turn the block into an image
+	width, height, _ := n.AskBlocksize(b)
+	img := image.NewRGBA(image.Rectangle{Min: image.Point{0, 0}, Max: image.Point{width, height}})
+	for x := 0; x < width; x++ {
+		for y := 0; y < height; y++ {
+			img.SetRGBA(x, y, n.basicColours[n.palette[block.image[y][x]]])
+		}
+	}
+	// Create the file then attempt to encode and write with the appropriate format
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	switch format {
+	case "jpeg":
+		if err = jpeg.Encode(f, img, nil); err != nil {
+			log.Printf("failed to encode jpeg: %v", err)
+			return err
+		}
+	case "png":
+		if err = png.Encode(f, img); err != nil {
+			log.Printf("failed to encode png: %v", err)
+			return err
+		}
+	}
+	return nil
 }

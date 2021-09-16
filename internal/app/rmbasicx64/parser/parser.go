@@ -1171,6 +1171,84 @@ func (p *Parser) parseLoadStatement() *ast.LoadStatement {
 	return nil
 }
 
+func (p *Parser) parseFetchStatement() *ast.FetchStatement {
+	stmt := &ast.FetchStatement{Token: p.curToken}
+	// Handle FETCH without args
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index
+		return nil
+	}
+	p.nextToken()
+	// Get block,
+	if val, ok := p.requireExpression(); ok {
+		stmt.Block = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	// Get path
+	if val, ok := p.requireExpression(); ok {
+		stmt.Path = val
+	} else {
+		return nil
+	}
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseWriteblockStatement() *ast.WriteblockStatement {
+	stmt := &ast.WriteblockStatement{Token: p.curToken}
+	// Handle WRITEBLOCK without args
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index
+		return nil
+	}
+	p.nextToken()
+	// Get block,
+	if val, ok := p.requireExpression(); ok {
+		stmt.Block = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	// Get X,
+	if val, ok := p.requireExpression(); ok {
+		stmt.X = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	// Get Y,
+	if val, ok := p.requireExpression(); ok {
+		stmt.Y = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	// Get Over,
+	if val, ok := p.requireExpression(); ok {
+		stmt.Over = val
+	} else {
+		return nil
+	}
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parseSetModeStatement() *ast.SetModeStatement {
 	stmt := &ast.SetModeStatement{Token: p.curToken}
 	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
@@ -1875,6 +1953,10 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parsePointsStatement()
 	case token.FLOOD:
 		return p.parseFloodStatement()
+	case token.FETCH:
+		return p.parseFetchStatement()
+	case token.WRITEBLOCK:
+		return p.parseWriteblockStatement()
 	case token.MOVE:
 		return p.parseMoveStatement()
 	case token.LET:

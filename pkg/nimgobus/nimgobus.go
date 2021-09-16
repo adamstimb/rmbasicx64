@@ -61,6 +61,13 @@ type colourFlashSetting struct {
 	flashColour int // the palette slot to of the flash colour
 }
 
+// imageBlock is how RM Basic used to store image data in the ANIMATE extension
+type imageBlock struct {
+	image   [][]int // 2d array containing the image
+	mode    int     // The screen mode from when the image was captured/fetched in chars (40 or 80)
+	deleted bool    // Set to true if Delblock is called on the block
+}
+
 // Nimbus acts as a container for all the components of the Nimbus monitor.  You
 // only need to call the Init() method after declaring a new Nimbus.
 type Nimbus struct {
@@ -82,7 +89,7 @@ type Nimbus struct {
 	basicColours           []color.RGBA         // An array of the Nimbus's 16 built-in colours
 	textBoxes              [10]textBox          // All defined textboxes
 	drawingBoxes           [10]drawingBox       // All define drawing boxes
-	imageBlocks            [16][][]int          // Images loaded into memory as "blocks"
+	imageBlocks            [100]imageBlock      // Images loaded into memory as "blocks"
 	logoImage              [][]int              // The "RM Nimbus" branding image
 	charImages0            [256][][]int         // An array of 2d arrays for each char in this charset
 	charImages1            [256][][]int         // as above
@@ -146,6 +153,7 @@ func (n *Nimbus) Init() {
 	n.loadCharsetImages(0)
 	n.loadCharsetImages(1)
 	// Set init values of everything else
+	n.Clearblock()
 	n.pointsStyles = append(n.pointsStyles, defaultPointsStyles...)
 	n.pointsStyle = 1
 	n.borderSize = 50

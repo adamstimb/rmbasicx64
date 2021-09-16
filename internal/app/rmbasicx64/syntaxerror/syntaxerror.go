@@ -47,6 +47,8 @@ const (
 	PositiveValueRequired
 	NumberNotAllowedInRange
 	StepValueNotLargeEnough
+	UnsupportedImageFileFormat
+	CouldNotDecodeImageFile
 )
 
 // ErrorMessage returns the template error message for a given error code
@@ -97,6 +99,8 @@ func ErrorMessage(errorCode int) string {
 		PositiveValueRequired:                        "Positive value required",
 		NumberNotAllowedInRange:                      "Number not allowed in range",
 		StepValueNotLargeEnough:                      "Step value not large enough",
+		UnsupportedImageFileFormat:                   "Unsupported image file format",
+		CouldNotDecodeImageFile:                      "Could not decode image file",
 	}
 	return errorMessages[errorCode]
 }

@@ -43,6 +43,10 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalSaveStatement(g, node, env)
 	case *ast.LoadStatement:
 		return evalLoadStatement(g, node, env)
+	case *ast.FetchStatement:
+		return evalFetchStatement(g, node, env)
+	case *ast.WriteblockStatement:
+		return evalWriteblockStatement(g, node, env)
 	case *ast.ListStatement:
 		return evalListStatement(g, node, env)
 	case *ast.ClsStatement:
@@ -942,6 +946,101 @@ func evalLoadStatement(g *game.Game, stmt *ast.LoadStatement, env *object.Enviro
 		}
 	}
 	return obj
+}
+
+func evalFetchStatement(g *game.Game, stmt *ast.FetchStatement, env *object.Environment) object.Object {
+	// Block
+	var block int
+	obj := Eval(g, stmt.Block, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		block = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	if block < 0 || block > 99 {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Path
+	var path string
+	obj = Eval(g, stmt.Path, env)
+	if val, ok := obj.(*object.String); ok {
+		path = val.Value
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Don't allow * or ?
+	if strings.Contains(path, "*") || strings.Contains(path, "?") {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ExactFilenameIsNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Preprend workspace folder
+	fullpath := filepath.Join(g.WorkspacePath, path)
+	// Don't allow directories
+	if isDirectory(fullpath) {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FilenameIsADirectory), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Infer file format from extention and fail if not recognised
+	if !(strings.HasSuffix(strings.ToUpper(path), ".PNG") || strings.HasSuffix(strings.ToUpper(path), ".JPG") || strings.HasSuffix(strings.ToUpper(path), ".JPEG")) {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.UnsupportedImageFileFormat), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Handle file doesn't exist
+	_, err := ioutil.ReadFile(fullpath)
+	if errors.Is(err, os.ErrNotExist) {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.UnableToOpenNamedFile), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Execute
+	ok := g.Fetch(block, fullpath)
+	// Return any other errors
+	if !ok {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.CouldNotDecodeImageFile), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	return obj
+}
+
+func evalWriteblockStatement(g *game.Game, stmt *ast.WriteblockStatement, env *object.Environment) object.Object {
+	// Block
+	var block int
+	obj := Eval(g, stmt.Block, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		block = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	if block < 0 || block > 99 {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// X
+	var x int
+	obj = Eval(g, stmt.X, env)
+	if val, ok := obj.(*object.Numeric); ok {
+		x = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Y
+	var y int
+	obj = Eval(g, stmt.X, env)
+	if val, ok := obj.(*object.Numeric); ok {
+		y = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Over
+	var over bool
+	obj = Eval(g, stmt.Over, env)
+	if val, ok := obj.(*object.Numeric); ok {
+		over = isTruthy(val)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Execute
+	g.Writeblock(block, x, y, over)
+	return nil
 }
 
 func evalSetModeStatement(g *game.Game, stmt *ast.SetModeStatement, env *object.Environment) object.Object {

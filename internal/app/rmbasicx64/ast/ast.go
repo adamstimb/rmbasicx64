@@ -752,8 +752,8 @@ func (s *FloodStatement) String() string {
 
 type FetchStatement struct {
 	Token token.Token
-	Block int
-	Path  string
+	Block Expression
+	Path  Expression
 }
 
 func (s *FetchStatement) statementNode() {}
@@ -768,9 +768,10 @@ func (s *FetchStatement) String() string {
 
 type WriteblockStatement struct {
 	Token token.Token
-	Block int
-	X     int
-	Y     int
+	Block Expression
+	X     Expression
+	Y     Expression
+	Over  Expression
 }
 
 func (s *WriteblockStatement) statementNode() {}
