@@ -49,6 +49,10 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalWriteblockStatement(g, node, env)
 	case *ast.SquashStatement:
 		return evalSquashStatement(g, node, env)
+	case *ast.ClearblockStatement:
+		return evalClearblockStatement(g, node, env)
+	case *ast.DelblockStatement:
+		return evalDelblockStatement(g, node, env)
 	case *ast.ListStatement:
 		return evalListStatement(g, node, env)
 	case *ast.ClsStatement:
@@ -1089,6 +1093,26 @@ func evalSquashStatement(g *game.Game, stmt *ast.SquashStatement, env *object.En
 	return nil
 }
 
+func evalDelblockStatement(g *game.Game, stmt *ast.DelblockStatement, env *object.Environment) object.Object {
+	// Block
+	var block int
+	obj := Eval(g, stmt.Block, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		block = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	if block < 0 || block > 99 {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Execute
+	g.Delblock(block)
+	return nil
+}
+
 func evalSetModeStatement(g *game.Game, stmt *ast.SetModeStatement, env *object.Environment) object.Object {
 	obj := Eval(g, stmt.Value, env)
 	if isError(obj) {
@@ -1612,6 +1636,11 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 func evalClsStatement(g *game.Game, stmt *ast.ClsStatement, env *object.Environment) object.Object {
 	g.Cls()
 	g.SetCurpos(1, 1)
+	return nil
+}
+
+func evalClearblockStatement(g *game.Game, stmt *ast.ClearblockStatement, env *object.Environment) object.Object {
+	g.Clearblock()
 	return nil
 }
 

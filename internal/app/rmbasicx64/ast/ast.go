@@ -383,6 +383,35 @@ func (s *NewStatement) String() string {
 	return out.String()
 }
 
+type ClearblockStatement struct {
+	Token token.Token // the token.Bye token
+}
+
+func (s *ClearblockStatement) statementNode() {}
+func (s *ClearblockStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *ClearblockStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type DelblockStatement struct {
+	Token token.Token // the token.Bye token
+	Block Expression
+}
+
+func (s *DelblockStatement) statementNode() {}
+func (s *DelblockStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *DelblockStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
 type RenumberStatement struct {
 	Token token.Token // the token.Bye token
 }

@@ -505,6 +505,14 @@ func (p *Parser) parseNewStatement() *ast.NewStatement {
 	return nil
 }
 
+func (p *Parser) parseClearblockStatement() *ast.ClearblockStatement {
+	stmt := &ast.ClearblockStatement{Token: p.curToken}
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parseRenumberStatement() *ast.RenumberStatement {
 	stmt := &ast.RenumberStatement{Token: p.curToken}
 	if p.endOfInstruction() {
@@ -1428,6 +1436,22 @@ func (p *Parser) parseMoveStatement() *ast.MoveStatement {
 	return nil
 }
 
+func (p *Parser) parseDelblockStatement() *ast.DelblockStatement {
+	stmt := &ast.DelblockStatement{Token: p.curToken}
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index + 1
+		return nil
+	}
+	p.nextToken()
+	// Get block
+	stmt.Block = p.parseExpression(LOWEST)
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parseSetColourStatement() *ast.SetColourStatement {
 	stmt := &ast.SetColourStatement{Token: p.curToken}
 	p.nextToken()
@@ -2007,6 +2031,10 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseWriteblockStatement()
 	case token.SQUASH:
 		return p.parseSquashStatement()
+	case token.CLEARBLOCK:
+		return p.parseClearblockStatement()
+	case token.DELBLOCK:
+		return p.parseDelblockStatement()
 	case token.MOVE:
 		return p.parseMoveStatement()
 	case token.LET:
