@@ -412,6 +412,22 @@ func (s *DelblockStatement) String() string {
 	return out.String()
 }
 
+type KeepStatement struct {
+	Token token.Token // the token.Bye token
+	Block Expression
+	Path  Expression
+}
+
+func (s *KeepStatement) statementNode() {}
+func (s *KeepStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *KeepStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
 type RenumberStatement struct {
 	Token token.Token // the token.Bye token
 }

@@ -1452,6 +1452,39 @@ func (p *Parser) parseDelblockStatement() *ast.DelblockStatement {
 	return nil
 }
 
+func (p *Parser) parseKeepStatement() *ast.KeepStatement {
+	stmt := &ast.KeepStatement{Token: p.curToken}
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index + 1
+		return nil
+	}
+	p.nextToken()
+	// Get block,
+	if val, ok := p.requireExpression(); ok {
+		stmt.Block = val
+	} else {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index + 1
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	// Get path
+	if val, ok := p.requireExpression(); ok {
+		stmt.Path = val
+	} else {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index + 1
+		return nil
+	}
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parseSetColourStatement() *ast.SetColourStatement {
 	stmt := &ast.SetColourStatement{Token: p.curToken}
 	p.nextToken()
@@ -2035,6 +2068,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseClearblockStatement()
 	case token.DELBLOCK:
 		return p.parseDelblockStatement()
+	case token.KEEP:
+		return p.parseKeepStatement()
 	case token.MOVE:
 		return p.parseMoveStatement()
 	case token.LET:

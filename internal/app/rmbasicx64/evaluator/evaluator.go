@@ -53,6 +53,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalClearblockStatement(g, node, env)
 	case *ast.DelblockStatement:
 		return evalDelblockStatement(g, node, env)
+	case *ast.KeepStatement:
+		return evalKeepStatement(g, node, env)
 	case *ast.ListStatement:
 		return evalListStatement(g, node, env)
 	case *ast.ClsStatement:
@@ -1110,6 +1112,61 @@ func evalDelblockStatement(g *game.Game, stmt *ast.DelblockStatement, env *objec
 	}
 	// Execute
 	g.Delblock(block)
+	return nil
+}
+
+func evalKeepStatement(g *game.Game, stmt *ast.KeepStatement, env *object.Environment) object.Object {
+	// Block
+	var block int
+	obj := Eval(g, stmt.Block, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		block = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	if block < 0 || block > 99 {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Path
+	var path string
+	obj = Eval(g, stmt.Path, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.String); ok {
+		path = val.Value
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Don't allow * or ?
+	if strings.Contains(path, "*") || strings.Contains(path, "?") {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ExactFilenameIsNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Preprend workspace folder
+	fullpath := filepath.Join(g.WorkspacePath, path)
+	// Don't allow directories
+	if isDirectory(fullpath) {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FilenameIsADirectory), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Infer file format from extention and fail if not recognised
+	if !(strings.HasSuffix(strings.ToUpper(path), ".PNG") || strings.HasSuffix(strings.ToUpper(path), ".JPG") || strings.HasSuffix(strings.ToUpper(path), ".JPEG")) {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.UnsupportedImageFileFormat), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	var format string
+	if strings.HasSuffix(strings.ToUpper(path), ".PNG") {
+		format = "png"
+	}
+	if strings.HasSuffix(strings.ToUpper(path), ".JPG") || strings.HasSuffix(strings.ToUpper(path), ".JPEG") {
+		format = "jpeg"
+	}
+	// Execute
+	err := g.Keep(block, format, fullpath)
+	if err != nil {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
 	return nil
 }
 
