@@ -653,9 +653,11 @@ func (n *Nimbus) Fetch(b int, path string) bool {
 
 // Readblock reads an area x1, y1, x2, y2 of the screen into block b
 func (n *Nimbus) Readblock(b, x1, y1, x2, y2 int) {
+	log.Printf("start Readblock")
 	// Define a 2d array to store the image data
 	width := x2 - x1
 	height := y2 - y1
+	log.Printf("width=%d, height=%d", width, height)
 	img := make2dArray(width, height)
 	// Use GetPixel to allow the drawqueue to flush then grab the video memory lock
 	_ = n.GetPixel(0, 0)
@@ -668,6 +670,7 @@ func (n *Nimbus) Readblock(b, x1, y1, x2, y2 int) {
 	}
 	n.muVideoMemory.Unlock()
 	n.imageBlocks[b] = imageBlock{image: img, mode: n.AskMode()}
+	log.Printf("end Readblock")
 }
 
 // Writeblock draws an image block on the screen at position x, y

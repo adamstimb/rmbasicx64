@@ -829,6 +829,25 @@ func (s *WriteblockStatement) String() string {
 	return out.String()
 }
 
+type ReadblockStatement struct {
+	Token token.Token
+	Block Expression
+	X1    Expression
+	Y1    Expression
+	X2    Expression
+	Y2    Expression
+}
+
+func (s *ReadblockStatement) statementNode() {}
+func (s *ReadblockStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *ReadblockStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	return out.String()
+}
+
 type SquashStatement struct {
 	Token token.Token
 	Block Expression
