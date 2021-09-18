@@ -112,6 +112,8 @@ func (n *Nimbus) SetMode(columns int) {
 		n.penColour = 15
 		n.palette = []int{}
 		n.palette = append(n.palette, n.defaultLowResPalette...)
+		n.patterns = [][4][4]int{}
+		n.patterns = append(n.patterns, defaultLowResPatterns...)
 		n.brush = 15
 		n.plotDirection = 0
 		n.plotFont = 0
@@ -127,6 +129,8 @@ func (n *Nimbus) SetMode(columns int) {
 		n.videoImage = ebiten.NewImage(640, 250)
 		n.palette = []int{}
 		n.palette = append(n.palette, n.defaultHighResPalette...)
+		n.patterns = [][4][4]int{}
+		n.patterns = append(n.patterns, defaultHighResPatterns...)
 		n.paperColour = 0
 		n.borderColour = 0
 		n.penColour = 3

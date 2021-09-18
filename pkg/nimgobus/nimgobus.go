@@ -68,6 +68,13 @@ type imageBlock struct {
 	deleted bool    // Set to true if Delblock is called on the block
 }
 
+// fillStyle describes the fill settings for AREA, FLOOD, CIRCLE, and SLICE
+type fillStyle struct {
+	Style    int // 1 for solid/dithered, 2 for hatched, 3 for hollow (edge)
+	Hatching int // Hatching type if Style==2
+	Colour2  int // 2nd hatching colour if Style==2
+}
+
 // Nimbus acts as a container for all the components of the Nimbus monitor.  You
 // only need to call the Init() method after declaring a new Nimbus.
 type Nimbus struct {
@@ -95,6 +102,9 @@ type Nimbus struct {
 	charImages1            [256][][]int         // as above
 	pointsStyles           [][][]int            // An array of 2d arrays representing the built-in points styles
 	pointsStyle            int                  // The current points style
+	patterns               [][4][4]int          // The brush patterns
+	hatchings              [][16][16]int        // The fill hatchings
+	fillStyle              fillStyle            // The current fill style
 	borderSize             int                  // The width of the border in pixels
 	borderColour           int                  // The current border colour
 	paperColour            int                  // The current paper colour
@@ -157,6 +167,7 @@ func (n *Nimbus) Init() {
 	n.pointsStyles = append(n.pointsStyles, defaultPointsStyles...)
 	n.pointsStyle = 1
 	n.borderSize = 50
+	n.patterns = append(n.patterns, defaultHighResPatterns...)
 	n.borderImage = ebiten.NewImage(640+(n.borderSize*2), 500+(n.borderSize*2))
 	n.Monitor = ebiten.NewImage(640+(n.borderSize*2), 500+(n.borderSize*2))
 	n.drawQueue = []Sprite{}

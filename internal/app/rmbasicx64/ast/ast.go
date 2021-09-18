@@ -562,6 +562,26 @@ func (s *SetCurposStatement) String() string {
 	return out.String()
 }
 
+type SetPatternStatement struct {
+	Token token.Token
+	Slot  Expression
+	Row   Expression
+	C1    Expression
+	C2    Expression
+	C3    Expression
+	C4    Expression
+}
+
+func (s *SetPatternStatement) statementNode() {}
+func (s *SetPatternStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *SetPatternStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
 type MoveStatement struct {
 	Token token.Token
 	Cols  Expression
@@ -848,6 +868,27 @@ func (s *ReadblockStatement) String() string {
 	return out.String()
 }
 
+type CopyblockStatement struct {
+	Token token.Token
+	X1    Expression
+	Y1    Expression
+	X2    Expression
+	Y2    Expression
+	Dx    Expression
+	Dy    Expression
+	Over  Expression
+}
+
+func (s *CopyblockStatement) statementNode() {}
+func (s *CopyblockStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *CopyblockStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	return out.String()
+}
+
 type SquashStatement struct {
 	Token token.Token
 	Block Expression
@@ -1036,6 +1077,24 @@ func (s *AskMouseStatement) TokenLiteral() string {
 	return s.Token.Literal
 }
 func (s *AskMouseStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	return out.String()
+}
+
+type AskBlocksizeStatement struct {
+	Token  token.Token
+	Block  Expression
+	Width  *Identifier
+	Height *Identifier
+	Mode   *Identifier
+}
+
+func (s *AskBlocksizeStatement) statementNode() {}
+func (s *AskBlocksizeStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *AskBlocksizeStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(s.TokenLiteral() + " ")
 	return out.String()

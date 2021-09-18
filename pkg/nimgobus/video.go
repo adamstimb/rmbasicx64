@@ -173,6 +173,26 @@ func (n *Nimbus) handleColourFlash(c int) int {
 	return retVal
 }
 
+func overflow(n, max int) int {
+	if n <= max {
+		return n
+	}
+	return int(n - (max+1)*int(math.Floor(float64(n)/float64((max+1)))))
+}
+
+// handlePattern is used to figure out the colour of a pixel if a pattern is being used instead
+// of a solid colour
+func (n *Nimbus) handlePattern(x, y, c int) int {
+	if c < 128 {
+		// is not a pattern
+		return c
+	}
+	x = overflow(x, 3)
+	y = overflow(y, 3)
+	pattern := n.patterns[c-128]
+	return pattern[y][x]
+}
+
 // writeSprite writes a sprite directly to videoMemory
 func (n *Nimbus) writeSprite(thisSprite Sprite) {
 	// assumes drawQueue is locked!
@@ -216,10 +236,10 @@ func (n *Nimbus) writeSprite(thisSprite Sprite) {
 				// otherwise use the colour given by the pixel
 				if thisSprite.colour >= 0 {
 					if thisSprite.pixels[spriteY][spriteX] == 1 {
-						n.videoMemory[y][x] = thisSprite.colour
+						n.videoMemory[y][x] = n.handlePattern(x, y, thisSprite.colour)
 					}
 				} else {
-					n.videoMemory[y][x] = thisSprite.pixels[spriteY][spriteX]
+					n.videoMemory[y][x] = n.handlePattern(x, y, thisSprite.pixels[spriteY][spriteX])
 				}
 				spriteY++
 			}
@@ -237,7 +257,7 @@ func (n *Nimbus) writeSprite(thisSprite Sprite) {
 					continue
 				}
 				if thisSprite.pixels[spriteY][spriteX] == 1 {
-					n.videoMemory[y][x] = n.videoMemory[y][x] ^ thisSprite.colour
+					n.videoMemory[y][x] = n.videoMemory[y][x] ^ n.handlePattern(x, y, thisSprite.colour)
 				}
 				spriteY++
 			}

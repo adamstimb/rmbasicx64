@@ -337,6 +337,14 @@ func (n *Nimbus) Circle(opt CircleOptions, r, x, y int) {
 	if opt.Brush == -255 {
 		opt.Brush = n.brush
 	}
+	// Handle Brush
+	highestColour := 3
+	if n.AskMode() == 40 {
+		highestColour = 15
+	}
+	if opt.Brush < 128 {
+		opt.Brush = overflow(opt.Brush, highestColour)
+	}
 	var over bool
 	switch opt.Over {
 	case -255:
@@ -653,24 +661,50 @@ func (n *Nimbus) Fetch(b int, path string) bool {
 
 // Readblock reads an area x1, y1, x2, y2 of the screen into block b
 func (n *Nimbus) Readblock(b, x1, y1, x2, y2 int) {
-	log.Printf("start Readblock")
+	// Clamp x, y values to within screen
+	maxX := 319
+	if n.AskMode() == 80 {
+		maxX = 639
+	}
+	if y1 < 0 {
+		y1 = 0
+	}
+	if y1 > 249 {
+		y1 = 249
+	}
+	if x1 < 0 {
+		x1 = 0
+	}
+	if x2 > maxX {
+		x2 = maxX
+	}
+	if y2 < 0 {
+		y2 = 0
+	}
+	if y2 > 249 {
+		y2 = 249
+	}
+	if x2 < 0 {
+		x2 = 0
+	}
+	if x2 > maxX {
+		x2 = maxX
+	}
 	// Define a 2d array to store the image data
 	width := x2 - x1
 	height := y2 - y1
-	log.Printf("width=%d, height=%d", width, height)
 	img := make2dArray(width, height)
 	// Use GetPixel to allow the drawqueue to flush then grab the video memory lock
 	_ = n.GetPixel(0, 0)
 	n.muVideoMemory.Lock()
 	// Copy the section, unlock, and bung it in the blocks
-	for x := x1; x <= x2; x++ {
-		for y := y1; y <= y2; y++ {
-			img[y-y1][x-x1] = n.videoMemory[249-y][x]
+	for x := x1; x < x2; x++ {
+		for y := y1; y < y2; y++ {
+			img[len(img)-(y-y1+1)][x-x1] = n.videoMemory[249-y][x]
 		}
 	}
 	n.muVideoMemory.Unlock()
 	n.imageBlocks[b] = imageBlock{image: img, mode: n.AskMode()}
-	log.Printf("end Readblock")
 }
 
 // Writeblock draws an image block on the screen at position x, y
@@ -745,4 +779,38 @@ func (n *Nimbus) Keep(b int, format, path string) error {
 		}
 	}
 	return nil
+}
+
+// SetPattern defines the user-definable patterns
+func (n *Nimbus) SetPattern(slot, row, c1, c2, c3, c4 int) {
+	// clamp colours to maximum for current screen mode
+	maxC := 4
+	if n.AskMode() == 40 {
+		maxC = 15
+	}
+	if c1 > maxC {
+		c1 = maxC
+	}
+	if c2 > maxC {
+		c2 = maxC
+	}
+	if c3 > maxC {
+		c3 = maxC
+	}
+	if c4 > maxC {
+		c4 = maxC
+	}
+	if c1 < 0 {
+		c1 = 0
+	}
+	if c2 < 0 {
+		c2 = 0
+	}
+	if c3 < 0 {
+		c3 = 0
+	}
+	if c4 < 0 {
+		c4 = 0
+	}
+	n.patterns[slot-128][row] = [4]int{c1, c2, c3, c4}
 }

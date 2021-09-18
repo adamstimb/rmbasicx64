@@ -1147,6 +1147,67 @@ func (p *Parser) parseAskMouseStatement() *ast.AskMouseStatement {
 	return nil
 }
 
+func (p *Parser) parseAskBlocksizeStatement() *ast.AskBlocksizeStatement {
+	stmt := &ast.AskBlocksizeStatement{Token: p.curToken}
+	p.nextToken() // consume BLOCKSIZE
+	// Handle no arguments
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// Require block,
+	if val, ok := p.requireExpression(); ok {
+		stmt.Block = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	// Require width variable
+	if !p.curTokenIs(token.IdentifierLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+		return nil
+	}
+	stmt.Width = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	p.nextToken()
+	// Handle no more args
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// Require ,height variable
+	if !p.requireComma() {
+		return nil
+	}
+	if !p.curTokenIs(token.IdentifierLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+		return nil
+	}
+	stmt.Height = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	p.nextToken()
+	// Handle no more args
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// Require , mode variable
+	if !p.requireComma() {
+		return nil
+	}
+	if !p.curTokenIs(token.IdentifierLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+		return nil
+	}
+	stmt.Mode = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	p.nextToken()
+	// Require end of instruction
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parseSaveStatement() *ast.SaveStatement {
 	stmt := &ast.SaveStatement{Token: p.curToken}
 	// Handle SAVE without args
@@ -1314,6 +1375,81 @@ func (p *Parser) parseReadblockStatement() *ast.ReadblockStatement {
 	return nil
 }
 
+func (p *Parser) parseCopyblockStatement() *ast.CopyblockStatement {
+	stmt := &ast.CopyblockStatement{Token: p.curToken}
+	// Handle READBLOCK without args
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index
+		return nil
+	}
+	p.nextToken()
+	// Get X1,
+	if val, ok := p.requireExpression(); ok {
+		stmt.X1 = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	// Get Y1,
+	if val, ok := p.requireExpression(); ok {
+		stmt.Y1 = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	// Get X2,
+	if val, ok := p.requireExpression(); ok {
+		stmt.X2 = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	// Get Y2,
+	if val, ok := p.requireExpression(); ok {
+		stmt.Y2 = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	// Get Dx,
+	if val, ok := p.requireExpression(); ok {
+		stmt.Dx = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	// Get Dy,
+	if val, ok := p.requireExpression(); ok {
+		stmt.Dy = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	// Get Over
+	if val, ok := p.requireExpression(); ok {
+		stmt.Over = val
+	} else {
+		return nil
+	}
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parseSquashStatement() *ast.SquashStatement {
 	stmt := &ast.SquashStatement{Token: p.curToken}
 	// Handle SQUASH without args
@@ -1456,6 +1592,71 @@ func (p *Parser) parseSetCurposStatement() *ast.SetCurposStatement {
 	}
 	// Get row
 	stmt.Row = p.parseExpression(LOWEST)
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseSetPatternStatement() *ast.SetPatternStatement {
+	stmt := &ast.SetPatternStatement{Token: p.curToken}
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index + 1
+		return nil
+	}
+	p.nextToken()
+	// Get Slot, Row
+	if val, ok := p.requireExpression(); ok {
+		stmt.Slot = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	if val, ok := p.requireExpression(); ok {
+		stmt.Row = val
+	} else {
+		return nil
+	}
+	// Get TO
+	if !p.requireTo() {
+		return nil
+	}
+	// Get c1,
+	if val, ok := p.requireExpression(); ok {
+		stmt.C1 = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	// Get c2,
+	if val, ok := p.requireExpression(); ok {
+		stmt.C2 = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	// Get c3,
+	if val, ok := p.requireExpression(); ok {
+		stmt.C3 = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	// Get c4
+	if val, ok := p.requireExpression(); ok {
+		stmt.C4 = val
+	} else {
+		return nil
+	}
 	if p.endOfInstruction() {
 		return stmt
 	}
@@ -2068,6 +2269,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		switch p.curToken.TokenType {
 		case token.MOUSE:
 			return p.parseAskMouseStatement()
+		case token.BLOCKSIZE:
+			return p.parseAskBlocksizeStatement()
 		}
 	case token.SET:
 		p.nextToken()
@@ -2090,6 +2293,8 @@ func (p *Parser) parseStatement() ast.Statement {
 			return p.parseSetCurposStatement()
 		case token.COLOUR:
 			return p.parseSetColourStatement()
+		case token.PATTERN:
+			return p.parseSetPatternStatement()
 		case token.CONFIG:
 			p.nextToken()
 			switch p.curToken.TokenType {
@@ -2121,6 +2326,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseWriteblockStatement()
 	case token.READBLOCK:
 		return p.parseReadblockStatement()
+	case token.COPYBLOCK:
+		return p.parseCopyblockStatement()
 	case token.SQUASH:
 		return p.parseSquashStatement()
 	case token.CLEARBLOCK:
