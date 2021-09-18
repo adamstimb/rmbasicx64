@@ -418,15 +418,26 @@ func (n *Nimbus) Circle(opt CircleOptions, r, x, y int) {
 }
 
 type AreaOptions struct {
-	Brush int
-	Over  int
+	Brush     int
+	Over      int
+	FillStyle FillStyle
 }
 
 // Area draws a filled polygon of coordinates on the screen
 func (n *Nimbus) Area(opt AreaOptions, coordList []XyCoord) {
+	oldFillStyle := n.fillStyle
+	n.SetFillStyle(opt.FillStyle.Style, opt.FillStyle.Hatching, opt.FillStyle.Colour2)
 	// Handle default values
 	if opt.Brush == -255 {
 		opt.Brush = n.brush
+	}
+	// Handle Brush
+	highestColour := 3
+	if n.AskMode() == 40 {
+		highestColour = 15
+	}
+	if opt.Brush < 128 {
+		opt.Brush = overflow(opt.Brush, highestColour)
 	}
 	var over bool
 	switch opt.Over {
@@ -519,6 +530,7 @@ func (n *Nimbus) Area(opt AreaOptions, coordList []XyCoord) {
 	if newSprite, ok := n.applyDrawingbox(Sprite{img, minX, minY, opt.Brush, over}, 0); ok {
 		n.drawSprite(newSprite)
 	}
+	n.SetFillStyle(oldFillStyle.Style, oldFillStyle.Hatching, oldFillStyle.Colour2)
 }
 
 type PointsOptions struct {

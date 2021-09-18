@@ -911,10 +911,13 @@ func (s *SquashStatement) String() string {
 }
 
 type AreaStatement struct {
-	Token     token.Token
-	CoordList []Expression
-	Brush     Expression
-	Over      Expression
+	Token        token.Token
+	CoordList    []Expression
+	Brush        Expression
+	Over         Expression
+	FillStyle    Expression
+	FillHatching Expression
+	FillColour2  Expression
 }
 
 func (ps *AreaStatement) statementNode() {}

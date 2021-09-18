@@ -1039,6 +1039,32 @@ func (p *Parser) parseAreaStatement() *ast.AreaStatement {
 		case token.OVER:
 			p.nextToken()
 			stmt.Over = p.parseExpression(LOWEST)
+		case token.STYLE:
+			p.nextToken()
+			// get required fill style
+			if val, ok := p.requireExpression(); ok {
+				stmt.FillStyle = val
+			} else {
+				return nil
+			}
+			if p.curTokenIs(token.Comma) {
+				// get required fill hatching
+				p.nextToken()
+				if val, ok := p.requireExpression(); ok {
+					stmt.FillHatching = val
+				} else {
+					return nil
+				}
+				if p.curTokenIs(token.Comma) {
+					// get required fill colour2
+					p.nextToken()
+					if val, ok := p.requireExpression(); ok {
+						stmt.FillColour2 = val
+					} else {
+						return nil
+					}
+				}
+			}
 		default:
 			p.ErrorTokenIndex = p.curToken.Index
 			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.UnknownSetAskAttribute)
