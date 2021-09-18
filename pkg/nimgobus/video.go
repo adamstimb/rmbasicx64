@@ -183,6 +183,23 @@ func overflow(n, max int) int {
 // handlePattern is used to figure out the colour of a pixel if a pattern is being used instead
 // of a solid colour
 func (n *Nimbus) handlePattern(x, y, c int) int {
+	// Handle fill style
+	if n.fillStyle.Style == 2 && c < 128 {
+		// use hatching
+		x = overflow(x, 15)
+		y = overflow(y, 15)
+		hatching := n.hatchings[n.fillStyle.Hatching]
+		if hatching[y][x] == 1 {
+			return c
+		} else {
+			if n.fillStyle.Colour2 == -1 {
+				return 0
+			} else {
+				return n.fillStyle.Colour2
+			}
+		}
+		//return hatching[y][x]
+	}
 	if c < 128 {
 		// is not a pattern
 		return c

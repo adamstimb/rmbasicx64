@@ -814,3 +814,8 @@ func (n *Nimbus) SetPattern(slot, row, c1, c2, c3, c4 int) {
 	}
 	n.patterns[slot-128][row] = [4]int{c1, c2, c3, c4}
 }
+
+// SetFillStyle sets the fill style for AREA, CIRCLE, SLICE and FLOOD
+func (n *Nimbus) SetFillStyle(style, hatching, colour2 int) {
+	n.fillStyle = fillStyle{Style: style, Hatching: hatching, Colour2: colour2}
+}
