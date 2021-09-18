@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math"
 	"os"
 	"path/filepath"
@@ -523,6 +524,57 @@ func evalCircleStatement(g *game.Game, stmt *ast.CircleStatement, env *object.En
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
 	}
+	// Handle fill style
+	var fillStyle nimgobus.FillStyle
+	if stmt.FillStyle == nil {
+		fillStyle = g.AskFillStyle()
+	} else {
+		obj := Eval(g, stmt.FillStyle, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			if val.Value >= 0 && val.Value <= 2 {
+				fillStyle.Style = int(val.Value)
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+		if fillStyle.Style == 2 {
+			obj := Eval(g, stmt.FillHatching, env)
+			if isError(obj) {
+				return obj
+			}
+			if val, ok := obj.(*object.Numeric); ok {
+				if val.Value >= 0 && val.Value <= 5 {
+					fillStyle.Hatching = int(val.Value)
+				} else {
+					return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+				}
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
+			if stmt.FillColour2 == nil {
+				fillStyle.Colour2 = -1
+			} else {
+				obj := Eval(g, stmt.FillColour2, env)
+				if isError(obj) {
+					return obj
+				}
+				if val, ok := obj.(*object.Numeric); ok {
+					if val.Value >= 0 && val.Value <= 5 {
+						fillStyle.Colour2 = int(val.Value)
+					} else {
+						return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+					}
+				} else {
+					return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+				}
+			}
+		}
+	}
 	// Handle radius
 	var radius int
 	obj := Eval(g, stmt.Radius, env)
@@ -556,7 +608,8 @@ func evalCircleStatement(g *game.Game, stmt *ast.CircleStatement, env *object.En
 		coordList = append(coordList, nimgobus.XyCoord{X, Y})
 	}
 	// Execute
-	opt := nimgobus.CircleOptions{Brush: Brush, Over: Over}
+	log.Printf("fillstyle: style=%d, hatching=%d, colour2=%d", fillStyle.Style, fillStyle.Hatching, fillStyle.Colour2)
+	opt := nimgobus.CircleOptions{Brush: Brush, Over: Over, FillStyle: fillStyle}
 	for _, coord := range coordList {
 		g.Circle(opt, radius, coord.X, coord.Y)
 	}

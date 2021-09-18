@@ -762,11 +762,14 @@ func (ps *LineStatement) String() string {
 }
 
 type CircleStatement struct {
-	Token     token.Token
-	Radius    Expression
-	CoordList []Expression
-	Brush     Expression
-	Over      Expression
+	Token        token.Token
+	Radius       Expression
+	CoordList    []Expression
+	Brush        Expression
+	Over         Expression
+	FillStyle    Expression
+	FillHatching Expression
+	FillColour2  Expression
 }
 
 func (s *CircleStatement) statementNode() {}

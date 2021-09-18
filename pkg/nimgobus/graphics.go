@@ -327,12 +327,15 @@ func (n *Nimbus) drawCircle(r int, img [][]int) [][]int {
 }
 
 type CircleOptions struct {
-	Brush int
-	Over  int
+	Brush     int
+	Over      int
+	FillStyle FillStyle
 }
 
 // Circle draws a a filled circle
 func (n *Nimbus) Circle(opt CircleOptions, r, x, y int) {
+	oldFillStyle := n.fillStyle
+	n.SetFillStyle(opt.FillStyle.Style, opt.FillStyle.Hatching, opt.FillStyle.Colour2)
 	// Handle default values
 	if opt.Brush == -255 {
 		opt.Brush = n.brush
@@ -411,6 +414,7 @@ func (n *Nimbus) Circle(opt CircleOptions, r, x, y int) {
 	if newSprite, ok := n.applyDrawingbox(Sprite{img, sx, sy, opt.Brush, over}, 0); ok {
 		n.drawSprite(newSprite)
 	}
+	n.SetFillStyle(oldFillStyle.Style, oldFillStyle.Hatching, oldFillStyle.Colour2)
 }
 
 type AreaOptions struct {
@@ -818,5 +822,10 @@ func (n *Nimbus) SetPattern(slot, row, c1, c2, c3, c4 int) {
 // SetFillStyle sets the fill style for AREA, CIRCLE, SLICE and FLOOD
 func (n *Nimbus) SetFillStyle(style, hatching, colour2 int) {
 	_ = n.GetPixel(0, 0)
-	n.fillStyle = fillStyle{Style: style, Hatching: hatching, Colour2: colour2}
+	n.fillStyle = FillStyle{Style: style, Hatching: hatching, Colour2: colour2}
+}
+
+// AskFillStyle gets the current fill style
+func (n *Nimbus) AskFillStyle() FillStyle {
+	return n.fillStyle
 }

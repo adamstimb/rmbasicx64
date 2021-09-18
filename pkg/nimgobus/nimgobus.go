@@ -68,8 +68,8 @@ type imageBlock struct {
 	deleted bool    // Set to true if Delblock is called on the block
 }
 
-// fillStyle describes the fill settings for AREA, FLOOD, CIRCLE, and SLICE
-type fillStyle struct {
+// FillStyle describes the fill settings for AREA, FLOOD, CIRCLE, and SLICE
+type FillStyle struct {
 	Style    int // 1 for solid/dithered, 2 for hatched, 3 for hollow (edge)
 	Hatching int // Hatching type if Style==2
 	Colour2  int // 2nd hatching colour if Style==2
@@ -104,7 +104,7 @@ type Nimbus struct {
 	pointsStyle            int                  // The current points style
 	patterns               [][4][4]int          // The brush patterns
 	hatchings              [][16][16]int        // The fill hatchings
-	fillStyle              fillStyle            // The current fill style
+	fillStyle              FillStyle            // The current fill style
 	borderSize             int                  // The width of the border in pixels
 	borderColour           int                  // The current border colour
 	paperColour            int                  // The current paper colour
