@@ -817,5 +817,6 @@ func (n *Nimbus) SetPattern(slot, row, c1, c2, c3, c4 int) {
 
 // SetFillStyle sets the fill style for AREA, CIRCLE, SLICE and FLOOD
 func (n *Nimbus) SetFillStyle(style, hatching, colour2 int) {
+	_ = n.GetPixel(0, 0)
 	n.fillStyle = fillStyle{Style: style, Hatching: hatching, Colour2: colour2}
 }

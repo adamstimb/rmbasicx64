@@ -168,6 +168,7 @@ func (n *Nimbus) Init() {
 	n.pointsStyle = 1
 	n.borderSize = 50
 	n.patterns = append(n.patterns, defaultHighResPatterns...)
+	n.hatchings = append(n.hatchings, defaultHatchings...)
 	n.borderImage = ebiten.NewImage(640+(n.borderSize*2), 500+(n.borderSize*2))
 	n.Monitor = ebiten.NewImage(640+(n.borderSize*2), 500+(n.borderSize*2))
 	n.drawQueue = []Sprite{}

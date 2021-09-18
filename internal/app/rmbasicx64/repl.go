@@ -42,9 +42,10 @@ func welcomeScreen(g *game.Game) {
 	g.Print(workspaceAvailable)
 	g.Put(13)
 
-	g.SetFillStyle(2, 1, 3)
+	g.SetFillStyle(2, 5, 3)
 	opt := nimgobus.CircleOptions{Brush: 2, Over: 1}
 	g.Circle(opt, 50, 50, 50)
+	g.SetFillStyle(0, 0, 0)
 }
 
 // repl is the REPL that handles input

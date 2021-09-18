@@ -114,6 +114,8 @@ func (n *Nimbus) SetMode(columns int) {
 		n.palette = append(n.palette, n.defaultLowResPalette...)
 		n.patterns = [][4][4]int{}
 		n.patterns = append(n.patterns, defaultLowResPatterns...)
+		n.hatchings = [][16][16]int{}
+		n.hatchings = append(n.hatchings, defaultHatchings...)
 		n.brush = 15
 		n.plotDirection = 0
 		n.plotFont = 0
@@ -131,6 +133,8 @@ func (n *Nimbus) SetMode(columns int) {
 		n.palette = append(n.palette, n.defaultHighResPalette...)
 		n.patterns = [][4][4]int{}
 		n.patterns = append(n.patterns, defaultHighResPatterns...)
+		n.hatchings = [][16][16]int{}
+		n.hatchings = append(n.hatchings, defaultHatchings...)
 		n.paperColour = 0
 		n.borderColour = 0
 		n.penColour = 3
