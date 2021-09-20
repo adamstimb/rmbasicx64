@@ -2,7 +2,6 @@ package object
 
 import (
 	"fmt"
-	"log"
 	"sort"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
@@ -202,7 +201,6 @@ func (e *Environment) NewArray(name string, subscripts []int) (Object, bool) {
 }
 
 func (e *Environment) GetArray(name string, subscripts []int) (Object, bool) {
-	log.Printf("GetArray name=%q", name)
 	objArray, ok := e.store[name]
 	if !ok && e.outer != nil {
 		objArray, ok = e.outer.GetArray(name, subscripts)
