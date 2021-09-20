@@ -24,7 +24,7 @@ func (n *Nimbus) drawCursor() {
 	// cleanup cursor if disables and/or skip to next iteration
 	n.muCursorFlash.Lock()
 	if n.cursorFlash {
-		n.writeSpriteToOverlay(Sprite{charPixels, curX, curY, n.penColour, false})
+		n.writeSpriteToOverlay(Sprite{pixels: charPixels, x: curX, y: curY, colour: n.penColour, over: false})
 	}
 	n.muCursorFlash.Unlock()
 }
@@ -75,8 +75,8 @@ func (n *Nimbus) AdvanceCursor(forceCarriageReturn bool) {
 		}
 		n.muVideoMemory.Unlock()
 		n.muDrawQueue.Unlock()
-		n.drawSprite(Sprite{textBoxImg[10:], x1, y2 + 10, -1, true})
-		n.drawSprite(Sprite{paperImg, x1, y2, -1, true})
+		n.drawSprite(Sprite{pixels: textBoxImg[10:], x: x1, y: y2 + 10, colour: -1, over: true})
+		n.drawSprite(Sprite{pixels: paperImg, x: x1, y: y2, colour: -1, over: true})
 	}
 	// Set new cursor position
 	n.cursorPosition = relCurPos

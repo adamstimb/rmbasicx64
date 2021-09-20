@@ -248,6 +248,7 @@ const (
 	READBLOCK  = "READBLOCK"
 	COPYBLOCK  = "COPYBLOCK"
 	BLOCKSIZE  = "BLOCKSIZE"
+	FILL       = "FILL"
 )
 
 // IsKeyword returns true if a TokenType represents a keyword
@@ -443,6 +444,7 @@ func IsKeyword(testString string) bool {
 		READBLOCK,
 		COPYBLOCK,
 		BLOCKSIZE,
+		FILL,
 	}
 	for _, keyword := range keywords {
 		if testString == keyword {

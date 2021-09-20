@@ -12,6 +12,7 @@ import (
 const (
 	NUMERIC_OBJ      = "NUMERIC"
 	BOOLEAN_OBJ      = "BOOLEAN"
+	ARRAY_OBJ        = "ARRAY"
 	NULL_OBJ         = "NULL" // RM Basic didn't have null...I think it just created a new var with zero or "" value...maybe?
 	RETURN_VALUE_OBJ = "RETURN_VALUE"
 	FUNCTION_OBJ     = "FUNCTION"
@@ -86,6 +87,18 @@ func (b *Boolean) Type() ObjectType {
 }
 func (b *Boolean) Inspect() string {
 	return fmt.Sprintf("%t", b.Value)
+}
+
+type Array struct {
+	Items      []Object
+	Subscripts []int
+}
+
+func (b *Array) Type() ObjectType {
+	return ARRAY_OBJ
+}
+func (b *Array) Inspect() string {
+	return fmt.Sprintf("%t", b.Items)
 }
 
 type Null struct{}

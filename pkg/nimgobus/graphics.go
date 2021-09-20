@@ -36,7 +36,7 @@ func (n *Nimbus) ValidateStyle(s int) bool {
 
 // PlonkLogo draws the RM Nimbus logo
 func (n *Nimbus) PlonkLogo(x, y int) {
-	n.drawSprite(Sprite{n.logoImage, x, y, -1, true})
+	n.drawSprite(Sprite{pixels: n.logoImage, x: x, y: y, colour: -1, over: true})
 }
 
 type PlotOptions struct {
@@ -100,8 +100,8 @@ func (n *Nimbus) Plot(opt PlotOptions, text string, x, y int) {
 		}
 		xOffset += 8
 	}
-	resizedSprite := n.resizeSprite(Sprite{img, x, y, opt.Brush, over}, imgWidth*opt.SizeX, imgHeight*opt.SizeY)
-	rotatedSprite := n.rotateSprite(Sprite{resizedSprite.pixels, x, y, opt.Brush, over}, opt.Direction)
+	resizedSprite := n.resizeSprite(Sprite{pixels: img, x: x, y: y, colour: opt.Brush, over: over}, imgWidth*opt.SizeX, imgHeight*opt.SizeY)
+	rotatedSprite := n.rotateSprite(Sprite{pixels: resizedSprite.pixels, x: x, y: y, colour: opt.Brush, over: over}, opt.Direction)
 	if newSprite, ok := n.applyDrawingbox(rotatedSprite, 0); ok {
 		n.drawSprite(newSprite)
 	}
@@ -284,7 +284,7 @@ func (n *Nimbus) Line(opt LineOptions, coordList []XyCoord) {
 		//log.Printf("i=%d minXY=(%d, %d) line=(%d, %d)-(%d-%d)", i, minX, minY, coordList[i].X, coordList[i].Y, coordList[i+1].X, coordList[i+1].Y)
 		img = n.drawLine(img, coordList[i].X-minX, coordList[i].Y-minY, coordList[i+1].X-minX, coordList[i+1].Y-minY)
 	}
-	if newSprite, ok := n.applyDrawingbox(Sprite{img, minX, minY, opt.Brush, over}, 0); ok {
+	if newSprite, ok := n.applyDrawingbox(Sprite{pixels: img, x: minX, y: minY, colour: opt.Brush, over: over}, 0); ok {
 		n.drawSprite(newSprite)
 	}
 	//n.drawSprite(n.applyDrawingbox(Sprite{img, minX, minY, opt.Brush, over}, 0))
@@ -334,11 +334,15 @@ type CircleOptions struct {
 
 // Circle draws a a filled circle
 func (n *Nimbus) Circle(opt CircleOptions, r, x, y int) {
-	oldFillStyle := n.fillStyle
-	n.SetFillStyle(opt.FillStyle.Style, opt.FillStyle.Hatching, opt.FillStyle.Colour2)
 	// Handle default values
 	if opt.Brush == -255 {
 		opt.Brush = n.brush
+	}
+	var fillStyle FillStyle
+	if opt.FillStyle.Style < 0 {
+		fillStyle = n.AskFillStyle()
+	} else {
+		fillStyle = opt.FillStyle
 	}
 	// Handle Brush
 	highestColour := 3
@@ -411,10 +415,9 @@ func (n *Nimbus) Circle(opt CircleOptions, r, x, y int) {
 			}
 		}
 	}
-	if newSprite, ok := n.applyDrawingbox(Sprite{img, sx, sy, opt.Brush, over}, 0); ok {
+	if newSprite, ok := n.applyDrawingbox(Sprite{pixels: img, x: sx, y: sy, colour: opt.Brush, over: over, fillStyle: fillStyle}, 0); ok {
 		n.drawSprite(newSprite)
 	}
-	n.SetFillStyle(oldFillStyle.Style, oldFillStyle.Hatching, oldFillStyle.Colour2)
 }
 
 type AreaOptions struct {
@@ -425,11 +428,15 @@ type AreaOptions struct {
 
 // Area draws a filled polygon of coordinates on the screen
 func (n *Nimbus) Area(opt AreaOptions, coordList []XyCoord) {
-	oldFillStyle := n.fillStyle
-	n.SetFillStyle(opt.FillStyle.Style, opt.FillStyle.Hatching, opt.FillStyle.Colour2)
 	// Handle default values
 	if opt.Brush == -255 {
 		opt.Brush = n.brush
+	}
+	var fillStyle FillStyle
+	if opt.FillStyle.Style < 0 {
+		fillStyle = n.AskFillStyle()
+	} else {
+		fillStyle = opt.FillStyle
 	}
 	// Handle Brush
 	highestColour := 3
@@ -527,10 +534,9 @@ func (n *Nimbus) Area(opt AreaOptions, coordList []XyCoord) {
 			}
 		}
 	}
-	if newSprite, ok := n.applyDrawingbox(Sprite{img, minX, minY, opt.Brush, over}, 0); ok {
+	if newSprite, ok := n.applyDrawingbox(Sprite{pixels: img, x: minX, y: minY, colour: opt.Brush, over: over, fillStyle: fillStyle}, 0); ok {
 		n.drawSprite(newSprite)
 	}
-	n.SetFillStyle(oldFillStyle.Style, oldFillStyle.Hatching, oldFillStyle.Colour2)
 }
 
 type PointsOptions struct {
@@ -559,14 +565,14 @@ func (n *Nimbus) Points(opt PointsOptions, coordList []XyCoord) {
 	}
 	// Draw sprites
 	for _, coord := range coordList {
-		if newSprite, ok := n.applyDrawingbox(Sprite{n.pointsStyles[opt.Style-1], coord.X - 4, coord.Y - 4, opt.Brush, over}, 0); ok {
+		if newSprite, ok := n.applyDrawingbox(Sprite{pixels: n.pointsStyles[opt.Style-1], x: coord.X - 4, y: coord.Y - 4, colour: opt.Brush, over: over}, 0); ok {
 			n.drawSprite(newSprite)
 		}
 	}
 }
 
 // Flood fill algorithm adapted from https://stackoverflow.com/questions/2783204/flood-fill-using-a-stack
-func (n *Nimbus) floodFillDo(maxX int, hits [250][640]bool, x, y, srcColor, tgtColor int, useEdgeColour bool, edgeColour int) bool {
+func (n *Nimbus) floodFillDo(maxX int, hits [250][640]bool, x, y, srcColor, tgtColor int, useEdgeColour bool, edgeColour int, fillStyle FillStyle) bool {
 	if (y < 0) || (x < 0) || (y > 249) || (x > maxX) {
 		return false
 	}
@@ -583,11 +589,11 @@ func (n *Nimbus) floodFillDo(maxX int, hits [250][640]bool, x, y, srcColor, tgtC
 		}
 	}
 	// valid, paint it
-	n.videoMemory[249-y][x] = tgtColor
+	n.videoMemory[249-y][x] = n.handlePattern(x, y, tgtColor, fillStyle)
 	return true
 }
 
-func (n *Nimbus) floodFill(x, y, color int, useEdgeColour bool, edgeColour int) {
+func (n *Nimbus) floodFill(x, y, color int, useEdgeColour bool, edgeColour int, fillStyle FillStyle) {
 	maxX := 639
 	if n.AskMode() == 40 {
 		maxX = 319
@@ -600,7 +606,7 @@ func (n *Nimbus) floodFill(x, y, color int, useEdgeColour bool, edgeColour int) 
 	for len(queue) > 0 {
 		p := queue[0]
 		queue = queue[1:]
-		result := n.floodFillDo(maxX, hits, p.X, p.Y, srcColor, color, useEdgeColour, edgeColour)
+		result := n.floodFillDo(maxX, hits, p.X, p.Y, srcColor, color, useEdgeColour, edgeColour, fillStyle)
 		if result {
 			hits[p.Y][p.X] = true
 			queue = append(queue, XyCoord{p.X + 1, p.Y + 1})
@@ -618,6 +624,7 @@ type FloodOptions struct {
 	Brush         int
 	UseEdgeColour bool
 	EdgeColour    int
+	FillStyle     FillStyle
 }
 
 // Flood seeds a boundary fill at x, y
@@ -626,8 +633,14 @@ func (n *Nimbus) Flood(opt FloodOptions, coord XyCoord) {
 	if opt.Brush == -255 {
 		opt.Brush = n.brush
 	}
+	var fillStyle FillStyle
+	if opt.FillStyle.Style < 0 {
+		fillStyle = n.AskFillStyle()
+	} else {
+		fillStyle = opt.FillStyle
+	}
 	// Start fill
-	n.floodFill(coord.X, coord.Y, opt.Brush, opt.UseEdgeColour, opt.EdgeColour)
+	n.floodFill(coord.X, coord.Y, opt.Brush, opt.UseEdgeColour, opt.EdgeColour, fillStyle)
 }
 
 // Clearblock resets all the image blocks

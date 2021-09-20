@@ -166,10 +166,37 @@ func (p *Parser) parseBoolean() ast.Expression {
 }
 
 func (p *Parser) parseIdentifier() ast.Expression {
-	return &ast.Identifier{
-		Token: p.curToken,
-		Value: p.curToken.Literal,
+	// If immediately followed by ( then it's an array or function
+	ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	if p.peekTokenIs(token.LeftParen) {
+		p.nextToken()
+		p.nextToken()
+		for {
+			val, ok := p.requireExpression()
+			if !ok {
+				return nil
+			} else {
+				ident.Subscripts = append(ident.Subscripts, val)
+			}
+			if p.curTokenIs(token.RightParen) {
+				p.nextToken()
+				break
+			}
+			if !p.requireComma() {
+				return nil
+			}
+			if p.onEndOfInstruction() {
+				p.ErrorTokenIndex = p.curToken.Index
+				p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.ClosingBracketIsNeeded)
+				return nil
+			}
+		}
 	}
+	return ident
+	//return &ast.Identifier{
+	//	Token: p.curToken,
+	//	Value: p.curToken.Literal,
+	//}
 }
 
 func (p *Parser) Errors() []string {
@@ -222,6 +249,28 @@ func (p *Parser) endOfInstruction() bool {
 func (p *Parser) requireComma() bool {
 	if !p.curTokenIs(token.Comma) {
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.CommaSeparatorIsNeeded)
+		p.ErrorTokenIndex = p.curToken.Index
+		p.nextToken()
+		return false
+	}
+	p.nextToken()
+	return true
+}
+
+func (p *Parser) requireOpenBracket() bool {
+	if !p.curTokenIs(token.LeftParen) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.OpeningBracketIsNeeded)
+		p.ErrorTokenIndex = p.curToken.Index
+		p.nextToken()
+		return false
+	}
+	p.nextToken()
+	return true
+}
+
+func (p *Parser) requireClosingBracket() bool {
+	if !p.curTokenIs(token.RightParen) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.ClosingBracketIsNeeded)
 		p.ErrorTokenIndex = p.curToken.Index
 		p.nextToken()
 		return false
@@ -976,6 +1025,32 @@ func (p *Parser) parseFloodStatement() *ast.FloodStatement {
 			} else {
 				return nil
 			}
+		case token.STYLE:
+			p.nextToken()
+			// get required fill style
+			if val, ok := p.requireExpression(); ok {
+				stmt.FillStyle = val
+			} else {
+				return nil
+			}
+			if p.curTokenIs(token.Comma) {
+				// get required fill hatching
+				p.nextToken()
+				if val, ok := p.requireExpression(); ok {
+					stmt.FillHatching = val
+				} else {
+					return nil
+				}
+				if p.curTokenIs(token.Comma) {
+					// get required fill colour2
+					p.nextToken()
+					if val, ok := p.requireExpression(); ok {
+						stmt.FillColour2 = val
+					} else {
+						return nil
+					}
+				}
+			}
 		default:
 			p.ErrorTokenIndex = p.curToken.Index
 			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.UnknownSetAskAttribute)
@@ -1141,6 +1216,47 @@ func (p *Parser) parseNextStatement() *ast.NextStatement {
 		return nil
 	}
 	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	// Require end of instruction
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseDimStatement() *ast.DimStatement {
+	stmt := &ast.DimStatement{Token: p.curToken}
+	p.nextToken() // consume DIM
+	// Require variable name
+	if !p.curTokenIs(token.IdentifierLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+		return nil
+	}
+	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	// Require at least one subscript
+	p.nextToken()
+	if !p.requireOpenBracket() {
+		return nil
+	}
+	for {
+		val, ok := p.requireExpression()
+		if !ok {
+			return nil
+		}
+		stmt.Subscripts = append(stmt.Subscripts, val)
+		if p.curTokenIs(token.RightParen) {
+			p.nextToken()
+			break
+		}
+		if !p.requireComma() {
+			return nil
+		}
+		if p.onEndOfInstruction() {
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.ClosingBracketIsNeeded)
+			return nil
+		}
+	}
 	// Require end of instruction
 	if p.endOfInstruction() {
 		return stmt
@@ -1888,6 +2004,41 @@ func (p *Parser) parseSetConfigBootStatement() *ast.SetConfigBootStatement {
 	return nil
 }
 
+func (p *Parser) parseSetFillStyleStatement() *ast.SetFillStyleStatement {
+	stmt := &ast.SetFillStyleStatement{Token: p.curToken}
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index
+		return nil
+	}
+	// get required fill style
+	if val, ok := p.requireExpression(); ok {
+		stmt.FillStyle = val
+	} else {
+		return nil
+	}
+	if p.curTokenIs(token.Comma) {
+		// get required fill hatching
+		p.nextToken()
+		if val, ok := p.requireExpression(); ok {
+			stmt.FillHatching = val
+		} else {
+			return nil
+		}
+		if p.curTokenIs(token.Comma) {
+			// get required fill colour2
+			p.nextToken()
+			if val, ok := p.requireExpression(); ok {
+				stmt.FillColour2 = val
+			} else {
+				return nil
+			}
+		}
+	}
+	return stmt
+}
+
 func (p *Parser) parseSetRadStatement() *ast.SetRadStatement {
 	stmt := &ast.SetRadStatement{Token: p.curToken}
 	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
@@ -2316,6 +2467,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseForStatement()
 	case token.NEXT:
 		return p.parseNextStatement()
+	case token.DIM:
+		return p.parseDimStatement()
 	case token.ASK:
 		p.nextToken()
 		switch p.curToken.TokenType {
@@ -2352,6 +2505,12 @@ func (p *Parser) parseStatement() ast.Statement {
 			switch p.curToken.TokenType {
 			case token.BOOT:
 				return p.parseSetConfigBootStatement()
+			}
+		case token.FILL:
+			p.nextToken()
+			switch p.curToken.TokenType {
+			case token.STYLE:
+				return p.parseSetFillStyleStatement()
 			}
 		default:
 			p.errorMsg = syntaxerror.ErrorMessage((syntaxerror.WrongSetAskAttribute))

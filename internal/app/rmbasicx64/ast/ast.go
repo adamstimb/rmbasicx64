@@ -259,8 +259,9 @@ func (il *NumericLiteral) String() string {
 }
 
 type Identifier struct {
-	Token token.Token // the token.IdentifierLiteral token
-	Value string
+	Token      token.Token // the token.IdentifierLiteral token
+	Value      string
+	Subscripts []Expression
 }
 
 func (i *Identifier) expressionNode() {}
@@ -806,6 +807,9 @@ type FloodStatement struct {
 	Brush         Expression
 	UseEdgeColour Expression
 	EdgeColour    Expression
+	FillStyle     Expression
+	FillHatching  Expression
+	FillColour2   Expression
 }
 
 func (s *FloodStatement) statementNode() {}
@@ -925,6 +929,23 @@ func (ps *AreaStatement) TokenLiteral() string {
 	return ps.Token.Literal
 }
 func (ps *AreaStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(ps.TokenLiteral() + " ")
+	return out.String()
+}
+
+type SetFillStyleStatement struct {
+	Token        token.Token
+	FillStyle    Expression
+	FillHatching Expression
+	FillColour2  Expression
+}
+
+func (ps *SetFillStyleStatement) statementNode() {}
+func (ps *SetFillStyleStatement) TokenLiteral() string {
+	return ps.Token.Literal
+}
+func (ps *SetFillStyleStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(ps.TokenLiteral() + " ")
 	return out.String()
@@ -1065,6 +1086,23 @@ func (s *NextStatement) TokenLiteral() string {
 	return s.Token.Literal
 }
 func (s *NextStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	out.WriteString(s.Name.String())
+	return out.String()
+}
+
+type DimStatement struct {
+	Token      token.Token
+	Name       *Identifier
+	Subscripts []Expression
+}
+
+func (s *DimStatement) statementNode() {}
+func (s *DimStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *DimStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(s.TokenLiteral() + " ")
 	out.WriteString(s.Name.String())

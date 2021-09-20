@@ -43,10 +43,11 @@ type drawingBox struct {
 
 // Sprite defines a sprite that contains a 2d image array, a screen co-ordinate, colour and overwrite (XOR) mode
 type Sprite struct {
-	pixels [][]int
-	x, y   int
-	colour int
-	over   bool
+	pixels    [][]int
+	x, y      int
+	colour    int
+	over      bool
+	fillStyle FillStyle
 }
 
 // repeatingChar is used to store and count repeating chars for dynamically limiting repeating key presses
@@ -105,6 +106,7 @@ type Nimbus struct {
 	patterns               [][4][4]int          // The brush patterns
 	hatchings              [][16][16]int        // The fill hatchings
 	fillStyle              FillStyle            // The current fill style
+	useFillStyle           bool                 // Set to true to render with fill style
 	borderSize             int                  // The width of the border in pixels
 	borderColour           int                  // The current border colour
 	paperColour            int                  // The current paper colour
@@ -179,6 +181,7 @@ func (n *Nimbus) Init() {
 	n.defaultHighResPalette = append(n.defaultHighResPalette, defaultHighResPalette...)
 	n.defaultLowResPalette = append(n.defaultLowResPalette, defaultLowResPalette...)
 	n.palette = append(n.palette, n.defaultHighResPalette...)
+	n.useFillStyle = false
 	n.initColourFlashSettings()
 	n.borderColour = 0
 	n.paperColour = 0

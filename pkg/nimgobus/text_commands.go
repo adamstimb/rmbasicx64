@@ -43,7 +43,7 @@ func (n *Nimbus) Cls(p ...int) {
 			blankPaper[y][x] = 1
 		}
 	}
-	n.drawSprite(Sprite{blankPaper, 0, 0, n.paperColour, true})
+	n.drawSprite(Sprite{pixels: blankPaper, x: 0, y: 0, colour: n.paperColour, over: true})
 }
 
 // SetColour assigns one of the basic colours to a slot in the current palette
@@ -290,7 +290,7 @@ func (n *Nimbus) Put(c int) {
 				}
 			}
 		}
-		n.drawSprite(Sprite{newCharPixels, curX, curY, -1, true})
+		n.drawSprite(Sprite{pixels: newCharPixels, x: curX, y: curY, colour: -1, over: true})
 		n.AdvanceCursor(false)
 	} else {
 		// Force carriage return if 13 was passed

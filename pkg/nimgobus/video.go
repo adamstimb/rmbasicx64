@@ -131,7 +131,7 @@ func (n *Nimbus) applyDrawingbox(thisSprite Sprite, d int) (Sprite, bool) {
 		thisSprite.pixels = newImg
 		thisSprite.y = 0
 	}
-	return Sprite{pixels: thisSprite.pixels, x: thisSprite.x + xt, y: thisSprite.y + yt, colour: thisSprite.colour, over: thisSprite.over}, true
+	return Sprite{pixels: thisSprite.pixels, x: thisSprite.x + xt, y: thisSprite.y + yt, colour: thisSprite.colour, over: thisSprite.over, fillStyle: thisSprite.fillStyle}, true
 }
 
 // drawSprite waits until the drawQueue is unlocked then adds a sprite for drawing to the drawQueue
@@ -182,23 +182,22 @@ func overflow(n, max int) int {
 
 // handlePattern is used to figure out the colour of a pixel if a pattern is being used instead
 // of a solid colour
-func (n *Nimbus) handlePattern(x, y, c int) int {
+func (n *Nimbus) handlePattern(x, y, c int, fillStyle FillStyle) int {
 	// Handle fill style
-	if n.fillStyle.Style == 2 && c < 128 {
+	if fillStyle.Style == 2 && c < 128 {
 		// use hatching
 		x = overflow(x, 15)
 		y = overflow(y, 15)
-		hatching := n.hatchings[n.fillStyle.Hatching]
+		hatching := n.hatchings[fillStyle.Hatching]
 		if hatching[y][x] == 1 {
 			return c
 		} else {
-			if n.fillStyle.Colour2 == -1 {
+			if fillStyle.Colour2 == -1 {
 				return 0
 			} else {
-				return n.fillStyle.Colour2
+				return fillStyle.Colour2
 			}
 		}
-		//return hatching[y][x]
 	}
 	if c < 128 {
 		// is not a pattern
@@ -253,10 +252,10 @@ func (n *Nimbus) writeSprite(thisSprite Sprite) {
 				// otherwise use the colour given by the pixel
 				if thisSprite.colour >= 0 {
 					if thisSprite.pixels[spriteY][spriteX] == 1 {
-						n.videoMemory[y][x] = n.handlePattern(x, y, thisSprite.colour)
+						n.videoMemory[y][x] = n.handlePattern(x, y, thisSprite.colour, thisSprite.fillStyle)
 					}
 				} else {
-					n.videoMemory[y][x] = n.handlePattern(x, y, thisSprite.pixels[spriteY][spriteX])
+					n.videoMemory[y][x] = n.handlePattern(x, y, thisSprite.pixels[spriteY][spriteX], thisSprite.fillStyle)
 				}
 				spriteY++
 			}
@@ -274,7 +273,7 @@ func (n *Nimbus) writeSprite(thisSprite Sprite) {
 					continue
 				}
 				if thisSprite.pixels[spriteY][spriteX] == 1 {
-					n.videoMemory[y][x] = n.videoMemory[y][x] ^ n.handlePattern(x, y, thisSprite.colour)
+					n.videoMemory[y][x] = n.videoMemory[y][x] ^ n.handlePattern(x, y, thisSprite.colour, thisSprite.fillStyle)
 				}
 				spriteY++
 			}
@@ -471,7 +470,7 @@ func (n *Nimbus) ForceRedraw() {
 	n.redrawComplete = false
 	// send an arbitrary sprite to be drawn off-screen
 	blank := make2dArray(10, 10)
-	blankSprite := Sprite{blank, 640, 250, 0, true}
+	blankSprite := Sprite{pixels: blank, x: 640, y: 250, colour: 0, over: true}
 	n.drawSprite(blankSprite)
 	for !n.redrawComplete {
 		time.Sleep(1 * time.Microsecond)

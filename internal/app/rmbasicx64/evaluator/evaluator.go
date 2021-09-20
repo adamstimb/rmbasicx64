@@ -100,6 +100,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalLineStatement(g, node, env)
 	case *ast.AreaStatement:
 		return evalAreaStatement(g, node, env)
+	case *ast.SetFillStyleStatement:
+		return evalSetFillStyleStatement(g, node, env)
 	case *ast.CircleStatement:
 		return evalCircleStatement(g, node, env)
 	case *ast.PointsStatement:
@@ -120,6 +122,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalForStatement(g, node, env)
 	case *ast.NextStatement:
 		return evalNextStatement(g, node, env)
+	case *ast.DimStatement:
+		return evalDimStatement(g, node, env)
 	case *ast.AskMouseStatement:
 		return evalAskMouseStatement(g, node, env)
 	case *ast.AskBlocksizeStatement:
@@ -191,11 +195,11 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return result
 	case *ast.Identifier:
 		// If a warning is returned, print the warning *then* re-run the evaluation and return
-		obj := evalIdentifier(node, env)
+		obj := evalIdentifier(g, node, env)
 		if warningMsg, ok := obj.(*object.Warning); ok {
 			g.Print(fmt.Sprintf("Warning: %s", warningMsg.Message))
 			g.Put(13)
-			return evalIdentifier(node, env)
+			return evalIdentifier(g, node, env)
 		} else {
 			return obj
 		}
@@ -527,7 +531,7 @@ func evalCircleStatement(g *game.Game, stmt *ast.CircleStatement, env *object.En
 	// Handle fill style
 	var fillStyle nimgobus.FillStyle
 	if stmt.FillStyle == nil {
-		fillStyle = g.AskFillStyle()
+		fillStyle.Style = -1
 	} else {
 		obj := Eval(g, stmt.FillStyle, env)
 		if isError(obj) {
@@ -744,6 +748,57 @@ func evalFloodStatement(g *game.Game, stmt *ast.FloodStatement, env *object.Envi
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
 	}
+	// Handle fill style
+	var fillStyle nimgobus.FillStyle
+	if stmt.FillStyle == nil {
+		fillStyle.Style = -1
+	} else {
+		obj := Eval(g, stmt.FillStyle, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			if val.Value >= 0 && val.Value <= 2 {
+				fillStyle.Style = int(val.Value)
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+		if fillStyle.Style == 2 {
+			obj := Eval(g, stmt.FillHatching, env)
+			if isError(obj) {
+				return obj
+			}
+			if val, ok := obj.(*object.Numeric); ok {
+				if val.Value >= 0 && val.Value <= 5 {
+					fillStyle.Hatching = int(val.Value)
+				} else {
+					return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+				}
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
+			if stmt.FillColour2 == nil {
+				fillStyle.Colour2 = -1
+			} else {
+				obj := Eval(g, stmt.FillColour2, env)
+				if isError(obj) {
+					return obj
+				}
+				if val, ok := obj.(*object.Numeric); ok {
+					if val.Value >= 0 && val.Value <= 5 {
+						fillStyle.Colour2 = int(val.Value)
+					} else {
+						return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+					}
+				} else {
+					return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+				}
+			}
+		}
+	}
 	// Handle coord list
 	var coordList []nimgobus.XyCoord
 	var X, Y int
@@ -766,7 +821,7 @@ func evalFloodStatement(g *game.Game, stmt *ast.FloodStatement, env *object.Envi
 		coordList = append(coordList, nimgobus.XyCoord{X, Y})
 	}
 	// Execute
-	opt := nimgobus.FloodOptions{Brush: Brush, UseEdgeColour: UseEdgeColour, EdgeColour: EdgeColour}
+	opt := nimgobus.FloodOptions{Brush: Brush, UseEdgeColour: UseEdgeColour, EdgeColour: EdgeColour, FillStyle: fillStyle}
 	for _, coord := range coordList {
 		g.Flood(opt, coord)
 	}
@@ -809,7 +864,7 @@ func evalAreaStatement(g *game.Game, stmt *ast.AreaStatement, env *object.Enviro
 	// Handle fill style
 	var fillStyle nimgobus.FillStyle
 	if stmt.FillStyle == nil {
-		fillStyle = g.AskFillStyle()
+		fillStyle.Style = -1
 	} else {
 		obj := Eval(g, stmt.FillStyle, env)
 		if isError(obj) {
@@ -882,6 +937,59 @@ func evalAreaStatement(g *game.Game, stmt *ast.AreaStatement, env *object.Enviro
 	log.Printf("fillstyle: style=%d, hatching=%d, colour2=%d", fillStyle.Style, fillStyle.Hatching, fillStyle.Colour2)
 	opt := nimgobus.AreaOptions{Brush: Brush, Over: Over, FillStyle: fillStyle}
 	g.Area(opt, coordList)
+	return nil
+}
+
+func evalSetFillStyleStatement(g *game.Game, stmt *ast.SetFillStyleStatement, env *object.Environment) object.Object {
+	// Handle fill style
+	var fillStyle nimgobus.FillStyle
+	obj := Eval(g, stmt.FillStyle, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		if val.Value >= 0 && val.Value <= 2 {
+			fillStyle.Style = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	if fillStyle.Style == 2 {
+		obj := Eval(g, stmt.FillHatching, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			if val.Value >= 0 && val.Value <= 5 {
+				fillStyle.Hatching = int(val.Value)
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+		if stmt.FillColour2 == nil {
+			fillStyle.Colour2 = -1
+		} else {
+			obj := Eval(g, stmt.FillColour2, env)
+			if isError(obj) {
+				return obj
+			}
+			if val, ok := obj.(*object.Numeric); ok {
+				if val.Value >= 0 && val.Value <= 5 {
+					fillStyle.Colour2 = int(val.Value)
+				} else {
+					return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+				}
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
+		}
+	}
+	// Execute
+	g.SetFillStyle(fillStyle.Style, fillStyle.Hatching, fillStyle.Colour2)
 	return nil
 }
 
@@ -1856,6 +1964,20 @@ func evalNextStatement(g *game.Game, stmt *ast.NextStatement, env *object.Enviro
 	return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.UntilWithoutAnyRepeat), ErrorTokenIndex: stmt.Token.Index}
 }
 
+func evalDimStatement(g *game.Game, stmt *ast.DimStatement, env *object.Environment) object.Object {
+	subscripts := make([]int, len(stmt.Subscripts))
+	for i := 0; i < len(stmt.Subscripts); i++ {
+		obj := Eval(g, stmt.Subscripts[i], env)
+		if val, ok := obj.(*object.Numeric); ok {
+			subscripts[i] = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index}
+		}
+	}
+	obj, _ := env.NewArray(stmt.Name.Value, subscripts)
+	return obj
+}
+
 func evalAskMouseStatement(g *game.Game, stmt *ast.AskMouseStatement, env *object.Environment) object.Object {
 	// Handle no args
 	if stmt.XName == nil && stmt.YName == nil {
@@ -2065,7 +2187,21 @@ func evalExpressions(g *game.Game, exps []ast.Expression, env *object.Environmen
 	return result
 }
 
-func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object {
+func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment) object.Object {
+	if len(node.Subscripts) > 0 {
+		// is array
+		subscripts := make([]int, len(node.Subscripts))
+		for i := 0; i < len(subscripts); i++ {
+			obj := Eval(g, node.Subscripts[i], env)
+			if val, ok := obj.(*object.Numeric); ok {
+				subscripts[i] = int(val.Value)
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: node.Token.Index}
+			}
+		}
+		val, _ := env.GetArray(node.Value, subscripts)
+		return val
+	}
 	if val, ok := env.Get(node.Value); ok {
 		return val
 	}
