@@ -43,7 +43,7 @@ func (n *Nimbus) Cls(p ...int) {
 			blankPaper[y][x] = 1
 		}
 	}
-	n.drawSprite(Sprite{blankPaper, 0, 0, n.paperColour, true})
+	n.drawSprite(Sprite{pixels: blankPaper, x: 0, y: 0, colour: n.paperColour, over: true})
 }
 
 // SetColour assigns one of the basic colours to a slot in the current palette
@@ -112,6 +112,10 @@ func (n *Nimbus) SetMode(columns int) {
 		n.penColour = 15
 		n.palette = []int{}
 		n.palette = append(n.palette, n.defaultLowResPalette...)
+		n.patterns = [][4][4]int{}
+		n.patterns = append(n.patterns, defaultLowResPatterns...)
+		n.hatchings = [][16][16]int{}
+		n.hatchings = append(n.hatchings, defaultHatchings...)
 		n.brush = 15
 		n.plotDirection = 0
 		n.plotFont = 0
@@ -127,6 +131,10 @@ func (n *Nimbus) SetMode(columns int) {
 		n.videoImage = ebiten.NewImage(640, 250)
 		n.palette = []int{}
 		n.palette = append(n.palette, n.defaultHighResPalette...)
+		n.patterns = [][4][4]int{}
+		n.patterns = append(n.patterns, defaultHighResPatterns...)
+		n.hatchings = [][16][16]int{}
+		n.hatchings = append(n.hatchings, defaultHatchings...)
 		n.paperColour = 0
 		n.borderColour = 0
 		n.penColour = 3
@@ -151,7 +159,6 @@ func (n *Nimbus) SetMode(columns int) {
 			n.drawingBoxes[i] = drawingBox{0, 0, 639, 249}
 		}
 	}
-	n.imageBlocks = [16][][]int{}
 	n.drawQueue = []Sprite{} // flush drawqueue
 	n.videoMemory = [250][640]int{}
 	n.videoMemoryOverlay = [250][640]int{}
@@ -283,7 +290,7 @@ func (n *Nimbus) Put(c int) {
 				}
 			}
 		}
-		n.drawSprite(Sprite{newCharPixels, curX, curY, -1, true})
+		n.drawSprite(Sprite{pixels: newCharPixels, x: curX, y: curY, colour: -1, over: true})
 		n.AdvanceCursor(false)
 	} else {
 		// Force carriage return if 13 was passed

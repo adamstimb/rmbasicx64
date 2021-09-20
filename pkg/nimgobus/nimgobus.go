@@ -43,10 +43,11 @@ type drawingBox struct {
 
 // Sprite defines a sprite that contains a 2d image array, a screen co-ordinate, colour and overwrite (XOR) mode
 type Sprite struct {
-	pixels [][]int
-	x, y   int
-	colour int
-	over   bool
+	pixels    [][]int
+	x, y      int
+	colour    int
+	over      bool
+	fillStyle FillStyle
 }
 
 // repeatingChar is used to store and count repeating chars for dynamically limiting repeating key presses
@@ -59,6 +60,20 @@ type repeatingChar struct {
 type colourFlashSetting struct {
 	speed       int // 0 no flash, 1 slow, 2 fast
 	flashColour int // the palette slot to of the flash colour
+}
+
+// imageBlock is how RM Basic used to store image data in the ANIMATE extension
+type imageBlock struct {
+	image   [][]int // 2d array containing the image
+	mode    int     // The screen mode from when the image was captured/fetched in chars (40 or 80)
+	deleted bool    // Set to true if Delblock is called on the block
+}
+
+// FillStyle describes the fill settings for AREA, FLOOD, CIRCLE, and SLICE
+type FillStyle struct {
+	Style    int // 1 for solid/dithered, 2 for hatched, 3 for hollow (edge)
+	Hatching int // Hatching type if Style==2
+	Colour2  int // 2nd hatching colour if Style==2
 }
 
 // Nimbus acts as a container for all the components of the Nimbus monitor.  You
@@ -82,12 +97,16 @@ type Nimbus struct {
 	basicColours           []color.RGBA         // An array of the Nimbus's 16 built-in colours
 	textBoxes              [10]textBox          // All defined textboxes
 	drawingBoxes           [10]drawingBox       // All define drawing boxes
-	imageBlocks            [16][][]int          // Images loaded into memory as "blocks"
+	imageBlocks            [100]imageBlock      // Images loaded into memory as "blocks"
 	logoImage              [][]int              // The "RM Nimbus" branding image
 	charImages0            [256][][]int         // An array of 2d arrays for each char in this charset
 	charImages1            [256][][]int         // as above
 	pointsStyles           [][][]int            // An array of 2d arrays representing the built-in points styles
 	pointsStyle            int                  // The current points style
+	patterns               [][4][4]int          // The brush patterns
+	hatchings              [][16][16]int        // The fill hatchings
+	fillStyle              FillStyle            // The current fill style
+	useFillStyle           bool                 // Set to true to render with fill style
 	borderSize             int                  // The width of the border in pixels
 	borderColour           int                  // The current border colour
 	paperColour            int                  // The current paper colour
@@ -146,9 +165,12 @@ func (n *Nimbus) Init() {
 	n.loadCharsetImages(0)
 	n.loadCharsetImages(1)
 	// Set init values of everything else
+	n.Clearblock()
 	n.pointsStyles = append(n.pointsStyles, defaultPointsStyles...)
 	n.pointsStyle = 1
 	n.borderSize = 50
+	n.patterns = append(n.patterns, defaultHighResPatterns...)
+	n.hatchings = append(n.hatchings, defaultHatchings...)
 	n.borderImage = ebiten.NewImage(640+(n.borderSize*2), 500+(n.borderSize*2))
 	n.Monitor = ebiten.NewImage(640+(n.borderSize*2), 500+(n.borderSize*2))
 	n.drawQueue = []Sprite{}
@@ -159,6 +181,7 @@ func (n *Nimbus) Init() {
 	n.defaultHighResPalette = append(n.defaultHighResPalette, defaultHighResPalette...)
 	n.defaultLowResPalette = append(n.defaultLowResPalette, defaultLowResPalette...)
 	n.palette = append(n.palette, n.defaultHighResPalette...)
+	n.useFillStyle = false
 	n.initColourFlashSettings()
 	n.borderColour = 0
 	n.paperColour = 0

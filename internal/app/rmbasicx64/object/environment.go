@@ -2,7 +2,10 @@ package object
 
 import (
 	"fmt"
+	"log"
 	"sort"
+
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
 )
 
 type program struct {
@@ -172,6 +175,110 @@ func (e *Environment) Get(name string) (Object, bool) {
 		obj, ok = e.outer.Get(name)
 	}
 	return obj, ok
+}
+
+func (e *Environment) NewArray(name string, subscripts []int) (Object, bool) {
+	_, ok := e.store[name]
+	if ok {
+		return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.ArrayAlreadyDimensioned), ErrorTokenIndex: 0}, false
+	}
+	maxIndex := 1
+	for _, subscript := range subscripts {
+		maxIndex *= subscript
+	}
+	// initialize items according to type
+	items := make([]Object, maxIndex)
+	if name[len(name)-1:] != "$" {
+		for i := 0; i < len(items); i++ {
+			items[i] = &Numeric{Value: 0}
+		}
+	} else {
+		for i := 0; i < len(items); i++ {
+			items[i] = &String{Value: ""}
+		}
+	}
+	e.store[name] = &Array{Items: items, Subscripts: subscripts}
+	return e.store[name], true
+}
+
+func (e *Environment) GetArray(name string, subscripts []int) (Object, bool) {
+	log.Printf("GetArray name=%q", name)
+	objArray, ok := e.store[name]
+	if !ok && e.outer != nil {
+		objArray, ok = e.outer.GetArray(name, subscripts)
+	}
+	if !ok {
+		return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.FunctionArrayNotFound), ErrorTokenIndex: 0}, false
+	}
+	arr, ok := objArray.(*Array)
+	if !ok {
+		return arr, ok
+	}
+	// Validate subscripts
+	if len(subscripts) != len(arr.Subscripts) {
+		// Wrong number of subscripts error
+		return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.WrongNumberOfSubscripts), ErrorTokenIndex: 0}, false
+	}
+	for i := 0; i < len(subscripts); i++ {
+		if subscripts[i] >= arr.Subscripts[i] {
+			// Subscript out of range error
+			return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.ArraySubscriptIsWrong), ErrorTokenIndex: 0}, false
+		}
+	}
+	// Resolve index
+	index := subscripts[len(subscripts)-1]
+	if len(arr.Subscripts) > 1 {
+		for j := len(arr.Subscripts) - 2; j >= 0; j-- {
+			index += subscripts[j] * arr.Subscripts[j]
+		}
+	}
+	// Return item obj
+	return arr.Items[index], true
+}
+
+func (e *Environment) SetArray(name string, subscripts []int, val Object) (Object, bool) {
+	objArray, ok := e.store[name]
+	if !ok && e.outer != nil {
+		objArray, ok = e.outer.Get(name)
+	}
+	if !ok {
+		return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.FunctionArrayNotFound), ErrorTokenIndex: 0}, false
+	}
+	// Don't allow string val to bind to numeric variable
+	if val.Type() == STRING_OBJ && name[len(name)-1:] != "$" {
+		return &Error{Message: "Numeric expression needed"}, false
+	}
+	// Don't allow numeric val to bind to string variable
+	if val.Type() != STRING_OBJ && name[len(name)-1:] == "$" {
+		return &Error{Message: "String expression needed"}, false
+	}
+	// If a float value is bound to an integer variable (name ends with %) it is rounded-down first (manual 3.7)
+	if val.Type() == NUMERIC_OBJ && name[len(name)-1:] == "%" {
+		val = &Numeric{Value: float64(int64(val.(*Numeric).Value))}
+	}
+	arr, ok := objArray.(*Array)
+	// Validate subscripts
+	if len(subscripts) != len(arr.Subscripts) {
+		// Wrong number of subscripts error
+		return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.WrongNumberOfSubscripts), ErrorTokenIndex: 0}, false
+	}
+	for i := 0; i < len(subscripts); i++ {
+		if subscripts[i] > arr.Subscripts[i] {
+			// Subscript out of range error
+			return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.ArraySubscriptIsWrong), ErrorTokenIndex: 0}, false
+		}
+	}
+	// Resolve index
+	index := subscripts[len(subscripts)-1]
+	if len(arr.Subscripts) > 1 {
+		for j := len(arr.Subscripts) - 2; j >= 0; j-- {
+			index += subscripts[j] * arr.Subscripts[j]
+		}
+	}
+	// Set item obj
+	arr.Items[index] = val
+	e.store[name] = arr
+	return arr, true
 }
 
 func (e *Environment) Set(name string, val Object) Object {

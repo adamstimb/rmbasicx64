@@ -259,8 +259,9 @@ func (il *NumericLiteral) String() string {
 }
 
 type Identifier struct {
-	Token token.Token // the token.IdentifierLiteral token
-	Value string
+	Token      token.Token // the token.IdentifierLiteral token
+	Value      string
+	Subscripts []Expression
 }
 
 func (i *Identifier) expressionNode() {}
@@ -378,6 +379,51 @@ func (s *NewStatement) TokenLiteral() string {
 	return s.Token.Literal
 }
 func (s *NewStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type ClearblockStatement struct {
+	Token token.Token // the token.Bye token
+}
+
+func (s *ClearblockStatement) statementNode() {}
+func (s *ClearblockStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *ClearblockStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type DelblockStatement struct {
+	Token token.Token // the token.Bye token
+	Block Expression
+}
+
+func (s *DelblockStatement) statementNode() {}
+func (s *DelblockStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *DelblockStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type KeepStatement struct {
+	Token token.Token // the token.Bye token
+	Block Expression
+	Path  Expression
+}
+
+func (s *KeepStatement) statementNode() {}
+func (s *KeepStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *KeepStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(s.TokenLiteral())
 	return out.String()
@@ -512,6 +558,26 @@ func (s *SetCurposStatement) TokenLiteral() string {
 	return s.Token.Literal
 }
 func (s *SetCurposStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type SetPatternStatement struct {
+	Token token.Token
+	Slot  Expression
+	Row   Expression
+	C1    Expression
+	C2    Expression
+	C3    Expression
+	C4    Expression
+}
+
+func (s *SetPatternStatement) statementNode() {}
+func (s *SetPatternStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *SetPatternStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(s.TokenLiteral())
 	return out.String()
@@ -697,11 +763,14 @@ func (ps *LineStatement) String() string {
 }
 
 type CircleStatement struct {
-	Token     token.Token
-	Radius    Expression
-	CoordList []Expression
-	Brush     Expression
-	Over      Expression
+	Token        token.Token
+	Radius       Expression
+	CoordList    []Expression
+	Brush        Expression
+	Over         Expression
+	FillStyle    Expression
+	FillHatching Expression
+	FillColour2  Expression
 }
 
 func (s *CircleStatement) statementNode() {}
@@ -738,6 +807,9 @@ type FloodStatement struct {
 	Brush         Expression
 	UseEdgeColour Expression
 	EdgeColour    Expression
+	FillStyle     Expression
+	FillHatching  Expression
+	FillColour2   Expression
 }
 
 func (s *FloodStatement) statementNode() {}
@@ -752,8 +824,8 @@ func (s *FloodStatement) String() string {
 
 type FetchStatement struct {
 	Token token.Token
-	Block int
-	Path  string
+	Block Expression
+	Path  Expression
 }
 
 func (s *FetchStatement) statementNode() {}
@@ -768,9 +840,10 @@ func (s *FetchStatement) String() string {
 
 type WriteblockStatement struct {
 	Token token.Token
-	Block int
-	X     int
-	Y     int
+	Block Expression
+	X     Expression
+	Y     Expression
+	Over  Expression
 }
 
 func (s *WriteblockStatement) statementNode() {}
@@ -783,11 +856,72 @@ func (s *WriteblockStatement) String() string {
 	return out.String()
 }
 
+type ReadblockStatement struct {
+	Token token.Token
+	Block Expression
+	X1    Expression
+	Y1    Expression
+	X2    Expression
+	Y2    Expression
+}
+
+func (s *ReadblockStatement) statementNode() {}
+func (s *ReadblockStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *ReadblockStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	return out.String()
+}
+
+type CopyblockStatement struct {
+	Token token.Token
+	X1    Expression
+	Y1    Expression
+	X2    Expression
+	Y2    Expression
+	Dx    Expression
+	Dy    Expression
+	Over  Expression
+}
+
+func (s *CopyblockStatement) statementNode() {}
+func (s *CopyblockStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *CopyblockStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	return out.String()
+}
+
+type SquashStatement struct {
+	Token token.Token
+	Block Expression
+	X     Expression
+	Y     Expression
+	Over  Expression
+}
+
+func (s *SquashStatement) statementNode() {}
+func (s *SquashStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *SquashStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	return out.String()
+}
+
 type AreaStatement struct {
-	Token     token.Token
-	CoordList []Expression
-	Brush     Expression
-	Over      Expression
+	Token        token.Token
+	CoordList    []Expression
+	Brush        Expression
+	Over         Expression
+	FillStyle    Expression
+	FillHatching Expression
+	FillColour2  Expression
 }
 
 func (ps *AreaStatement) statementNode() {}
@@ -795,6 +929,23 @@ func (ps *AreaStatement) TokenLiteral() string {
 	return ps.Token.Literal
 }
 func (ps *AreaStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(ps.TokenLiteral() + " ")
+	return out.String()
+}
+
+type SetFillStyleStatement struct {
+	Token        token.Token
+	FillStyle    Expression
+	FillHatching Expression
+	FillColour2  Expression
+}
+
+func (ps *SetFillStyleStatement) statementNode() {}
+func (ps *SetFillStyleStatement) TokenLiteral() string {
+	return ps.Token.Literal
+}
+func (ps *SetFillStyleStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(ps.TokenLiteral() + " ")
 	return out.String()
@@ -941,6 +1092,23 @@ func (s *NextStatement) String() string {
 	return out.String()
 }
 
+type DimStatement struct {
+	Token      token.Token
+	Name       *Identifier
+	Subscripts []Expression
+}
+
+func (s *DimStatement) statementNode() {}
+func (s *DimStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *DimStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	out.WriteString(s.Name.String())
+	return out.String()
+}
+
 type AskMouseStatement struct {
 	Token token.Token // the token.Let token
 	XName *Identifier
@@ -953,6 +1121,24 @@ func (s *AskMouseStatement) TokenLiteral() string {
 	return s.Token.Literal
 }
 func (s *AskMouseStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	return out.String()
+}
+
+type AskBlocksizeStatement struct {
+	Token  token.Token
+	Block  Expression
+	Width  *Identifier
+	Height *Identifier
+	Mode   *Identifier
+}
+
+func (s *AskBlocksizeStatement) statementNode() {}
+func (s *AskBlocksizeStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *AskBlocksizeStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(s.TokenLiteral() + " ")
 	return out.String()

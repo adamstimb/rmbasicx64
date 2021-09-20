@@ -1,11 +1,15 @@
 package nimgobus
 
 import (
+	"image"
 	"image/color"
-	_ "image/gif"
+	"image/jpeg"
 	_ "image/jpeg"
+	"image/png"
 	_ "image/png"
+
 	"log"
+	"os"
 
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
@@ -32,7 +36,7 @@ func (n *Nimbus) ValidateStyle(s int) bool {
 
 // PlonkLogo draws the RM Nimbus logo
 func (n *Nimbus) PlonkLogo(x, y int) {
-	n.drawSprite(Sprite{n.logoImage, x, y, -1, true})
+	n.drawSprite(Sprite{pixels: n.logoImage, x: x, y: y, colour: -1, over: true})
 }
 
 type PlotOptions struct {
@@ -96,8 +100,8 @@ func (n *Nimbus) Plot(opt PlotOptions, text string, x, y int) {
 		}
 		xOffset += 8
 	}
-	resizedSprite := n.resizeSprite(Sprite{img, x, y, opt.Brush, over}, imgWidth*opt.SizeX, imgHeight*opt.SizeY)
-	rotatedSprite := n.rotateSprite(Sprite{resizedSprite.pixels, x, y, opt.Brush, over}, opt.Direction)
+	resizedSprite := n.resizeSprite(Sprite{pixels: img, x: x, y: y, colour: opt.Brush, over: over}, imgWidth*opt.SizeX, imgHeight*opt.SizeY)
+	rotatedSprite := n.rotateSprite(Sprite{pixels: resizedSprite.pixels, x: x, y: y, colour: opt.Brush, over: over}, opt.Direction)
 	if newSprite, ok := n.applyDrawingbox(rotatedSprite, 0); ok {
 		n.drawSprite(newSprite)
 	}
@@ -280,7 +284,7 @@ func (n *Nimbus) Line(opt LineOptions, coordList []XyCoord) {
 		//log.Printf("i=%d minXY=(%d, %d) line=(%d, %d)-(%d-%d)", i, minX, minY, coordList[i].X, coordList[i].Y, coordList[i+1].X, coordList[i+1].Y)
 		img = n.drawLine(img, coordList[i].X-minX, coordList[i].Y-minY, coordList[i+1].X-minX, coordList[i+1].Y-minY)
 	}
-	if newSprite, ok := n.applyDrawingbox(Sprite{img, minX, minY, opt.Brush, over}, 0); ok {
+	if newSprite, ok := n.applyDrawingbox(Sprite{pixels: img, x: minX, y: minY, colour: opt.Brush, over: over}, 0); ok {
 		n.drawSprite(newSprite)
 	}
 	//n.drawSprite(n.applyDrawingbox(Sprite{img, minX, minY, opt.Brush, over}, 0))
@@ -323,8 +327,9 @@ func (n *Nimbus) drawCircle(r int, img [][]int) [][]int {
 }
 
 type CircleOptions struct {
-	Brush int
-	Over  int
+	Brush     int
+	Over      int
+	FillStyle FillStyle
 }
 
 // Circle draws a a filled circle
@@ -332,6 +337,20 @@ func (n *Nimbus) Circle(opt CircleOptions, r, x, y int) {
 	// Handle default values
 	if opt.Brush == -255 {
 		opt.Brush = n.brush
+	}
+	var fillStyle FillStyle
+	if opt.FillStyle.Style < 0 {
+		fillStyle = n.AskFillStyle()
+	} else {
+		fillStyle = opt.FillStyle
+	}
+	// Handle Brush
+	highestColour := 3
+	if n.AskMode() == 40 {
+		highestColour = 15
+	}
+	if opt.Brush < 128 {
+		opt.Brush = overflow(opt.Brush, highestColour)
 	}
 	var over bool
 	switch opt.Over {
@@ -396,14 +415,15 @@ func (n *Nimbus) Circle(opt CircleOptions, r, x, y int) {
 			}
 		}
 	}
-	if newSprite, ok := n.applyDrawingbox(Sprite{img, sx, sy, opt.Brush, over}, 0); ok {
+	if newSprite, ok := n.applyDrawingbox(Sprite{pixels: img, x: sx, y: sy, colour: opt.Brush, over: over, fillStyle: fillStyle}, 0); ok {
 		n.drawSprite(newSprite)
 	}
 }
 
 type AreaOptions struct {
-	Brush int
-	Over  int
+	Brush     int
+	Over      int
+	FillStyle FillStyle
 }
 
 // Area draws a filled polygon of coordinates on the screen
@@ -411,6 +431,20 @@ func (n *Nimbus) Area(opt AreaOptions, coordList []XyCoord) {
 	// Handle default values
 	if opt.Brush == -255 {
 		opt.Brush = n.brush
+	}
+	var fillStyle FillStyle
+	if opt.FillStyle.Style < 0 {
+		fillStyle = n.AskFillStyle()
+	} else {
+		fillStyle = opt.FillStyle
+	}
+	// Handle Brush
+	highestColour := 3
+	if n.AskMode() == 40 {
+		highestColour = 15
+	}
+	if opt.Brush < 128 {
+		opt.Brush = overflow(opt.Brush, highestColour)
 	}
 	var over bool
 	switch opt.Over {
@@ -500,7 +534,7 @@ func (n *Nimbus) Area(opt AreaOptions, coordList []XyCoord) {
 			}
 		}
 	}
-	if newSprite, ok := n.applyDrawingbox(Sprite{img, minX, minY, opt.Brush, over}, 0); ok {
+	if newSprite, ok := n.applyDrawingbox(Sprite{pixels: img, x: minX, y: minY, colour: opt.Brush, over: over, fillStyle: fillStyle}, 0); ok {
 		n.drawSprite(newSprite)
 	}
 }
@@ -531,14 +565,14 @@ func (n *Nimbus) Points(opt PointsOptions, coordList []XyCoord) {
 	}
 	// Draw sprites
 	for _, coord := range coordList {
-		if newSprite, ok := n.applyDrawingbox(Sprite{n.pointsStyles[opt.Style-1], coord.X - 4, coord.Y - 4, opt.Brush, over}, 0); ok {
+		if newSprite, ok := n.applyDrawingbox(Sprite{pixels: n.pointsStyles[opt.Style-1], x: coord.X - 4, y: coord.Y - 4, colour: opt.Brush, over: over}, 0); ok {
 			n.drawSprite(newSprite)
 		}
 	}
 }
 
 // Flood fill algorithm adapted from https://stackoverflow.com/questions/2783204/flood-fill-using-a-stack
-func (n *Nimbus) floodFillDo(maxX int, hits [250][640]bool, x, y, srcColor, tgtColor int, useEdgeColour bool, edgeColour int) bool {
+func (n *Nimbus) floodFillDo(maxX int, hits [250][640]bool, x, y, srcColor, tgtColor int, useEdgeColour bool, edgeColour int, fillStyle FillStyle) bool {
 	if (y < 0) || (x < 0) || (y > 249) || (x > maxX) {
 		return false
 	}
@@ -555,11 +589,11 @@ func (n *Nimbus) floodFillDo(maxX int, hits [250][640]bool, x, y, srcColor, tgtC
 		}
 	}
 	// valid, paint it
-	n.videoMemory[249-y][x] = tgtColor
+	n.videoMemory[249-y][x] = n.handlePattern(x, y, tgtColor, fillStyle)
 	return true
 }
 
-func (n *Nimbus) floodFill(x, y, color int, useEdgeColour bool, edgeColour int) {
+func (n *Nimbus) floodFill(x, y, color int, useEdgeColour bool, edgeColour int, fillStyle FillStyle) {
 	maxX := 639
 	if n.AskMode() == 40 {
 		maxX = 319
@@ -572,7 +606,7 @@ func (n *Nimbus) floodFill(x, y, color int, useEdgeColour bool, edgeColour int) 
 	for len(queue) > 0 {
 		p := queue[0]
 		queue = queue[1:]
-		result := n.floodFillDo(maxX, hits, p.X, p.Y, srcColor, color, useEdgeColour, edgeColour)
+		result := n.floodFillDo(maxX, hits, p.X, p.Y, srcColor, color, useEdgeColour, edgeColour, fillStyle)
 		if result {
 			hits[p.Y][p.X] = true
 			queue = append(queue, XyCoord{p.X + 1, p.Y + 1})
@@ -590,6 +624,7 @@ type FloodOptions struct {
 	Brush         int
 	UseEdgeColour bool
 	EdgeColour    int
+	FillStyle     FillStyle
 }
 
 // Flood seeds a boundary fill at x, y
@@ -598,8 +633,22 @@ func (n *Nimbus) Flood(opt FloodOptions, coord XyCoord) {
 	if opt.Brush == -255 {
 		opt.Brush = n.brush
 	}
+	var fillStyle FillStyle
+	if opt.FillStyle.Style < 0 {
+		fillStyle = n.AskFillStyle()
+	} else {
+		fillStyle = opt.FillStyle
+	}
 	// Start fill
-	n.floodFill(coord.X, coord.Y, opt.Brush, opt.UseEdgeColour, opt.EdgeColour)
+	n.floodFill(coord.X, coord.Y, opt.Brush, opt.UseEdgeColour, opt.EdgeColour, fillStyle)
+}
+
+// Clearblock resets all the image blocks
+func (n *Nimbus) Clearblock() {
+	n.imageBlocks = [100]imageBlock{}
+	for i := range n.imageBlocks {
+		n.imageBlocks[i].deleted = true
+	}
 }
 
 // Fetch receives an image, downsamples the number of colours to 4 or 16 depending
@@ -608,7 +657,7 @@ func (n *Nimbus) Fetch(b int, path string) bool {
 	// Load image from disk
 	img, _, err := ebitenutil.NewImageFromFile(path)
 	if err != nil {
-		log.Printf("Error loading %s: %e", path, err)
+		log.Printf("Error loading %s: %v", path, err)
 		return false
 	}
 	width, height := img.Size()
@@ -624,7 +673,6 @@ func (n *Nimbus) Fetch(b int, path string) bool {
 	spriteImg := make2dArray(width, height)
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			//newImg.Set(x, y, tempPalette.Convert(img.At(x, y)))
 			nearestRgba := tempPalette.Convert(img.At(x, y))
 			for c := 0; c < len(n.palette); c++ {
 				if nearestRgba == tempPalette[c] {
@@ -636,12 +684,173 @@ func (n *Nimbus) Fetch(b int, path string) bool {
 	}
 
 	// Store the image block
-	n.imageBlocks[b] = spriteImg
+	n.imageBlocks[b] = imageBlock{image: spriteImg, mode: n.AskMode()}
 	return true
 }
 
+// Readblock reads an area x1, y1, x2, y2 of the screen into block b
+func (n *Nimbus) Readblock(b, x1, y1, x2, y2 int) {
+	// Clamp x, y values to within screen
+	maxX := 319
+	if n.AskMode() == 80 {
+		maxX = 639
+	}
+	if y1 < 0 {
+		y1 = 0
+	}
+	if y1 > 249 {
+		y1 = 249
+	}
+	if x1 < 0 {
+		x1 = 0
+	}
+	if x2 > maxX {
+		x2 = maxX
+	}
+	if y2 < 0 {
+		y2 = 0
+	}
+	if y2 > 249 {
+		y2 = 249
+	}
+	if x2 < 0 {
+		x2 = 0
+	}
+	if x2 > maxX {
+		x2 = maxX
+	}
+	// Define a 2d array to store the image data
+	width := x2 - x1
+	height := y2 - y1
+	img := make2dArray(width, height)
+	// Use GetPixel to allow the drawqueue to flush then grab the video memory lock
+	_ = n.GetPixel(0, 0)
+	n.muVideoMemory.Lock()
+	// Copy the section, unlock, and bung it in the blocks
+	for x := x1; x < x2; x++ {
+		for y := y1; y < y2; y++ {
+			img[len(img)-(y-y1+1)][x-x1] = n.videoMemory[249-y][x]
+		}
+	}
+	n.muVideoMemory.Unlock()
+	n.imageBlocks[b] = imageBlock{image: img, mode: n.AskMode()}
+}
+
 // Writeblock draws an image block on the screen at position x, y
-func (n *Nimbus) Writeblock(b, x, y int) {
+func (n *Nimbus) Writeblock(b, x, y int, over bool) {
 	// Retrieve image block and draw it
-	n.drawSprite(Sprite{pixels: n.imageBlocks[b], x: x, y: y, colour: -1, over: true})
+	block := n.imageBlocks[b]
+	if !block.deleted {
+		n.drawSprite(Sprite{pixels: block.image, x: x, y: y, colour: -1, over: over})
+	}
+}
+
+// AskBlocksize returns the width, height and original screen mode of an image block
+func (n *Nimbus) AskBlocksize(b int) (width, height, mode int) {
+	block := n.imageBlocks[b]
+	if !block.deleted {
+		mode = block.mode
+		width = len(block.image[0])
+		height = len(block.image)
+	}
+	// return all zeroes if block deleted
+	return width, height, mode
+}
+
+// Squash is the same as Writeblock but scales the image by 1/4
+func (n *Nimbus) Squash(b, x, y int, over bool) {
+	// Retrieve image block, rescale and draw it
+	block := n.imageBlocks[b]
+	if !block.deleted {
+		width, height, _ := n.AskBlocksize(b)
+		newWidth := int(width / 4)
+		newHeight := int(height / 4)
+		rescaledImg := n.resizeSprite(Sprite{pixels: block.image}, newWidth, newHeight)
+		n.drawSprite(Sprite{pixels: rescaledImg.pixels, x: x, y: y, colour: -1, over: over})
+	}
+}
+
+// Delblock "deletes" an image block by setting it's deleted flag to true
+func (n *Nimbus) Delblock(b int) {
+	n.imageBlocks[b].deleted = true
+}
+
+// Keep saves an image block b with a specific format
+func (n *Nimbus) Keep(b int, format, path string) error {
+	block := n.imageBlocks[b]
+	if block.deleted {
+		return nil
+	}
+	// Turn the block into an image
+	width, height, _ := n.AskBlocksize(b)
+	img := image.NewRGBA(image.Rectangle{Min: image.Point{0, 0}, Max: image.Point{width, height}})
+	for x := 0; x < width; x++ {
+		for y := 0; y < height; y++ {
+			img.SetRGBA(x, y, n.basicColours[n.palette[block.image[y][x]]])
+		}
+	}
+	// Create the file then attempt to encode and write with the appropriate format
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	switch format {
+	case "jpeg":
+		if err = jpeg.Encode(f, img, nil); err != nil {
+			log.Printf("failed to encode jpeg: %v", err)
+			return err
+		}
+	case "png":
+		if err = png.Encode(f, img); err != nil {
+			log.Printf("failed to encode png: %v", err)
+			return err
+		}
+	}
+	return nil
+}
+
+// SetPattern defines the user-definable patterns
+func (n *Nimbus) SetPattern(slot, row, c1, c2, c3, c4 int) {
+	// clamp colours to maximum for current screen mode
+	maxC := 4
+	if n.AskMode() == 40 {
+		maxC = 15
+	}
+	if c1 > maxC {
+		c1 = maxC
+	}
+	if c2 > maxC {
+		c2 = maxC
+	}
+	if c3 > maxC {
+		c3 = maxC
+	}
+	if c4 > maxC {
+		c4 = maxC
+	}
+	if c1 < 0 {
+		c1 = 0
+	}
+	if c2 < 0 {
+		c2 = 0
+	}
+	if c3 < 0 {
+		c3 = 0
+	}
+	if c4 < 0 {
+		c4 = 0
+	}
+	n.patterns[slot-128][row] = [4]int{c1, c2, c3, c4}
+}
+
+// SetFillStyle sets the fill style for AREA, CIRCLE, SLICE and FLOOD
+func (n *Nimbus) SetFillStyle(style, hatching, colour2 int) {
+	_ = n.GetPixel(0, 0)
+	n.fillStyle = FillStyle{Style: style, Hatching: hatching, Colour2: colour2}
+}
+
+// AskFillStyle gets the current fill style
+func (n *Nimbus) AskFillStyle() FillStyle {
+	return n.fillStyle
 }

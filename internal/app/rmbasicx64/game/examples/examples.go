@@ -4,9 +4,11 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/game/examples/resources/images"
 )
 
-// WriteExamples writes the example programs to the workspace path
+// WriteExamples writes the example programs and supporting files to the workspace path
 func WriteExamples(workspacePath string) {
 	examples := []struct {
 		filename string
@@ -90,4 +92,13 @@ func WriteExamples(workspacePath string) {
 		defer file.Close()
 		file.WriteString(example.program)
 	}
+
+	// Images
+	fullpath := filepath.Join(workspacePath, "astronaut.jpg")
+	file, err := os.Create(fullpath)
+	if err != nil {
+		log.Printf("Error creating example program %q - %e", fullpath, err)
+	}
+	defer file.Close()
+	file.Write(images.Astronaut_jpg)
 }

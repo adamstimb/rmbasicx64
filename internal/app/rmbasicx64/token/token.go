@@ -239,6 +239,16 @@ const (
 	STEP       = "STEP"
 	CONFIG     = "CONFIG"
 	BOOT       = "BOOT"
+	FETCH      = "FETCH"
+	WRITEBLOCK = "WRITEBLOCK"
+	SQUASH     = "SQUASH"
+	CLEARBLOCK = "CLEARBLOCK"
+	DELBLOCK   = "DELBLOCK"
+	KEEP       = "KEEP"
+	READBLOCK  = "READBLOCK"
+	COPYBLOCK  = "COPYBLOCK"
+	BLOCKSIZE  = "BLOCKSIZE"
+	FILL       = "FILL"
 )
 
 // IsKeyword returns true if a TokenType represents a keyword
@@ -425,6 +435,16 @@ func IsKeyword(testString string) bool {
 		STEP,
 		CONFIG,
 		BOOT,
+		FETCH,
+		WRITEBLOCK,
+		SQUASH,
+		CLEARBLOCK,
+		DELBLOCK,
+		KEEP,
+		READBLOCK,
+		COPYBLOCK,
+		BLOCKSIZE,
+		FILL,
 	}
 	for _, keyword := range keywords {
 		if testString == keyword {
