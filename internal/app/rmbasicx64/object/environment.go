@@ -202,7 +202,6 @@ func (e *Environment) NewArray(name string, subscripts []int) (Object, bool) {
 }
 
 func (e *Environment) GetArray(name string, subscripts []int) (Object, bool) {
-	log.Printf("GetArray name=%q", name)
 	objArray, ok := e.store[name]
 	if !ok && e.outer != nil {
 		objArray, ok = e.outer.GetArray(name, subscripts)
@@ -220,7 +219,7 @@ func (e *Environment) GetArray(name string, subscripts []int) (Object, bool) {
 		return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.WrongNumberOfSubscripts), ErrorTokenIndex: 0}, false
 	}
 	for i := 0; i < len(subscripts); i++ {
-		if subscripts[i] >= arr.Subscripts[i] {
+		if subscripts[i] >= arr.Subscripts[i] || subscripts[i] < 0 {
 			// Subscript out of range error
 			return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.ArraySubscriptIsWrong), ErrorTokenIndex: 0}, false
 		}
@@ -256,14 +255,14 @@ func (e *Environment) SetArray(name string, subscripts []int, val Object) (Objec
 	if val.Type() == NUMERIC_OBJ && name[len(name)-1:] == "%" {
 		val = &Numeric{Value: float64(int64(val.(*Numeric).Value))}
 	}
-	arr, ok := objArray.(*Array)
+	arr, _ := objArray.(*Array)
 	// Validate subscripts
 	if len(subscripts) != len(arr.Subscripts) {
 		// Wrong number of subscripts error
 		return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.WrongNumberOfSubscripts), ErrorTokenIndex: 0}, false
 	}
 	for i := 0; i < len(subscripts); i++ {
-		if subscripts[i] > arr.Subscripts[i] {
+		if subscripts[i] > arr.Subscripts[i] || subscripts[i] < 0 {
 			// Subscript out of range error
 			return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.ArraySubscriptIsWrong), ErrorTokenIndex: 0}, false
 		}
@@ -276,6 +275,7 @@ func (e *Environment) SetArray(name string, subscripts []int, val Object) (Objec
 		}
 	}
 	// Set item obj
+	log.Printf("Storing val %T at index %d", arr, index)
 	arr.Items[index] = val
 	e.store[name] = arr
 	return arr, true
