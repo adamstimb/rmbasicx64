@@ -17,6 +17,7 @@ import (
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/object"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/parser"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
 	"github.com/adamstimb/rmbasicx64/pkg/nimgobus"
 )
 
@@ -2098,7 +2099,46 @@ func evalListStatement(g *game.Game, stmt *ast.ListStatement, env *object.Enviro
 	return nil
 }
 
+func prerun(g *game.Game, env *object.Environment) bool {
+	// Run through the stored program without executing instructions.  Instead
+	// register all functions, procedures, subroutines and collect data.
+	l := &lexer.Lexer{}
+	env.Program.Start()
+	for !env.Program.EndOfProgram() {
+		p := parser.New(l, g)
+		line := p.ParseLine()
+		// Disregard parser errors as these will be handling during execution.
+		// Only evaluate FUNCTION, PROCEDURE, SUBROUTINE and DATA statements
+		for statementNumber, stmt := range line.Statements {
+			env.Program.CurrentStatementNumber = statementNumber
+			tokenType := stmt.TokenLiteral()
+			if tokenType == token.DATA {
+				obj := Eval(g, stmt, env)
+				if errorMsg, ok := obj.(*object.Error); ok {
+					if errorMsg.ErrorTokenIndex != 0 {
+						p.ErrorTokenIndex = errorMsg.ErrorTokenIndex
+					}
+					lineNumber := env.Program.GetLineNumber()
+					g.Print(fmt.Sprintf("%s in line %d", errorMsg.Message, lineNumber))
+					g.Put(13)
+					p.JumpToToken(0)
+					g.Print(fmt.Sprintf("%d %s", lineNumber, p.PrettyPrint()))
+					g.Put(13)
+					return false
+				}
+			}
+		}
+		env.Program.Next()
+	}
+	return true
+}
+
 func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environment) object.Object {
+	// Prerun stored program and return if prerun failed
+	if !prerun(g, env) {
+		return nil
+	}
+	// Otherwise execute stored program
 	l := &lexer.Lexer{}
 	env.Program.Start()
 	for !env.Program.EndOfProgram() && !g.BreakInterruptDetected {
