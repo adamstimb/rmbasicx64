@@ -2108,6 +2108,9 @@ func prerun(g *game.Game, env *object.Environment) bool {
 		p := parser.New(l, g)
 		line := p.ParseLine()
 		// Disregard parser errors as these will be handling during execution.
+		if _, hasError := p.GetError(); hasError {
+			continue
+		}
 		// Only evaluate FUNCTION, PROCEDURE, SUBROUTINE and DATA statements
 		for statementNumber, stmt := range line.Statements {
 			env.Program.CurrentStatementNumber = statementNumber
