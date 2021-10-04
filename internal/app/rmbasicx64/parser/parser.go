@@ -2116,28 +2116,46 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 	}
 
 	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-
-	if !p.peekTokenIs(token.Assign) && !p.peekTokenIs(token.Equal) {
+	if p.peekTokenIs(token.LeftParen) {
+		p.nextToken()
+		p.nextToken()
+		for {
+			val, ok := p.requireExpression()
+			if !ok {
+				return nil
+			} else {
+				stmt.Name.Subscripts = append(stmt.Name.Subscripts, val)
+			}
+			if p.curTokenIs(token.RightParen) {
+				p.nextToken()
+				break
+			}
+			if !p.requireComma() {
+				return nil
+			}
+			if p.onEndOfInstruction() {
+				p.ErrorTokenIndex = p.curToken.Index
+				p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.ClosingBracketIsNeeded)
+				return nil
+			}
+		}
+	} else {
+		p.nextToken()
+	}
+	if !p.curTokenIs(token.Assign) && !p.curTokenIs(token.Equal) {
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.InvalidExpressionFound)
-		p.ErrorTokenIndex = p.curToken.Index + 1
+		p.ErrorTokenIndex = p.curToken.Index
 		return nil
 	}
-	p.nextToken()
 
 	stmt.BindToken = p.curToken
 
 	p.nextToken()
 
-	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
-		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.InvalidExpression)
-		p.ErrorTokenIndex = p.curToken.Index + 1
-		return nil
-	}
-
 	stmt.Value = p.parseExpression(LOWEST)
 
-	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
-		p.nextToken()
+	if p.endOfInstruction() {
+		return stmt
 	}
 
 	return stmt
@@ -2153,6 +2171,51 @@ func (p *Parser) parseBindStatement() *ast.BindStatement {
 		return nil
 	}
 	p.nextToken()
+	stmt.Token = p.curToken
+	p.nextToken()
+
+	stmt.Value = p.parseExpression(LOWEST)
+
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) {
+		p.nextToken()
+	}
+
+	return stmt
+}
+
+func (p *Parser) parseBindArrayStatement() *ast.BindStatement {
+	ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	stmt := &ast.BindStatement{Name: ident}
+	// parse subscripts
+	if p.peekTokenIs(token.LeftParen) {
+		p.nextToken()
+		p.nextToken()
+		for {
+			val, ok := p.requireExpression()
+			if !ok {
+				return nil
+			} else {
+				ident.Subscripts = append(ident.Subscripts, val)
+			}
+			if p.curTokenIs(token.RightParen) {
+				p.nextToken()
+				break
+			}
+			if !p.requireComma() {
+				return nil
+			}
+			if p.onEndOfInstruction() {
+				p.ErrorTokenIndex = p.curToken.Index
+				p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.ClosingBracketIsNeeded)
+				return nil
+			}
+		}
+	}
+	stmt.Name.Subscripts = ident.Subscripts
+	// then get assign token and value expression
+	if !p.curTokenIs(token.Assign) && !p.curTokenIs(token.Equal) {
+		return nil
+	}
 	stmt.Token = p.curToken
 	p.nextToken()
 
@@ -2555,6 +2618,9 @@ func (p *Parser) parseStatement() ast.Statement {
 		if p.peekTokenIs(token.Equal) || p.peekTokenIs(token.Assign) {
 			return p.parseBindStatement()
 		}
+		if p.peekTokenIs(token.LeftParen) {
+			return p.parseBindArrayStatement()
+		}
 		// Handle procedure/function calls here
 		// ...
 		// Catch unknown command/procedure
@@ -2567,6 +2633,7 @@ func (p *Parser) parseStatement() ast.Statement {
 	case token.IF:
 		return p.parseIfStatement()
 	default:
+		log.Printf("default: call p.parseExpressionStatement")
 		return p.parseExpressionStatement()
 	}
 	// This should never happen.  It's here because of the mess of supporting optional LET keyword for binding statements

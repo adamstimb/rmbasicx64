@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math"
 	"os"
 	"path/filepath"
@@ -149,13 +148,45 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		if isError(val) {
 			return val
 		}
-		return env.Set(node.Name.Value, val)
+		if len(node.Name.Subscripts) > 0 {
+			// is Array
+			subscripts := make([]int, len(node.Name.Subscripts))
+			for i := 0; i < len(node.Name.Subscripts); i++ {
+				obj := Eval(g, node.Name.Subscripts[i], env)
+				if val, ok := obj.(*object.Numeric); ok {
+					subscripts[i] = int(val.Value)
+				} else {
+					return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: node.Token.Index}
+				}
+			}
+			ret, _ := env.SetArray(node.Name.Value, subscripts, val)
+			return ret
+		} else {
+			// is variable
+			return env.Set(node.Name.Value, val)
+		}
 	case *ast.BindStatement:
 		val := Eval(g, node.Value, env)
 		if isError(val) {
 			return val
 		}
-		return env.Set(node.Name.Value, val)
+		if len(node.Name.Subscripts) > 0 {
+			// is Array
+			subscripts := make([]int, len(node.Name.Subscripts))
+			for i := 0; i < len(node.Name.Subscripts); i++ {
+				obj := Eval(g, node.Name.Subscripts[i], env)
+				if val, ok := obj.(*object.Numeric); ok {
+					subscripts[i] = int(val.Value)
+				} else {
+					return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: node.Token.Index}
+				}
+			}
+			ret, _ := env.SetArray(node.Name.Value, subscripts, val)
+			return ret
+		} else {
+			// is variable
+			return env.Set(node.Name.Value, val)
+		}
 	case *ast.FunctionLiteral:
 		params := node.Parameters
 		body := node.Body
@@ -612,7 +643,6 @@ func evalCircleStatement(g *game.Game, stmt *ast.CircleStatement, env *object.En
 		coordList = append(coordList, nimgobus.XyCoord{X, Y})
 	}
 	// Execute
-	log.Printf("fillstyle: style=%d, hatching=%d, colour2=%d", fillStyle.Style, fillStyle.Hatching, fillStyle.Colour2)
 	opt := nimgobus.CircleOptions{Brush: Brush, Over: Over, FillStyle: fillStyle}
 	for _, coord := range coordList {
 		g.Circle(opt, radius, coord.X, coord.Y)
@@ -934,7 +964,6 @@ func evalAreaStatement(g *game.Game, stmt *ast.AreaStatement, env *object.Enviro
 		coordList = append(coordList, nimgobus.XyCoord{X, Y})
 	}
 	// Execute
-	log.Printf("fillstyle: style=%d, hatching=%d, colour2=%d", fillStyle.Style, fillStyle.Hatching, fillStyle.Colour2)
 	opt := nimgobus.AreaOptions{Brush: Brush, Over: Over, FillStyle: fillStyle}
 	g.Area(opt, coordList)
 	return nil
