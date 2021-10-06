@@ -50,6 +50,9 @@ const (
 	UnsupportedImageFileFormat
 	CouldNotDecodeImageFile
 	FunctionArrayNotFound
+	UnableToReadExcessData
+	NoMoreDataToBeRead
+	StringVariableExpected
 )
 
 // ErrorMessage returns the template error message for a given error code
@@ -103,6 +106,9 @@ func ErrorMessage(errorCode int) string {
 		UnsupportedImageFileFormat:                   "Unsupported image file format",
 		CouldNotDecodeImageFile:                      "Could not decode image file",
 		FunctionArrayNotFound:                        "Function/Array not found",
+		UnableToReadExcessData:                       "Unable to read excess DATA",
+		NoMoreDataToBeRead:                           "No more DATA to be read",
+		StringVariableExpected:                       "String variable expected",
 	}
 	return errorMessages[errorCode]
 }

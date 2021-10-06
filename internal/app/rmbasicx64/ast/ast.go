@@ -914,6 +914,36 @@ func (s *SquashStatement) String() string {
 	return out.String()
 }
 
+type DataStatement struct {
+	Token    token.Token
+	ItemList []token.Token
+}
+
+func (ps *DataStatement) statementNode() {}
+func (ps *DataStatement) TokenLiteral() string {
+	return ps.Token.Literal
+}
+func (ps *DataStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(ps.TokenLiteral() + " ")
+	return out.String()
+}
+
+type ReadStatement struct {
+	Token        token.Token
+	VariableList []*Identifier
+}
+
+func (ps *ReadStatement) statementNode() {}
+func (ps *ReadStatement) TokenLiteral() string {
+	return ps.Token.Literal
+}
+func (ps *ReadStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(ps.TokenLiteral() + " ")
+	return out.String()
+}
+
 type AreaStatement struct {
 	Token        token.Token
 	CoordList    []Expression
@@ -993,6 +1023,21 @@ func (s *GotoStatement) TokenLiteral() string {
 	return s.Token.Literal
 }
 func (s *GotoStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type RestoreStatement struct {
+	Token      token.Token
+	Linenumber token.Token
+}
+
+func (s *RestoreStatement) statementNode() {}
+func (s *RestoreStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *RestoreStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(s.TokenLiteral())
 	return out.String()
