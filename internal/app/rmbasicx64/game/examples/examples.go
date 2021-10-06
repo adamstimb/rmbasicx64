@@ -20,6 +20,15 @@ func WriteExamples(workspacePath string) {
 20 PRINT "Hello from RM BASICx64`,
 		},
 		{
+			filename: "datatest.BAS",
+			program: `10 FOR I% := 0 to 5
+20   READ A%
+30   PRINT A%
+40   RESTORE 60
+50 NEXT I%
+60 DATA 1,2,3,4`,
+		},
+		{
 			filename: "hello2.BAS",
 			program: `10 REM A slightly more intereting way to say hello
 20 SET MODE 40

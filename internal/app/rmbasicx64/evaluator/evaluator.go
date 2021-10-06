@@ -112,6 +112,12 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalGotoStatement(g, node, env)
 	case *ast.EditStatement:
 		return evalEditStatement(g, node, env)
+	case *ast.DataStatement:
+		return evalDataStatement(g, node, env)
+	case *ast.ReadStatement:
+		return evalReadStatement(g, node, env)
+	case *ast.RestoreStatement:
+		return evalRestoreStatement(g, node, env)
 	case *ast.RenumberStatement:
 		return evalRenumberStatement(g, node, env)
 	case *ast.RepeatStatement:
@@ -1869,6 +1875,83 @@ func evalEditStatement(g *game.Game, stmt *ast.EditStatement, env *object.Enviro
 	return nil
 }
 
+func evalRestoreStatement(g *game.Game, stmt *ast.RestoreStatement, env *object.Environment) object.Object {
+	resumeLine := env.Program.GetLineNumber()
+	resumeStatement := env.Program.CurrentStatementNumber
+	l := &lexer.Lexer{}
+	env.Program.Start()
+	// Jump to line number if specified and it exists in program
+	if stmt.Linenumber.Literal != "" {
+		// Get line number direct from literal
+		val, _ := strconv.ParseFloat(stmt.Linenumber.Literal, 64)
+		lineNumber := int(val)
+		if lineNumber < 0 {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.PositiveValueRequired), ErrorTokenIndex: stmt.Linenumber.Index}
+		}
+		// Try to jump
+		if !env.Program.Jump(lineNumber, 0) {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.LineNumberDoesNotExist), ErrorTokenIndex: stmt.Linenumber.Index}
+		}
+	}
+	// Run through the stored program but only collect data
+	env.DeleteData()
+	for !env.Program.EndOfProgram() {
+		l.Scan(env.Program.GetLine())
+		p := parser.New(l, g)
+		line := p.ParseLine()
+		// Disregard parser errors as these will be handling during execution.
+		if _, hasError := p.GetError(); hasError {
+			continue
+		}
+		// Only DATA statements
+		for statementNumber, stmt := range line.Statements {
+			env.Program.CurrentStatementNumber = statementNumber
+			tokenType := stmt.TokenLiteral()
+			if tokenType == token.DATA {
+				env.Prerun = true
+				obj := Eval(g, stmt, env)
+				env.Prerun = false
+				if errorMsg, ok := obj.(*object.Error); ok {
+					if errorMsg.ErrorTokenIndex != 0 {
+						p.ErrorTokenIndex = errorMsg.ErrorTokenIndex
+					}
+					lineNumber := env.Program.GetLineNumber()
+					g.Print(fmt.Sprintf("%s in line %d", errorMsg.Message, lineNumber))
+					g.Put(13)
+					p.JumpToToken(0)
+					g.Print(fmt.Sprintf("%d %s", lineNumber, p.PrettyPrint()))
+					g.Put(13)
+					return nil
+				}
+			}
+		}
+		env.Program.Next()
+	}
+	env.Program.Jump(resumeLine, resumeStatement)
+	env.Program.Next()
+	return nil
+}
+
+func evalDataStatement(g *game.Game, stmt *ast.DataStatement, env *object.Environment) object.Object {
+	// Pass if not in prerun
+	if !env.Prerun {
+		return nil
+	}
+	// Add items to data
+	for _, item := range stmt.ItemList {
+		switch item.TokenType {
+		case token.NumericLiteral:
+			val, _ := strconv.ParseFloat(item.Literal, 64)
+			env.PushData(&object.Numeric{Value: val})
+		case token.StringLiteral:
+			env.PushData(&object.String{Value: item.Literal})
+		case token.IdentifierLiteral:
+			env.PushData(&object.String{Value: item.Literal})
+		}
+	}
+	return nil
+}
+
 func evalRenumberStatement(g *game.Game, stmt *ast.RenumberStatement, env *object.Environment) object.Object {
 	env.Program.Renumber()
 	return nil
@@ -1884,6 +1967,95 @@ func evalRepeatStatement(g *game.Game, stmt *ast.RepeatStatement, env *object.En
 		}
 	}
 	env.JumpStack.Push(stmt)
+	return nil
+}
+
+func evalArraySubscripts(g *game.Game, env *object.Environment, subscripts []ast.Expression) (evaluatedSubscripts []int, obj object.Object, ok bool) {
+	for i := 0; i < len(subscripts); i++ {
+		obj := Eval(g, subscripts[i], env)
+		if val, ok := obj.(*object.Numeric); ok {
+			evaluatedSubscripts[i] = int(val.Value)
+		} else {
+			return evaluatedSubscripts, &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: 1}, false
+		}
+	}
+	return evaluatedSubscripts, nil, true
+}
+
+func evalReadStatement(g *game.Game, stmt *ast.ReadStatement, env *object.Environment) object.Object {
+	for i := 0; i < len(stmt.VariableList); i++ {
+		varName := stmt.VariableList[i].Value
+		// evaluate array subscripts, if any
+		var subscripts []int
+		if subs, obj, ok := evalArraySubscripts(g, env, stmt.VariableList[i].Subscripts); ok {
+			// all good
+			subscripts = subs
+		} else {
+			return obj
+		}
+		// Variable type
+		if varName[len(varName)-1] == '%' || varName[len(varName)-1] != '$' {
+			// is numeric var
+			obj := env.PopData()
+			if obj == nil {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NoMoreDataToBeRead), ErrorTokenIndex: stmt.Token.Index}
+			}
+			// can only accept numeric data
+			if val, ok := obj.(*object.Numeric); ok {
+				if len(subscripts) > 0 {
+					// is array
+					if obj, ok := env.SetArray(varName, subscripts, val); ok {
+						// all good
+					} else {
+						// failed
+						return obj
+					}
+				} else {
+					// is var
+					env.Set(varName, &object.Numeric{Value: val.Value})
+				}
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringVariableExpected), ErrorTokenIndex: stmt.Token.Index}
+			}
+		} else {
+			// is string var - can accept numeric or string data
+			obj := env.PopData()
+			if obj == nil {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NoMoreDataToBeRead), ErrorTokenIndex: stmt.Token.Index}
+			}
+			// string data can be set directly
+			if val, ok := obj.(*object.String); ok {
+				if len(subscripts) > 0 {
+					// is array
+					if obj, ok := env.SetArray(varName, subscripts, val); ok {
+						// all good
+					} else {
+						// failed
+						return obj
+					}
+				} else {
+					// is var
+					env.Set(varName, &object.String{Value: val.Value})
+				}
+			}
+			if val, ok := obj.(*object.Numeric); ok {
+				// convert to string then set
+				strVal := &object.String{Value: fmt.Sprintf("%g", val.Value)}
+				if len(subscripts) > 0 {
+					// is array
+					if obj, ok := env.SetArray(varName, subscripts, strVal); ok {
+						// all good
+					} else {
+						// failed
+						return obj
+					}
+				} else {
+					// is var
+					env.Set(varName, strVal)
+				}
+			}
+		}
+	}
 	return nil
 }
 
@@ -2104,7 +2276,9 @@ func prerun(g *game.Game, env *object.Environment) bool {
 	// register all functions, procedures, subroutines and collect data.
 	l := &lexer.Lexer{}
 	env.Program.Start()
+	env.Prerun = true
 	for !env.Program.EndOfProgram() {
+		l.Scan(env.Program.GetLine())
 		p := parser.New(l, g)
 		line := p.ParseLine()
 		// Disregard parser errors as these will be handling during execution.
@@ -2143,6 +2317,7 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 	}
 	// Otherwise execute stored program
 	l := &lexer.Lexer{}
+	env.Prerun = false
 	env.Program.Start()
 	for !env.Program.EndOfProgram() && !g.BreakInterruptDetected {
 		l.Scan(env.Program.GetLine())

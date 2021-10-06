@@ -281,7 +281,6 @@ func (p *Parser) requireClosingBracket() bool {
 
 func (p *Parser) requireTo() bool {
 	if !p.curTokenIs(token.TO) {
-		log.Printf("requireTo failed")
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.ToIsNeededBeforeValue)
 		p.ErrorTokenIndex = p.curToken.Index
 		p.nextToken()
@@ -1146,6 +1145,73 @@ func (p *Parser) parseAreaStatement() *ast.AreaStatement {
 			return nil
 		}
 		p.nextToken()
+	}
+	return stmt
+}
+
+func (p *Parser) parseDataStatement() *ast.DataStatement {
+	stmt := &ast.DataStatement{Token: p.curToken}
+	// Handle DATA without args
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		return nil
+	}
+	// Get item list
+	for !p.onEndOfInstruction() {
+		// Commas without a preceding value are regarded as representing an item with 0 value
+		if p.curTokenIs(token.Comma) {
+			stmt.ItemList = append(stmt.ItemList, token.Token{TokenType: token.NumericLiteral, Literal: "0", Index: p.curToken.Index})
+			p.nextToken()
+			continue
+		}
+		// Token must be string literal, numeric literal or an identifier literal without $ or % postfix
+		// (this is interpreted as a string literal)
+		if (p.curTokenIs(token.NumericLiteral) || p.curTokenIs(token.StringLiteral)) || (p.curTokenIs(token.IdentifierLiteral) && (p.curToken.Literal[len(p.curToken.Literal)-1] != '%' && p.curToken.Literal[len(p.curToken.Literal)-1] != '$')) {
+			stmt.ItemList = append(stmt.ItemList, p.curToken)
+			// each item must be followed by either end of instruction or comma
+			p.nextToken()
+			if p.onEndOfInstruction() {
+				return stmt
+			}
+			if !p.requireComma() {
+				return nil
+			}
+		} else {
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.UnableToReadExcessData)
+			return nil
+		}
+	}
+	return stmt
+}
+
+func (p *Parser) parseReadStatement() *ast.ReadStatement {
+	stmt := &ast.ReadStatement{Token: p.curToken}
+	p.nextToken() // consume READ
+	// TODO: Accept and parse arrays
+	// Require variable name
+	if !p.curTokenIs(token.IdentifierLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+		return nil
+	}
+	// Collect variable list
+	for !p.onEndOfInstruction() {
+		ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		p.nextToken()
+		// parse array subscripts
+		if subscripts, ok := p.getArraySubscripts(); ok {
+			ident.Subscripts = subscripts
+		} else {
+			return nil
+		}
+		stmt.VariableList = append(stmt.VariableList, ident)
+		if !p.onEndOfInstruction() {
+			// require comma
+			if !p.requireComma() {
+				return nil
+			}
+		}
 	}
 	return stmt
 }
@@ -2095,6 +2161,28 @@ func (p *Parser) parseEditStatement() *ast.EditStatement {
 	return stmt
 }
 
+func (p *Parser) parseRestoreStatement() *ast.RestoreStatement {
+	stmt := &ast.RestoreStatement{Token: p.curToken}
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// Line number
+	if !p.curTokenIs(token.NumericLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.LineNumberLabelNeeded)
+		return nil
+	}
+	stmt.Linenumber = p.curToken
+	p.nextToken()
+	if !p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+		return nil
+	}
+	return stmt
+}
+
 func (p *Parser) parseRepeatStatement() *ast.RepeatStatement {
 	stmt := &ast.RepeatStatement{Token: p.curToken}
 	if p.endOfInstruction() {
@@ -2183,35 +2271,43 @@ func (p *Parser) parseBindStatement() *ast.BindStatement {
 	return stmt
 }
 
-func (p *Parser) parseBindArrayStatement() *ast.BindStatement {
-	ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-	stmt := &ast.BindStatement{Name: ident}
-	// parse subscripts
+func (p *Parser) getArraySubscripts() (subscripts []ast.Expression, ok bool) {
 	if p.peekTokenIs(token.LeftParen) {
 		p.nextToken()
 		p.nextToken()
 		for {
 			val, ok := p.requireExpression()
 			if !ok {
-				return nil
+				return subscripts, false
 			} else {
-				ident.Subscripts = append(ident.Subscripts, val)
+				subscripts = append(subscripts, val)
 			}
 			if p.curTokenIs(token.RightParen) {
 				p.nextToken()
 				break
 			}
 			if !p.requireComma() {
-				return nil
+				return subscripts, false
 			}
 			if p.onEndOfInstruction() {
 				p.ErrorTokenIndex = p.curToken.Index
 				p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.ClosingBracketIsNeeded)
-				return nil
+				return subscripts, false
 			}
 		}
 	}
-	stmt.Name.Subscripts = ident.Subscripts
+	return subscripts, true
+}
+
+func (p *Parser) parseBindArrayStatement() *ast.BindStatement {
+	ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	stmt := &ast.BindStatement{Name: ident}
+	// parse subscripts
+	if subscripts, ok := p.getArraySubscripts(); ok {
+		stmt.Name.Subscripts = subscripts
+	} else {
+		return nil
+	}
 	// then get assign token and value expression
 	if !p.curTokenIs(token.Assign) && !p.curTokenIs(token.Equal) {
 		return nil
@@ -2580,6 +2676,10 @@ func (p *Parser) parseStatement() ast.Statement {
 			p.ErrorTokenIndex = p.curToken.Index
 			return nil
 		}
+	case token.DATA:
+		return p.parseDataStatement()
+	case token.READ:
+		return p.parseReadStatement()
 	case token.PRINT:
 		return p.parsePrintStatement()
 	case token.PLOT:
@@ -2630,10 +2730,11 @@ func (p *Parser) parseStatement() ast.Statement {
 		}
 	case token.RESULT:
 		return p.parseResultStatement()
+	case token.RESTORE:
+		return p.parseRestoreStatement()
 	case token.IF:
 		return p.parseIfStatement()
 	default:
-		log.Printf("default: call p.parseExpressionStatement")
 		return p.parseExpressionStatement()
 	}
 	// This should never happen.  It's here because of the mess of supporting optional LET keyword for binding statements

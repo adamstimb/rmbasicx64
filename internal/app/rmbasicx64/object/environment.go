@@ -167,6 +167,26 @@ type Environment struct {
 	outer     *Environment
 	Program   program
 	JumpStack jumpStack
+	Prerun    bool
+	dataItems []Object
+}
+
+func (e *Environment) PushData(obj Object) {
+	e.dataItems = append(e.dataItems, obj)
+}
+
+func (e *Environment) PopData() Object {
+	if len(e.dataItems) > 0 {
+		returnObj := e.dataItems[0]
+		e.dataItems = e.dataItems[1:]
+		return returnObj
+	} else {
+		return nil
+	}
+}
+
+func (e *Environment) DeleteData() {
+	e.dataItems = []Object{}
 }
 
 func (e *Environment) Get(name string) (Object, bool) {
@@ -300,6 +320,7 @@ func (e *Environment) Set(name string, val Object) Object {
 func (e *Environment) Wipe() {
 	e.Program.New()
 	e.store = make(map[string]Object)
+	e.DeleteData()
 	e.Degrees = true
 	e.outer = nil
 }
@@ -315,6 +336,7 @@ func NewEnvironment() *Environment {
 		outer:     nil,
 		Program:   *p,
 		JumpStack: *j,
+		dataItems: []Object{},
 	}
 }
 
