@@ -1149,7 +1149,6 @@ func (p *Parser) parseNextStatement() *ast.NextStatement {
 }
 
 func (p *Parser) parseSubroutineStatement() *ast.SubroutineStatement {
-	log.Printf("Parse sub")
 	stmt := &ast.SubroutineStatement{Token: p.curToken}
 	p.nextToken() // consume SUBROUTINE
 	// Require name
@@ -1189,6 +1188,52 @@ func (p *Parser) parseGosubStatement() *ast.GosubStatement {
 func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	stmt := &ast.ReturnStatement{Token: p.curToken}
 	p.nextToken() // consume RETURN
+	// Require end of instruction
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseFunctionDeclaration() *ast.FunctionDeclaration {
+	stmt := &ast.FunctionDeclaration{Token: p.curToken}
+	p.nextToken() // consume SUBROUTINE
+	// Require name
+	if !p.curTokenIs(token.IdentifierLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NameOfDefinitionRequired)
+		return nil
+	}
+	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	p.nextToken()
+	if !p.requireOpenBracket() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.OpeningBracketIsNeeded)
+		return nil
+	}
+	for {
+		if p.curTokenIs(token.RightParen) {
+			p.nextToken()
+			break
+		}
+		if val, ok := p.requireExpression(); ok {
+			stmt.ReceiveArgs = append(stmt.ReceiveArgs, val)
+		} else {
+			return nil
+		}
+		if p.curTokenIs(token.RightParen) {
+			p.nextToken()
+			break
+		}
+		if !p.requireComma() {
+			return nil
+		}
+		if p.onEndOfInstruction() {
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.ClosingBracketIsNeeded)
+			return nil
+		}
+	}
 	// Require end of instruction
 	if p.endOfInstruction() {
 		return stmt
@@ -2524,6 +2569,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseGosubStatement()
 	case token.RETURN:
 		return p.parseReturnStatement()
+	case token.FUNCTION:
+		return p.parseFunctionDeclaration()
 	case token.DIM:
 		return p.parseDimStatement()
 	case token.ASK:
@@ -2617,6 +2664,7 @@ func (p *Parser) parseStatement() ast.Statement {
 			return p.parseBindStatement()
 		}
 		if p.peekTokenIs(token.LeftParen) {
+			// This is also where we need to pick up function calls where the result is not stored
 			return p.parseBindArrayStatement()
 		}
 		// Handle procedure/function calls here

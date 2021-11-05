@@ -43,6 +43,15 @@ func WriteExamples(workspacePath string) {
 110 PRINT "Naturally, the second bus goes first lol."`,
 		},
 		{
+			filename: "function.BAS",
+			program: `10 PRINT "This is how functions work in RM Basic."
+20 GOTO 60
+30 FUNCTION Add_Ten(Number%)
+40    RESULT Number% + 10
+50 ENDFUNC
+60 PRINT "And that is it."`,
+		},
+		{
 			filename: "hello2.BAS",
 			program: `10 REM A slightly more intereting way to say hello
 20 SET MODE 40

@@ -121,8 +121,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalGosubStatement(g, node, env)
 	case *ast.ReturnStatement:
 		return evalReturnStatement(g, node, env)
-	case *ast.UserFunctionDefinitionStatement:
-		return evalUserFunctionDefinitionStatement(g, node, env)
+	case *ast.FunctionDeclaration:
+		return evalFunctionDeclaration(g, node, env)
 	case *ast.ReadStatement:
 		return evalReadStatement(g, node, env)
 	case *ast.RestoreStatement:
@@ -203,14 +203,14 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 			// is variable
 			return env.Set(node.Name.Value, val)
 		}
-	case *ast.FunctionLiteral:
-		params := node.Parameters
-		body := node.Body
-		return &object.Function{
-			Parameters: params,
-			Env:        env,
-			Body:       body,
-		}
+	//case *ast.FunctionLiteral:
+	//	params := node.Parameters
+	//	body := node.Body
+	//	return &object.Function{
+	//		Parameters: params,
+	//		Env:        env,
+	//		Body:       body,
+	//	}
 
 	// Expressions
 	case *ast.NumericLiteral:
@@ -2009,12 +2009,16 @@ func evalReturnStatement(g *game.Game, stmt *ast.ReturnStatement, env *object.En
 	return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ReturnWithoutAnyGosub), ErrorTokenIndex: stmt.Token.Index}
 }
 
-func evalUserFunctionDefinitionStatement(g *game.Game, stmt *ast.UserFunctionDefinitionStatement, env *object.Environment) object.Object {
-	// Pass if not in prerun
+func evalFunctionDeclaration(g *game.Game, stmt *ast.FunctionDeclaration, env *object.Environment) object.Object {
+	// Error if not prerun
 	if !env.Prerun {
-		return nil
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.CannotExecuteDefinition), ErrorTokenIndex: stmt.Token.Index}
 	}
-
+	// Register function
+	stmt.LineNumber = env.Program.GetLineNumber()
+	stmt.StatementNumber = env.Program.CurrentStatementNumber
+	env.PushFunction(stmt)
+	log.Printf("push function")
 	return nil
 }
 
@@ -2344,6 +2348,7 @@ func prerun(g *game.Game, env *object.Environment) bool {
 	env.Program.Start()
 	env.DeleteData()
 	env.DeleteSubroutines()
+	env.DeleteFunctions()
 	env.Prerun = true
 	for !env.Program.EndOfProgram() {
 		l.Scan(env.Program.GetLine())
@@ -2357,7 +2362,7 @@ func prerun(g *game.Game, env *object.Environment) bool {
 		for statementNumber, stmt := range line.Statements {
 			env.Program.CurrentStatementNumber = statementNumber
 			tokenType := stmt.TokenLiteral()
-			if tokenType == token.DATA || tokenType == token.SUBROUTINE {
+			if tokenType == token.DATA || tokenType == token.SUBROUTINE || tokenType == token.FUNCTION {
 				obj := Eval(g, stmt, env)
 				if errorMsg, ok := obj.(*object.Error); ok {
 					if errorMsg.ErrorTokenIndex != 0 {
@@ -2514,6 +2519,7 @@ func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment)
 				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: node.Token.Index}
 			}
 		}
+		// Also check GetFunction then handle function call and return val - is it that simple?
 		val, _ := env.GetArray(node.Value, subscripts)
 		return val
 	}

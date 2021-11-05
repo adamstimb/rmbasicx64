@@ -102,6 +102,7 @@ const (
 	DRAWING    = "DRAWING"
 	EDIT       = "EDIT"
 	END        = "END"
+	ENDFUNC    = "ENDFUNC"
 	ENVELOPE   = "ENVELOPE"
 	ERASE      = "ERASE"
 	ERL        = "ERL"
@@ -298,6 +299,7 @@ func IsKeyword(testString string) bool {
 		DRAWING,
 		EDIT,
 		END,
+		ENDFUNC,
 		ENVELOPE,
 		ERASE,
 		ERL,

@@ -179,6 +179,7 @@ type Environment struct {
 	Prerun      bool
 	dataItems   []Object
 	subroutines []*ast.SubroutineStatement
+	functions   []*ast.FunctionDeclaration
 }
 
 func (e *Environment) NewScope() {
@@ -262,6 +263,23 @@ func (e *Environment) GetSubroutine(name string) (*ast.SubroutineStatement, bool
 
 func (e *Environment) DeleteSubroutines() {
 	e.subroutines = []*ast.SubroutineStatement{}
+}
+
+func (e *Environment) PushFunction(fun *ast.FunctionDeclaration) {
+	e.functions = append(e.functions, fun)
+}
+
+func (e *Environment) GetFunction(name string) (*ast.FunctionDeclaration, bool) {
+	for _, fun := range e.functions {
+		if fun.Name.Value == name {
+			return fun, true
+		}
+	}
+	return nil, false
+}
+
+func (e *Environment) DeleteFunctions() {
+	e.functions = []*ast.FunctionDeclaration{}
 }
 
 func (e *Environment) Get(name string) (Object, bool) {
