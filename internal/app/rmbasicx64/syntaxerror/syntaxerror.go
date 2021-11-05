@@ -53,6 +53,11 @@ const (
 	UnableToReadExcessData
 	NoMoreDataToBeRead
 	StringVariableExpected
+	CannotExecuteDefinition
+	NameOfDefinitionRequired
+	EndOfDefinitionExpected
+	FunctionNestingTooDeep
+	ReturnWithoutAnyGosub
 )
 
 // ErrorMessage returns the template error message for a given error code
@@ -109,6 +114,11 @@ func ErrorMessage(errorCode int) string {
 		UnableToReadExcessData:                       "Unable to read excess DATA",
 		NoMoreDataToBeRead:                           "No more DATA to be read",
 		StringVariableExpected:                       "String variable expected",
+		CannotExecuteDefinition:                      "Cannot execute definition",
+		NameOfDefinitionRequired:                     "Name of definition required",
+		EndOfDefinitionExpected:                      "End of definition expected",
+		FunctionNestingTooDeep:                       "Function nesting too deep",
+		ReturnWithoutAnyGosub:                        "RETURN without any GOSUB",
 	}
 	return errorMessages[errorCode]
 }

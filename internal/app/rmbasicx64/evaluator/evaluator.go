@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math"
 	"os"
 	"path/filepath"
@@ -114,6 +115,14 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalEditStatement(g, node, env)
 	case *ast.DataStatement:
 		return evalDataStatement(g, node, env)
+	case *ast.SubroutineStatement:
+		return evalSubroutineStatement(g, node, env)
+	case *ast.GosubStatement:
+		return evalGosubStatement(g, node, env)
+	case *ast.ReturnStatement:
+		return evalReturnStatement(g, node, env)
+	case *ast.UserFunctionDefinitionStatement:
+		return evalUserFunctionDefinitionStatement(g, node, env)
 	case *ast.ReadStatement:
 		return evalReadStatement(g, node, env)
 	case *ast.RestoreStatement:
@@ -142,14 +151,14 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalBlockStatement(g, node, env)
 	case *ast.IfStatement:
 		return evalIfStatement(g, node, env)
-	case *ast.ReturnStatement:
-		val := Eval(g, node.ReturnValue, env)
-		if isError(val) {
-			return val
-		}
-		return &object.ReturnValue{
-			Value: val,
-		}
+	//case *ast.ReturnStatement:
+	//	val := Eval(g, node.ReturnValue, env)
+	//	if isError(val) {
+	//		return val
+	//	}
+	//	return &object.ReturnValue{
+	//		Value: val,
+	//	}
 	case *ast.LetStatement:
 		val := Eval(g, node.Value, env)
 		if isError(val) {
@@ -1903,7 +1912,7 @@ func evalRestoreStatement(g *game.Game, stmt *ast.RestoreStatement, env *object.
 		if _, hasError := p.GetError(); hasError {
 			continue
 		}
-		// Only DATA statements
+		// Only DATA
 		for statementNumber, stmt := range line.Statements {
 			env.Program.CurrentStatementNumber = statementNumber
 			tokenType := stmt.TokenLiteral()
@@ -1949,6 +1958,63 @@ func evalDataStatement(g *game.Game, stmt *ast.DataStatement, env *object.Enviro
 			env.PushData(&object.String{Value: item.Literal})
 		}
 	}
+	return nil
+}
+
+func evalSubroutineStatement(g *game.Game, stmt *ast.SubroutineStatement, env *object.Environment) object.Object {
+	// Error if not prerun
+	if !env.Prerun {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.CannotExecuteDefinition), ErrorTokenIndex: stmt.Token.Index}
+	}
+	// Register subroutine
+	stmt.LineNumber = env.Program.GetLineNumber()
+	stmt.StatementNumber = env.Program.CurrentStatementNumber
+	env.PushSubroutine(stmt)
+	log.Printf("push subroutine")
+	return nil
+}
+
+func evalGosubStatement(g *game.Game, stmt *ast.GosubStatement, env *object.Environment) object.Object {
+	log.Printf("eval gosub")
+	// Push gosub statement onto jump stack so RETURN will know where to jump back to
+	stmt.LineNumber = env.Program.GetLineNumber()
+	stmt.StatementNumber = env.Program.CurrentStatementNumber
+	env.JumpStack.Push(stmt)
+
+	// Try to get location of subroutine and jump.  Yield error if not found (run on emulator
+	// to find out which one)
+	if sub, ok := env.GetSubroutine(stmt.Name.Value); ok {
+		env.Program.Jump(sub.LineNumber, sub.StatementNumber)
+		env.Program.Next()
+	} else {
+		// return whichever erro
+	}
+	return nil
+}
+
+func evalReturnStatement(g *game.Game, stmt *ast.ReturnStatement, env *object.Environment) object.Object {
+	log.Printf("eval return")
+	// Pop return stack until we find a gosub statement.  If we don't find one, return the
+	// RETURN without any GOSUB error.
+	looking := true
+	for looking {
+		jumpItem := env.JumpStack.Pop()
+		// test if this is a gosub and jump back to it if so
+		if gosub, ok := jumpItem.(*ast.GosubStatement); ok {
+			env.Program.Jump(gosub.LineNumber, gosub.StatementNumber)
+			env.Program.Next()
+			return nil
+		}
+	}
+	return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ReturnWithoutAnyGosub), ErrorTokenIndex: stmt.Token.Index}
+}
+
+func evalUserFunctionDefinitionStatement(g *game.Game, stmt *ast.UserFunctionDefinitionStatement, env *object.Environment) object.Object {
+	// Pass if not in prerun
+	if !env.Prerun {
+		return nil
+	}
+
 	return nil
 }
 
@@ -2276,6 +2342,8 @@ func prerun(g *game.Game, env *object.Environment) bool {
 	// register all functions, procedures, subroutines and collect data.
 	l := &lexer.Lexer{}
 	env.Program.Start()
+	env.DeleteData()
+	env.DeleteSubroutines()
 	env.Prerun = true
 	for !env.Program.EndOfProgram() {
 		l.Scan(env.Program.GetLine())
@@ -2289,7 +2357,7 @@ func prerun(g *game.Game, env *object.Environment) bool {
 		for statementNumber, stmt := range line.Statements {
 			env.Program.CurrentStatementNumber = statementNumber
 			tokenType := stmt.TokenLiteral()
-			if tokenType == token.DATA {
+			if tokenType == token.DATA || tokenType == token.SUBROUTINE {
 				obj := Eval(g, stmt, env)
 				if errorMsg, ok := obj.(*object.Error); ok {
 					if errorMsg.ErrorTokenIndex != 0 {
