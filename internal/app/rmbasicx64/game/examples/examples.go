@@ -29,6 +29,20 @@ func WriteExamples(workspacePath string) {
 60 DATA 1,2,3,4`,
 		},
 		{
+			filename: "subroutine.BAS",
+			program: `10 PRINT "This is how subroutines work in RM Basic."
+20 GOSUB Second_Bus
+30 GOSUB First_Bus
+40 GOTO 110
+50 SUBROUTINE First_Bus
+60 PRINT "This is the first bus"
+70 RETURN
+80 SUBROUTINE Second_Bus
+90 PRINT "This is the second bus"
+100 RETURN
+110 PRINT "Naturally, the second bus goes first lol."`,
+		},
+		{
 			filename: "hello2.BAS",
 			program: `10 REM A slightly more intereting way to say hello
 20 SET MODE 40

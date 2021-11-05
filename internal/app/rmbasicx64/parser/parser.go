@@ -108,7 +108,7 @@ func New(l *lexer.Lexer, g *game.Game) *Parser {
 	p.registerPrefix(token.FALSE, p.parseBoolean)
 	p.registerPrefix(token.LeftParen, p.parseGroupedExpression)
 	//p.registerPrefix(token.IF, p.parseIfExpression)
-	p.registerPrefix(token.FUNCTION, p.parseFunctionDefinition)
+	//p.registerPrefix(token.FUNCTION, p.parseFunctionDefinition)
 	p.registerPrefix(token.StringLiteral, p.parseStringLiteral)
 	p.infixParseFns = make(map[string]infixParseFn)
 	p.registerInfix(token.Plus, p.parseInfixExpression)
@@ -372,147 +372,6 @@ func (p *Parser) parseUntilStatement() ast.Statement {
 		return stmt
 	}
 	return nil
-}
-
-// -------------------------------------------------------------------------
-// -- Function literal
-//
-// Keywords.78
-//
-// FUNCTION/ENDFUNC
-// 		Define a function
-// Defining Syntax
-//		FUNCTION name([var1/array1[,var2/array3...]])
-//		  :
-//		  :
-//		  Instruction(s)
-//		  :
-//		  :
-// 		ENDFUN
-// Calling Syntax
-//		name([exp1[,exp2...]])
-// Remarks
-//		To declare a function, start with the FUNCTION
-//		header, defining the name of the function and its
-//		parameters.
-//		The action of the function is defined by the
-//		instruction(s) on the following line(s), down to the next
-//		ENDFUN command.  At least one of these instructions
-//		must contain the RESULT command, indicating what
-//		value will be returned.
-//		To call the function, simple use name in the same way that
-//		you use a standard RM Basic function.  The function will
-//		be executed and its value will be returns to the expression
-//		from which it was called when a RESULT command is executed.
-//		You can define function parameters (var1,var2...) in the
-//		FUNCTION header.  These are variables or array elements,
-//		each one accepting a value from the program to be used in
-//		the function.
-//		You can specify array names (array1,array2...) in the
-//		header.  Using the array reference system (see chapter 5),
-//		arrays from the main program can be assigned to the
-//		function.
-//		Function declarations are usually placed at the end of a
-//		program.
-// Examples
-//		200 REM A function that accepts four numbers and returns
-//		their sum
-//		210 FUNCTION Add(A, B, C, D)
-//		220   Sum := A + B + C + D
-//		230   RESULT Sum
-//		240 ENDFUN
-// Associated Keywords
-//		GLOBAL, PROCEDURE/ENDPROC, PROCS, RESULT
-//
-func (p *Parser) parseFunctionParameters() []*ast.Identifier {
-	identifiers := []*ast.Identifier{}
-	if p.peekTokenIs(token.RightParen) {
-		p.nextToken()
-		return identifiers
-	}
-	p.nextToken()
-	ident := &ast.Identifier{
-		Token: p.curToken,
-		Value: p.curToken.Literal,
-	}
-	identifiers = append(identifiers, ident)
-	for p.peekTokenIs(token.Comma) {
-		p.nextToken()
-		p.nextToken()
-		ident := &ast.Identifier{
-			Token: p.curToken,
-			Value: p.curToken.Literal,
-		}
-		identifiers = append(identifiers, ident)
-	}
-	if !p.expectPeek(token.RightParen) {
-		return nil
-	}
-	return identifiers
-}
-
-func (p *Parser) parseFunctionBlock() *ast.BlockStatement {
-	block := &ast.BlockStatement{
-		Token: p.curToken,
-	}
-	block.Statements = []ast.Statement{}
-	p.nextToken()
-
-	for !p.curTokenIs(token.ENDFUN) && !p.curTokenIs(token.EOF) {
-		stmt := p.parseStatement()
-		if stmt != nil {
-			block.Statements = append(block.Statements, stmt)
-		}
-		p.nextToken()
-	}
-	return block
-}
-
-func (p *Parser) parseFunctionLiteral() ast.Expression {
-	lit := &ast.FunctionLiteral{
-		Token: p.curToken,
-	}
-	if !p.expectPeek(token.LeftParen) {
-		return nil
-	}
-	lit.Parameters = p.parseFunctionParameters()
-	// parameters can be following be Colon or NewLine
-	if !(p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine)) {
-		log.Println("End of instruction expected")
-		return nil
-	} else {
-		p.nextToken()
-	}
-	lit.Body = p.parseFunctionBlock()
-	log.Println("parseFunctionLiteral returning:")
-	log.Println(lit.Body.String())
-	return lit
-}
-
-func (p *Parser) parseFunctionDefinition() ast.Expression {
-	lit := &ast.FunctionDefinition{
-		Token: p.curToken,
-	}
-	if !p.peekTokenIs(token.IdentifierLiteral) {
-		log.Println("Identifier expected")
-	}
-	lit.Identifier = &ast.Identifier{
-		Token: p.curToken,
-		Value: "",
-	}
-	p.nextToken()
-	if !p.expectPeek(token.LeftParen) {
-		return nil
-	}
-	lit.Parameters = p.parseFunctionParameters()
-	if !(p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine)) {
-		log.Println("End of instruction expected")
-		return nil
-	} else {
-		p.nextToken()
-	}
-	lit.Body = p.parseFunctionBlock()
-	return lit
 }
 
 func (p *Parser) parseRemStatement() *ast.RemStatement {
@@ -1282,6 +1141,54 @@ func (p *Parser) parseNextStatement() *ast.NextStatement {
 		return nil
 	}
 	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	// Require end of instruction
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseSubroutineStatement() *ast.SubroutineStatement {
+	log.Printf("Parse sub")
+	stmt := &ast.SubroutineStatement{Token: p.curToken}
+	p.nextToken() // consume SUBROUTINE
+	// Require name
+	if !p.curTokenIs(token.IdentifierLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NameOfDefinitionRequired)
+		return nil
+	}
+	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	p.nextToken()
+	// Require end of instruction
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseGosubStatement() *ast.GosubStatement {
+	log.Printf("Parse gosub")
+	stmt := &ast.GosubStatement{Token: p.curToken}
+	p.nextToken() // consume SUBROUTINE
+	// Require name
+	if !p.curTokenIs(token.IdentifierLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NameOfDefinitionRequired)
+		return nil
+	}
+	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	p.nextToken()
+	// Require end of instruction
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
+	stmt := &ast.ReturnStatement{Token: p.curToken}
+	p.nextToken() // consume RETURN
 	// Require end of instruction
 	if p.endOfInstruction() {
 		return stmt
@@ -2324,21 +2231,6 @@ func (p *Parser) parseBindArrayStatement() *ast.BindStatement {
 	return stmt
 }
 
-// -------------------------------------------------------------------------
-// -- RETURN (TODO: This is Monkey implementation, not Basic)
-
-func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
-	stmt := &ast.ReturnStatement{Token: p.curToken}
-	p.nextToken()
-
-	stmt.ReturnValue = p.parseExpression(LOWEST)
-
-	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) {
-		p.nextToken()
-	}
-	return stmt
-}
-
 func (p *Parser) parseResultStatement() *ast.ResultStatement {
 	stmt := &ast.ResultStatement{Token: p.curToken}
 	p.nextToken()
@@ -2626,6 +2518,12 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseForStatement()
 	case token.NEXT:
 		return p.parseNextStatement()
+	case token.SUBROUTINE:
+		return p.parseSubroutineStatement()
+	case token.GOSUB:
+		return p.parseGosubStatement()
+	case token.RETURN:
+		return p.parseReturnStatement()
 	case token.DIM:
 		return p.parseDimStatement()
 	case token.ASK:

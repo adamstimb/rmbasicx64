@@ -5,6 +5,7 @@ import (
 	"log"
 	"sort"
 
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
 )
 
@@ -161,15 +162,72 @@ func (j *jumpStack) Pop() interface{} {
 	return nil
 }
 
-type Environment struct {
-	store     map[string]Object
-	Degrees   bool
-	outer     *Environment
-	Program   program
-	JumpStack jumpStack
-	Prerun    bool
-	dataItems []Object
+type storeKey struct {
+	Scope  int
+	Name   string
+	Global bool
 }
+
+type Environment struct {
+	store       map[storeKey]Object
+	globals     []string
+	scope       int
+	Degrees     bool
+	outer       *Environment
+	Program     program
+	JumpStack   jumpStack
+	Prerun      bool
+	dataItems   []Object
+	subroutines []*ast.SubroutineStatement
+}
+
+func (e *Environment) NewScope() {
+	e.scope++
+}
+
+func (e *Environment) KillScope() {
+	// Remove all vars from the store with current scope and then
+	// go one scope towards global if not already in global.
+	if e.scope > 0 {
+		toDelete := []storeKey{}
+		for k, _ := range e.store {
+			if k.Scope == e.scope {
+				toDelete = append(toDelete, k)
+			}
+		}
+		for _, k := range toDelete {
+			delete(e.store, k)
+		}
+		e.scope--
+	}
+}
+
+func (e *Environment) Global(name string) bool {
+	key := storeKey{Scope: e.scope, Name: name}
+	if _, ok := e.store[key]; ok {
+		// variable used as local error
+		return false
+	} else {
+		// add variable to global scope (-1) and to list of globals
+		currentScope := e.scope
+		e.scope = -1
+		e.Set(name, nil)
+		e.scope = currentScope
+		e.globals = append(e.globals, name)
+		return true
+	}
+}
+
+func (e *Environment) IsGlobal(name string) bool {
+	for i := 0; i < len(e.globals); i++ {
+		if name == e.globals[i] {
+			return true
+		}
+	}
+	return false
+}
+
+// TODO: Globalize arrays
 
 func (e *Environment) PushData(obj Object) {
 	e.dataItems = append(e.dataItems, obj)
@@ -189,8 +247,30 @@ func (e *Environment) DeleteData() {
 	e.dataItems = []Object{}
 }
 
+func (e *Environment) PushSubroutine(sub *ast.SubroutineStatement) {
+	e.subroutines = append(e.subroutines, sub)
+}
+
+func (e *Environment) GetSubroutine(name string) (*ast.SubroutineStatement, bool) {
+	for _, sub := range e.subroutines {
+		if sub.Name.Value == name {
+			return sub, true
+		}
+	}
+	return nil, false
+}
+
+func (e *Environment) DeleteSubroutines() {
+	e.subroutines = []*ast.SubroutineStatement{}
+}
+
 func (e *Environment) Get(name string) (Object, bool) {
-	obj, ok := e.store[name]
+	// Use current scope if local or global scope if global
+	key := storeKey{Name: name, Scope: e.scope}
+	if e.IsGlobal(name) {
+		key.Scope = -1
+	}
+	obj, ok := e.store[key]
 	if !ok && e.outer != nil {
 		obj, ok = e.outer.Get(name)
 	}
@@ -198,7 +278,7 @@ func (e *Environment) Get(name string) (Object, bool) {
 }
 
 func (e *Environment) NewArray(name string, subscripts []int) (Object, bool) {
-	_, ok := e.store[name]
+	_, ok := e.store[storeKey{Name: name, Scope: e.scope}]
 	if ok {
 		return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.ArrayAlreadyDimensioned), ErrorTokenIndex: 0}, false
 	}
@@ -217,12 +297,12 @@ func (e *Environment) NewArray(name string, subscripts []int) (Object, bool) {
 			items[i] = &String{Value: ""}
 		}
 	}
-	e.store[name] = &Array{Items: items, Subscripts: subscripts}
-	return e.store[name], true
+	e.store[storeKey{Name: name, Scope: e.scope}] = &Array{Items: items, Subscripts: subscripts}
+	return e.store[storeKey{Name: name, Scope: e.scope}], true
 }
 
 func (e *Environment) GetArray(name string, subscripts []int) (Object, bool) {
-	objArray, ok := e.store[name]
+	objArray, ok := e.store[storeKey{Name: name, Scope: e.scope}]
 	if !ok && e.outer != nil {
 		objArray, ok = e.outer.GetArray(name, subscripts)
 	}
@@ -256,7 +336,7 @@ func (e *Environment) GetArray(name string, subscripts []int) (Object, bool) {
 }
 
 func (e *Environment) SetArray(name string, subscripts []int, val Object) (Object, bool) {
-	objArray, ok := e.store[name]
+	objArray, ok := e.store[storeKey{Name: name, Scope: e.scope}]
 	if !ok && e.outer != nil {
 		objArray, ok = e.outer.Get(name)
 	}
@@ -297,7 +377,7 @@ func (e *Environment) SetArray(name string, subscripts []int, val Object) (Objec
 	// Set item obj
 	log.Printf("Storing val %T at index %d", arr, index)
 	arr.Items[index] = val
-	e.store[name] = arr
+	e.store[storeKey{Name: name, Scope: e.scope}] = arr
 	return arr, true
 }
 
@@ -314,18 +394,25 @@ func (e *Environment) Set(name string, val Object) Object {
 	if val.Type() == NUMERIC_OBJ && name[len(name)-1:] == "%" {
 		val = &Numeric{Value: float64(int64(val.(*Numeric).Value))}
 	}
-	e.store[name] = val
+	// Use current scope if local or global scope if global
+	key := storeKey{Name: name, Scope: e.scope}
+	if e.IsGlobal(name) {
+		key.Scope = -1
+	}
+	e.store[key] = val
 	return val
 }
 func (e *Environment) Wipe() {
 	e.Program.New()
-	e.store = make(map[string]Object)
+	e.store = make(map[storeKey]Object)
 	e.DeleteData()
 	e.Degrees = true
 	e.outer = nil
+	e.scope = 0
 }
+
 func NewEnvironment() *Environment {
-	s := make(map[string]Object)
+	s := make(map[storeKey]Object)
 	p := &program{}
 	j := &jumpStack{}
 	p.New()
@@ -337,6 +424,7 @@ func NewEnvironment() *Environment {
 		Program:   *p,
 		JumpStack: *j,
 		dataItems: []Object{},
+		scope:     0,
 	}
 }
 

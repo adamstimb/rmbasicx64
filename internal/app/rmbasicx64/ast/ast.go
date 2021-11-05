@@ -157,34 +157,6 @@ func (s *UntilStatement) String() string {
 	return out.String()
 }
 
-// redundant?
-type FunctionDefinition struct {
-	Token      token.Token // The FUNCTION token
-	Identifier *Identifier
-	Parameters []*Identifier
-	Body       *BlockStatement
-}
-
-func (fd *FunctionDefinition) expressionNode() {}
-func (fd *FunctionDefinition) TokenLiteral() string {
-	return fd.Token.Literal
-}
-func (fd *FunctionDefinition) String() string {
-	var out bytes.Buffer
-	params := []string{}
-	for _, p := range fd.Parameters {
-		params = append(params, p.String())
-	}
-	out.WriteString(fd.TokenLiteral())
-	out.WriteString(" ")
-	out.WriteString(fd.Identifier.String())
-	out.WriteString("(")
-	out.WriteString(strings.Join(params, ", "))
-	out.WriteString(") ")
-	out.WriteString(fd.Body.String())
-	return out.String()
-}
-
 type FunctionLiteral struct {
 	Token      token.Token // The FUNCTION token
 	Parameters []*Identifier
@@ -1121,6 +1093,79 @@ func (s *ForStatement) String() string {
 	return out.String()
 }
 
+type SubroutineStatement struct {
+	Token           token.Token
+	Name            *Identifier
+	LineNumber      int
+	StatementNumber int
+}
+
+func (s *SubroutineStatement) statementNode() {}
+func (s *SubroutineStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *SubroutineStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	out.WriteString(s.Name.String())
+	return out.String()
+}
+
+type GosubStatement struct {
+	Token           token.Token
+	Name            *Identifier
+	LineNumber      int
+	StatementNumber int
+}
+
+func (s *GosubStatement) statementNode() {}
+func (s *GosubStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *GosubStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	out.WriteString(s.Name.String())
+	return out.String()
+}
+
+// FUNCTIONS and PROCEDURES are all represented internally as User Functions
+type UserFunctionDefinitionStatement struct {
+	Token           token.Token // to identify type e.g. FUNCTION, SUBROUTINE, PROCEDURE
+	Name            *Identifier
+	LineNumber      int
+	StatementNumber int
+	//EndLineNumber        int
+	//EndStatementNumber   int
+	ReceiveArgs []Expression
+	ReturnVars  []*Identifier
+}
+
+func (s *UserFunctionDefinitionStatement) statementNode() {}
+func (s *UserFunctionDefinitionStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *UserFunctionDefinitionStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	out.WriteString(s.Name.String())
+	return out.String()
+}
+
+type ReturnStatement struct {
+	Token token.Token
+}
+
+func (s *ReturnStatement) statementNode() {}
+func (s *ReturnStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *ReturnStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	return out.String()
+}
+
 type NextStatement struct {
 	Token token.Token // the token.Let token
 	Name  *Identifier
@@ -1220,25 +1265,6 @@ func (sl *StringLiteral) TokenLiteral() string {
 }
 func (sl *StringLiteral) String() string {
 	return sl.Token.Literal
-}
-
-type ReturnStatement struct {
-	Token       token.Token // the 'return' token
-	ReturnValue Expression
-}
-
-func (rs *ReturnStatement) statementNode() {}
-func (rs *ReturnStatement) TokenLiteral() string {
-	return rs.Token.Literal
-}
-func (rs *ReturnStatement) String() string {
-	var out bytes.Buffer
-	out.WriteString(rs.TokenLiteral() + " ")
-	if rs.ReturnValue != nil {
-		out.WriteString(rs.ReturnValue.String())
-	}
-	out.WriteString(";")
-	return out.String()
 }
 
 type ResultStatement struct {
