@@ -2517,24 +2517,40 @@ func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment)
 		//    b) If a function, evaluate all subscripts and enforce whatever variable type, then CallFunction().
 		// 3. Return val
 
-		// For 1: env.IsArray(name) and env.IsFunction(name) will help
+		// For 1: env.IsFunction(name) will help, assume array if false returned
 
 		// For 2a: same code as below
 
 		// For 2b: Increase env level now, and try to populate the function vars as subscripts are evaluated
+		if env.IsFunction(node.Value) {
+			// handle function
+			//
 
-		subscripts := make([]int, len(node.Subscripts))
-		for i := 0; i < len(subscripts); i++ {
-			obj := Eval(g, node.Subscripts[i], env)
-			if val, ok := obj.(*object.Numeric); ok {
-				subscripts[i] = int(val.Value)
-			} else {
-				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: node.Token.Index}
+			// eval subscripts
+			env.NewScope()
+			// copy vars
+
+			// call function
+
+			env.KillScope()
+
+			// return result
+		} else {
+			// handle array
+			subscripts := make([]int, len(node.Subscripts))
+			for i := 0; i < len(subscripts); i++ {
+				obj := Eval(g, node.Subscripts[i], env)
+				if val, ok := obj.(*object.Numeric); ok {
+					subscripts[i] = int(val.Value)
+				} else {
+					return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: node.Token.Index}
+				}
 			}
+
+			// Error handling here?
+			val, _ := env.GetArray(node.Value, subscripts)
+			return val
 		}
-		// Also check GetFunction then handle function call and return val - is it that simple?
-		val, _ := env.GetArray(node.Value, subscripts)
-		return val
 	}
 	if val, ok := env.Get(node.Value); ok {
 		return val

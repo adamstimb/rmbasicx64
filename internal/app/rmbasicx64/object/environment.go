@@ -2,7 +2,6 @@ package object
 
 import (
 	"fmt"
-	"log"
 	"sort"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
@@ -228,6 +227,15 @@ func (e *Environment) IsGlobal(name string) bool {
 	return false
 }
 
+func (e *Environment) IsFunction(name string) bool {
+	for _, fun := range e.functions {
+		if fun.Name.Value == name {
+			return true
+		}
+	}
+	return false
+}
+
 // TODO: Globalize arrays
 
 func (e *Environment) PushData(obj Object) {
@@ -280,19 +288,6 @@ func (e *Environment) GetFunction(name string) (*ast.FunctionDeclaration, bool) 
 
 func (e *Environment) DeleteFunctions() {
 	e.functions = []*ast.FunctionDeclaration{}
-}
-
-func (e *Environment) Get(name string) (Object, bool) {
-	// Use current scope if local or global scope if global
-	key := storeKey{Name: name, Scope: e.scope}
-	if e.IsGlobal(name) {
-		key.Scope = -1
-	}
-	obj, ok := e.store[key]
-	if !ok && e.outer != nil {
-		obj, ok = e.outer.Get(name)
-	}
-	return obj, ok
 }
 
 func (e *Environment) NewArray(name string, subscripts []int) (Object, bool) {
@@ -393,10 +388,22 @@ func (e *Environment) SetArray(name string, subscripts []int, val Object) (Objec
 		}
 	}
 	// Set item obj
-	log.Printf("Storing val %T at index %d", arr, index)
 	arr.Items[index] = val
 	e.store[storeKey{Name: name, Scope: e.scope}] = arr
 	return arr, true
+}
+
+func (e *Environment) Get(name string) (Object, bool) {
+	// Use current scope if local or global scope if global
+	key := storeKey{Name: name, Scope: e.scope}
+	if e.IsGlobal(name) {
+		key.Scope = -1
+	}
+	obj, ok := e.store[key]
+	if !ok && e.outer != nil {
+		obj, ok = e.outer.Get(name)
+	}
+	return obj, ok
 }
 
 func (e *Environment) Set(name string, val Object) Object {
