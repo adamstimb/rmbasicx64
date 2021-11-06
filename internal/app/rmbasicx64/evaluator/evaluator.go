@@ -2509,12 +2509,24 @@ func evalExpressions(g *game.Game, exps []ast.Expression, env *object.Environmen
 
 func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment) object.Object {
 	if len(node.Subscripts) > 0 {
-		if _, ok := env.GetFunction(node.Value); ok {
+		if fun, ok := env.GetFunction(node.Value); ok {
 			// Handle function
-			// eval subscripts
-
-			// copy vars
-
+			// eval subscripts and keep results here, not in store, because shortly we'll move
+			// to a new level and copy the results to there
+			subscripts := make([]object.Object, len(node.Subscripts))
+			for i := 0; i < len(node.Subscripts); i++ {
+				subscripts[i] = Eval(g, node.Subscripts[i], env)
+				if isError(subscripts[i]) {
+					return subscripts[i]
+				}
+			}
+			env.NewScope()
+			for i := 0; i < len(node.Subscripts); i++ {
+				obj := env.Set(fun.ReceiveArgs[i].Value, subscripts[i])
+				if isError(obj) {
+					return obj
+				}
+			}
 			// call function
 
 			//env.KillScope()
