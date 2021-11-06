@@ -2509,7 +2509,20 @@ func evalExpressions(g *game.Game, exps []ast.Expression, env *object.Environmen
 
 func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment) object.Object {
 	if len(node.Subscripts) > 0 {
-		// is array
+		// is array or function - evaluate subscripts:
+		// Array subscripts can only be numeric values but functions depend on the variable type
+		// So the proper order of things is:
+		// 1. Determine if array or function
+		// 2. a) If an array, evaluate all subscripts and enforce numeric types, then GetArray().
+		//    b) If a function, evaluate all subscripts and enforce whatever variable type, then CallFunction().
+		// 3. Return val
+
+		// For 1: env.IsArray(name) and env.IsFunction(name) will help
+
+		// For 2a: same code as below
+
+		// For 2b: Increase env level now, and try to populate the function vars as subscripts are evaluated
+
 		subscripts := make([]int, len(node.Subscripts))
 		for i := 0; i < len(subscripts); i++ {
 			obj := Eval(g, node.Subscripts[i], env)

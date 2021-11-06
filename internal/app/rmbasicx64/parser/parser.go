@@ -193,10 +193,6 @@ func (p *Parser) parseIdentifier() ast.Expression {
 		}
 	}
 	return ident
-	//return &ast.Identifier{
-	//	Token: p.curToken,
-	//	Value: p.curToken.Literal,
-	//}
 }
 
 func (p *Parser) Errors() []string {
