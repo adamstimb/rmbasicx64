@@ -1193,7 +1193,7 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 
 func (p *Parser) parseFunctionDeclaration() *ast.FunctionDeclaration {
 	stmt := &ast.FunctionDeclaration{Token: p.curToken}
-	p.nextToken() // consume SUBROUTINE
+	p.nextToken() // consume FUNCTION
 	// Require name
 	if !p.curTokenIs(token.IdentifierLiteral) {
 		p.ErrorTokenIndex = p.curToken.Index
@@ -1212,10 +1212,14 @@ func (p *Parser) parseFunctionDeclaration() *ast.FunctionDeclaration {
 			p.nextToken()
 			break
 		}
-		if val, ok := p.requireExpression(); ok {
-			stmt.ReceiveArgs = append(stmt.ReceiveArgs, val)
-		} else {
+		// Require variable name
+		if !p.curTokenIs(token.IdentifierLiteral) {
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
 			return nil
+		} else {
+			stmt.ReceiveArgs = append(stmt.ReceiveArgs, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+			p.nextToken()
 		}
 		if p.curTokenIs(token.RightParen) {
 			p.nextToken()

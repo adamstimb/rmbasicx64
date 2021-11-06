@@ -227,15 +227,6 @@ func (e *Environment) IsGlobal(name string) bool {
 	return false
 }
 
-func (e *Environment) IsFunction(name string) bool {
-	for _, fun := range e.functions {
-		if fun.Name.Value == name {
-			return true
-		}
-	}
-	return false
-}
-
 // TODO: Globalize arrays
 
 func (e *Environment) PushData(obj Object) {

@@ -1134,10 +1134,7 @@ type FunctionDeclaration struct {
 	Name            *Identifier
 	LineNumber      int
 	StatementNumber int
-	//EndLineNumber        int
-	//EndStatementNumber   int
-	ReceiveArgs []Expression
-	ReturnVars  []*Identifier
+	ReceiveArgs     []*Identifier
 }
 
 func (s *FunctionDeclaration) statementNode() {}
