@@ -1241,6 +1241,14 @@ func (p *Parser) parseFunctionDeclaration() *ast.FunctionDeclaration {
 	return nil
 }
 
+func (p *Parser) parseEndfunStatement() *ast.EndfunStatement {
+	stmt := &ast.EndfunStatement{Token: p.curToken}
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parseDimStatement() *ast.DimStatement {
 	stmt := &ast.DimStatement{Token: p.curToken}
 	p.nextToken() // consume DIM
@@ -2571,6 +2579,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseReturnStatement()
 	case token.FUNCTION:
 		return p.parseFunctionDeclaration()
+	case token.ENDFUN:
+		return p.parseEndfunStatement()
 	case token.DIM:
 		return p.parseDimStatement()
 	case token.ASK:

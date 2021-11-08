@@ -1987,7 +1987,7 @@ func evalGosubStatement(g *game.Game, stmt *ast.GosubStatement, env *object.Envi
 		env.Program.Jump(sub.LineNumber, sub.StatementNumber)
 		env.Program.Next()
 	} else {
-		// return whichever erro
+		// return whichever error
 	}
 	return nil
 }
@@ -2358,10 +2358,14 @@ func prerun(g *game.Game, env *object.Environment) bool {
 		if _, hasError := p.GetError(); hasError {
 			continue
 		}
-		// Only evaluate FUNCTION, PROCEDURE, SUBROUTINE and DATA statements
+		// Only evaluate the following statements:
+		// FUNCTION, ENDFUN, PROCEDURE, ENDPROC, SUBROUTINE, DATA
 		for statementNumber, stmt := range line.Statements {
 			env.Program.CurrentStatementNumber = statementNumber
 			tokenType := stmt.TokenLiteral()
+			inFunction := false
+			inProcedure := false
+			// Capture DATA statements, FUNCTION and PROCEDURE statements, and SUBROUTINE statements
 			if tokenType == token.DATA || tokenType == token.SUBROUTINE || tokenType == token.FUNCTION {
 				obj := Eval(g, stmt, env)
 				if errorMsg, ok := obj.(*object.Error); ok {
@@ -2376,6 +2380,18 @@ func prerun(g *game.Game, env *object.Environment) bool {
 					g.Put(13)
 					return false
 				}
+				// If a correctly evaluated FUNCTION or PROCEDURE statement just happened then set
+				// inFunction or inProcedure to true.
+				switch tokenType {
+				case token.FUNCTION:
+					inFunction = true
+				case token.PROCEDURE:
+					inProcedure = true
+				}
+			}
+			// Capture ENDPROC and ENDFUN statements if inProcedure is true or inFunction is true, respectively
+			if inProcedure && tokenType == token.ENDPROC {
+
 			}
 		}
 		env.Program.Next()

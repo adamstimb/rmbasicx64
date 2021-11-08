@@ -1148,6 +1148,20 @@ func (s *FunctionDeclaration) String() string {
 	return out.String()
 }
 
+type EndfunStatement struct {
+	Token token.Token
+}
+
+func (bs *EndfunStatement) statementNode() {}
+func (bs *EndfunStatement) TokenLiteral() string {
+	return bs.Token.Literal
+}
+func (bs *EndfunStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(bs.TokenLiteral())
+	return out.String()
+}
+
 type ReturnStatement struct {
 	Token token.Token
 }
