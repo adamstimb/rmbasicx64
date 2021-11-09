@@ -123,6 +123,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalReturnStatement(g, node, env)
 	case *ast.FunctionDeclaration:
 		return evalFunctionDeclaration(g, node, env)
+	case *ast.ResultStatement:
+		return evalResultStatement(g, node, env)
 	case *ast.ReadStatement:
 		return evalReadStatement(g, node, env)
 	case *ast.RestoreStatement:
@@ -2018,7 +2020,16 @@ func evalFunctionDeclaration(g *game.Game, stmt *ast.FunctionDeclaration, env *o
 	stmt.LineNumber = env.Program.GetLineNumber()
 	stmt.StatementNumber = env.Program.CurrentStatementNumber
 	env.PushFunction(stmt)
-	log.Printf("push function")
+	return nil
+}
+
+func evalResultStatement(g *game.Game, stmt *ast.ResultStatement, env *object.Environment) object.Object {
+	obj := Eval(g, stmt.ResultValue, env)
+	//if isError(obj) {
+	//	return obj
+	//}
+	env.ReturnVals = append(env.ReturnVals, obj)
+	env.LeaveFunction()
 	return nil
 }
 
@@ -2359,12 +2370,10 @@ func prerun(g *game.Game, env *object.Environment) bool {
 			continue
 		}
 		// Only evaluate the following statements:
-		// FUNCTION, ENDFUN, PROCEDURE, ENDPROC, SUBROUTINE, DATA
+		// FUNCTION, PROCEDURE, SUBROUTINE, DATA
 		for statementNumber, stmt := range line.Statements {
 			env.Program.CurrentStatementNumber = statementNumber
 			tokenType := stmt.TokenLiteral()
-			inFunction := false
-			inProcedure := false
 			// Capture DATA statements, FUNCTION and PROCEDURE statements, and SUBROUTINE statements
 			if tokenType == token.DATA || tokenType == token.SUBROUTINE || tokenType == token.FUNCTION {
 				obj := Eval(g, stmt, env)
@@ -2380,18 +2389,6 @@ func prerun(g *game.Game, env *object.Environment) bool {
 					g.Put(13)
 					return false
 				}
-				// If a correctly evaluated FUNCTION or PROCEDURE statement just happened then set
-				// inFunction or inProcedure to true.
-				switch tokenType {
-				case token.FUNCTION:
-					inFunction = true
-				case token.PROCEDURE:
-					inProcedure = true
-				}
-			}
-			// Capture ENDPROC and ENDFUN statements if inProcedure is true or inFunction is true, respectively
-			if inProcedure && tokenType == token.ENDPROC {
-
 			}
 		}
 		env.Program.Next()
@@ -2526,9 +2523,13 @@ func evalExpressions(g *game.Game, exps []ast.Expression, env *object.Environmen
 func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment) object.Object {
 	if len(node.Subscripts) > 0 {
 		if fun, ok := env.GetFunction(node.Value); ok {
+			log.Printf("Calling function %s", node.Value)
 			// Handle function
-			// eval subscripts and keep results here, not in store, because shortly we'll move
-			// to a new level and copy the results to there
+			// 1. Evaluate all subscripts
+			// 2. Create new env to run the function in
+			// 3. Copy program to new env
+			// 4. Set the receive args in the new scope
+			// 5. Run the function in the new env
 			subscripts := make([]object.Object, len(node.Subscripts))
 			for i := 0; i < len(node.Subscripts); i++ {
 				subscripts[i] = Eval(g, node.Subscripts[i], env)
@@ -2536,18 +2537,81 @@ func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment)
 					return subscripts[i]
 				}
 			}
-			env.NewScope()
+			newEnv := object.NewEnvironment()
+			newEnv.Copy(env.Dump())
+			newEnv.NewScope()
 			for i := 0; i < len(node.Subscripts); i++ {
-				obj := env.Set(fun.ReceiveArgs[i].Value, subscripts[i])
+				obj := newEnv.Set(fun.ReceiveArgs[i].Value, subscripts[i])
 				if isError(obj) {
 					return obj
 				}
 			}
-			// call function
-
-			//env.KillScope()
-
-			// return result
+			// jump to function and execute
+			log.Printf("Jumping to line %d, statement %d", fun.LineNumber, fun.StatementNumber)
+			newEnv.Program.Jump(fun.LineNumber, fun.StatementNumber)
+			newEnv.Program.Next()
+			skipThisStatement := true
+			l := &lexer.Lexer{}
+			newEnv.Prerun = false
+			for !newEnv.Program.EndOfProgram() && !g.BreakInterruptDetected && !newEnv.LeaveFunctionSignal {
+				log.Printf("Running line %d, statement %d", newEnv.Program.GetLineNumber(), newEnv.Program.CurrentStatementNumber)
+				l.Scan(newEnv.Program.GetLine())
+				p := parser.New(l, g)
+				line := p.ParseLine()
+				// Check of parser errors here.  Parser errors are handled just like evaluation errors but
+				// obviously we'll skip evaluation if parsing already failed.
+				if errorMsg, hasError := p.GetError(); hasError {
+					lineNumber := env.Program.GetLineNumber()
+					g.Print(fmt.Sprintf("%s in line %d", errorMsg, lineNumber))
+					g.Put(13)
+					p.JumpToToken(0)
+					g.Print(fmt.Sprintf("%d %s", lineNumber, p.PrettyPrint()))
+					g.Put(13)
+					return nil
+				}
+				// And this is temporary while we're still migrating from Monkey to RM Basic
+				if len(p.Errors()) > 0 {
+					g.Print("Oops! Some random parsing error occurred. These will be handled properly downstream by for now here's some spewage:")
+					g.Put(13)
+					p.JumpToToken(0)
+					g.Print(p.PrettyPrint())
+					g.Put(13)
+					for _, msg := range p.Errors() {
+						g.Print(msg)
+						g.Put(13)
+					}
+					return nil
+				}
+				// Execute each statement in the program line.  If an error occurs, print the
+				// error message and stop.  If JumpToStatement is non-zero, all statements in
+				// the line will be skipped until i == JumpToStatement.
+				for statementNumber, stmt := range line.Statements {
+					if skipThisStatement {
+						log.Printf("skipThisStatement")
+						skipThisStatement = false
+						continue
+					}
+					newEnv.Program.CurrentStatementNumber = statementNumber
+					obj := Eval(g, stmt, newEnv)
+					if errorMsg, ok := obj.(*object.Error); ok {
+						if errorMsg.ErrorTokenIndex != 0 {
+							p.ErrorTokenIndex = errorMsg.ErrorTokenIndex
+						}
+						lineNumber := newEnv.Program.GetLineNumber()
+						g.Print(fmt.Sprintf("%s in line %d", errorMsg.Message, lineNumber))
+						g.Put(13)
+						p.JumpToToken(0)
+						g.Print(fmt.Sprintf("%d %s", lineNumber, p.PrettyPrint()))
+						g.Put(13)
+						return nil
+					}
+					if g.BreakInterruptDetected {
+						break
+					}
+				}
+				newEnv.Program.Next()
+			}
+			return newEnv.ReturnVals[0]
 		} else {
 			// handle array
 			subscripts := make([]int, len(node.Subscripts))

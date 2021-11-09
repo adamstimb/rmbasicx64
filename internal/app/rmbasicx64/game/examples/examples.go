@@ -45,11 +45,12 @@ func WriteExamples(workspacePath string) {
 		{
 			filename: "function.BAS",
 			program: `10 PRINT "This is how functions work in RM Basic."
-20 GOTO 60
-30 FUNCTION Add_Ten(Number%)
-40    RESULT Number% + 10
-50 ENDFUNC
-60 PRINT "And that is it."`,
+20 PRINT Add_Ten(110)
+30 GOTO 70
+40 FUNCTION Add_Ten(Number%)
+50    RESULT Number% + 10
+60 ENDFUN
+70 PRINT "And that is it."`,
 		},
 		{
 			filename: "hello2.BAS",

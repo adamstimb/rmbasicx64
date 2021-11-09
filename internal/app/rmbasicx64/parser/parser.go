@@ -2413,11 +2413,11 @@ func (p *Parser) PrettyPrint() string {
 	indent := "  "
 	lineString := p.g.PrettyPrintIndent
 	// Add indent for following lines
-	if p.curTokenIs(token.REPEAT) || p.curTokenIs(token.FOR) {
+	if p.curTokenIs(token.REPEAT) || p.curTokenIs(token.FOR) || p.curTokenIs(token.FUNCTION) {
 		p.g.PrettyPrintIndent += indent
 	}
 	// Remove indent for this and following lines
-	if p.curTokenIs(token.UNTIL) || p.curTokenIs(token.NEXT) {
+	if p.curTokenIs(token.UNTIL) || p.curTokenIs(token.NEXT) || p.curTokenIs(token.ENDFUN) {
 		if len(p.g.PrettyPrintIndent) >= 2 {
 			p.g.PrettyPrintIndent = p.g.PrettyPrintIndent[:len(p.g.PrettyPrintIndent)-2]
 			lineString = p.g.PrettyPrintIndent
@@ -2446,9 +2446,9 @@ func (p *Parser) PrettyPrint() string {
 			p.nextToken()
 			continue
 		}
-		// Remove trailing space if )
+		// Remove trailing space if ) or (
 		if len(lineString) > 0 {
-			if lineString[len(lineString)-1] == ' ' && p.curToken.TokenType == token.RightParen {
+			if lineString[len(lineString)-1] == ' ' && (p.curToken.TokenType == token.RightParen || p.curToken.TokenType == token.LeftParen) {
 				lineString = lineString[0 : len(lineString)-1]
 				lineString += ") "
 				p.nextToken()

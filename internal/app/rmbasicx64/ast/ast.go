@@ -1278,7 +1278,7 @@ func (sl *StringLiteral) String() string {
 }
 
 type ResultStatement struct {
-	Token       token.Token // the 'result' token
+	Token       token.Token
 	ResultValue Expression
 }
 
