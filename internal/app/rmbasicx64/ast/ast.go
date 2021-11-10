@@ -1,11 +1,5 @@
 package ast
 
-// TODOs:
-// 1. Each type needs to implement a PrettyPrint() method which will eventually be used to generate program
-// listings.  We'll keep the String() method as-is because it's useful for testing precedence in expressions.
-// 2. Already marked some Monkey types as potentially redundant but let's clear those out when we've built
-// and tested the RM Basic equivalent solution in case there's stuff we can reuse.
-
 import (
 	"bytes"
 	"strings"
@@ -156,30 +150,6 @@ func (s *UntilStatement) String() string {
 	out.WriteString(s.Condition.String())
 	return out.String()
 }
-
-//type FunctionLiteral struct {
-//	Token      token.Token // The FUNCTION token
-//	Parameters []*Identifier
-//	Body       *BlockStatement
-//}
-//
-//func (fl *FunctionLiteral) expressionNode() {}
-//func (fl *FunctionLiteral) TokenLiteral() string {
-//	return fl.Token.Literal
-//}
-//func (fl *FunctionLiteral) String() string {
-//	var out bytes.Buffer
-//	params := []string{}
-//	for _, p := range fl.Parameters {
-//		params = append(params, p.String())
-//	}
-//	out.WriteString(fl.TokenLiteral())
-//	out.WriteString("(")
-//	out.WriteString(strings.Join(params, ", "))
-//	out.WriteString(") ")
-//	out.WriteString(fl.Body.String())
-//	return out.String()
-//}
 
 type CallExpression struct {
 	Token     token.Token // The '(' token
@@ -1173,6 +1143,54 @@ func (s *ReturnStatement) TokenLiteral() string {
 func (s *ReturnStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(s.TokenLiteral() + " ")
+	return out.String()
+}
+
+type ProcedureDeclaration struct {
+	Token           token.Token
+	Name            *Identifier
+	LineNumber      int
+	StatementNumber int
+	ReceiveArgs     []*Identifier
+	ReturnArgs      []*Identifier
+}
+
+func (s *ProcedureDeclaration) statementNode() {}
+func (s *ProcedureDeclaration) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *ProcedureDeclaration) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	out.WriteString(s.Name.String())
+	return out.String()
+}
+
+type LeaveStatement struct {
+	Token token.Token
+}
+
+func (bs *LeaveStatement) statementNode() {}
+func (bs *LeaveStatement) TokenLiteral() string {
+	return bs.Token.Literal
+}
+func (bs *LeaveStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(bs.TokenLiteral())
+	return out.String()
+}
+
+type EndprocStatement struct {
+	Token token.Token
+}
+
+func (bs *EndprocStatement) statementNode() {}
+func (bs *EndprocStatement) TokenLiteral() string {
+	return bs.Token.Literal
+}
+func (bs *EndprocStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(bs.TokenLiteral())
 	return out.String()
 }
 
