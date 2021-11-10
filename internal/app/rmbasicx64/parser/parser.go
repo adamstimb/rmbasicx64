@@ -107,8 +107,6 @@ func New(l *lexer.Lexer, g *game.Game) *Parser {
 	p.registerPrefix(token.TRUE, p.parseBoolean)
 	p.registerPrefix(token.FALSE, p.parseBoolean)
 	p.registerPrefix(token.LeftParen, p.parseGroupedExpression)
-	//p.registerPrefix(token.IF, p.parseIfExpression)
-	//p.registerPrefix(token.FUNCTION, p.parseFunctionDefinition)
 	p.registerPrefix(token.StringLiteral, p.parseStringLiteral)
 	p.infixParseFns = make(map[string]infixParseFn)
 	p.registerInfix(token.Plus, p.parseInfixExpression)
@@ -1286,6 +1284,46 @@ func (p *Parser) parseDimStatement() *ast.DimStatement {
 	// Require end of instruction
 	if p.endOfInstruction() {
 		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseProcedureDeclaration() *ast.ProcedureDeclaration {
+	stmt := &ast.ProcedureDeclaration{Token: p.curToken}
+	p.nextToken() // consume PROCEDURE
+	// Require name
+	if !p.curTokenIs(token.IdentifierLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NameOfDefinitionRequired)
+		return nil
+	}
+	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	p.nextToken()
+	// Optional end of instruction
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// Otherwise require RETURN token
+	if !p.curTokenIs(token.Return) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.ReturnIsNeeded) // check in emulator
+		return nil
+	}
+	// Optional arguments
+	for !p.onEndOfInstruction() {
+		// Require expression
+		if val, ok := p.requireExpression(); ok {
+			stmt.ReturnArgs = append(stmt.ReturnArgs, val)
+		} else {
+			return nil
+		}
+		// Require either end of instruction or comma
+		if p.onEndOfInstruction() {
+			return stmt
+		}
+		if !p.requireComma() {
+			return nil
+		}
 	}
 	return nil
 }
