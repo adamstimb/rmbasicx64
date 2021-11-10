@@ -2,7 +2,6 @@ package object
 
 import (
 	"fmt"
-	"log"
 	"sort"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
@@ -135,6 +134,17 @@ func (p *program) Renumber() {
 	p.Sort()
 }
 
+// Dump and Copy are used to transfer the program from one env to another
+func (p *program) Dump() (sortedIndex []int, lines map[int]string) {
+	sortedIndex = p.sortedIndex
+	lines = p.lines
+	return
+}
+func (p *program) Copy(sortedIndex []int, lines map[int]string) {
+	p.lines = lines
+	p.sortedIndex = sortedIndex
+}
+
 // JumpStack is used to store all the return points and parameters for loops and function/procedure calls
 type jumpStack struct {
 	items []interface{}
@@ -169,22 +179,62 @@ type storeKey struct {
 }
 
 type Environment struct {
-	store       map[storeKey]Object
-	globals     []string
-	scope       int
-	Degrees     bool
-	outer       *Environment
-	Program     program
-	JumpStack   jumpStack
-	Prerun      bool
-	dataItems   []Object
-	subroutines []*ast.SubroutineStatement
+	store               map[storeKey]Object
+	globals             []string
+	scope               int
+	Degrees             bool
+	outer               *Environment
+	Program             program
+	JumpStack           jumpStack
+	Prerun              bool
+	dataItems           []Object
+	subroutines         []*ast.SubroutineStatement
+	functions           []*ast.FunctionDeclaration
+	LeaveFunctionSignal bool
+	ReturnVals          []Object
 }
 
+// Dump and Copy are used to transfer global data, including the program itself, from one env to another
+func (e *Environment) Dump() (store map[storeKey]Object, globals []string, scope int, degrees bool, outer *Environment, program program, jumpStack jumpStack, prerun bool, dataItems []Object, subroutines []*ast.SubroutineStatement, functions []*ast.FunctionDeclaration) {
+	store = e.store
+	globals = e.globals
+	scope = e.scope
+	degrees = e.Degrees
+	outer = e.outer
+	program = e.Program
+	dataItems = e.dataItems
+	subroutines = e.subroutines
+	functions = e.functions
+	return
+}
+func (e *Environment) Copy(store map[storeKey]Object, globals []string, scope int, degrees bool, outer *Environment, program program, jumpStack jumpStack, prerun bool, dataItems []Object, subroutines []*ast.SubroutineStatement, functions []*ast.FunctionDeclaration) {
+	e.store = store
+	e.globals = globals
+	e.scope = scope
+	e.Degrees = degrees
+	e.outer = outer
+	e.Program = program
+	e.JumpStack = jumpStack
+	e.Prerun = prerun
+	e.dataItems = dataItems
+	e.subroutines = subroutines
+	e.functions = functions
+}
 func (e *Environment) NewScope() {
+	e.LeaveFunctionSignal = false
 	e.scope++
 }
+func (e *Environment) IsBaseScope() bool {
+	if e.scope == 0 {
+		return true
+	} else {
+		return false
+	}
+}
 
+func (e *Environment) LeaveFunction() {
+	e.LeaveFunctionSignal = true
+}
 func (e *Environment) KillScope() {
 	// Remove all vars from the store with current scope and then
 	// go one scope towards global if not already in global.
@@ -264,17 +314,21 @@ func (e *Environment) DeleteSubroutines() {
 	e.subroutines = []*ast.SubroutineStatement{}
 }
 
-func (e *Environment) Get(name string) (Object, bool) {
-	// Use current scope if local or global scope if global
-	key := storeKey{Name: name, Scope: e.scope}
-	if e.IsGlobal(name) {
-		key.Scope = -1
+func (e *Environment) PushFunction(fun *ast.FunctionDeclaration) {
+	e.functions = append(e.functions, fun)
+}
+
+func (e *Environment) GetFunction(name string) (*ast.FunctionDeclaration, bool) {
+	for _, fun := range e.functions {
+		if fun.Name.Value == name {
+			return fun, true
+		}
 	}
-	obj, ok := e.store[key]
-	if !ok && e.outer != nil {
-		obj, ok = e.outer.Get(name)
-	}
-	return obj, ok
+	return nil, false
+}
+
+func (e *Environment) DeleteFunctions() {
+	e.functions = []*ast.FunctionDeclaration{}
 }
 
 func (e *Environment) NewArray(name string, subscripts []int) (Object, bool) {
@@ -375,10 +429,22 @@ func (e *Environment) SetArray(name string, subscripts []int, val Object) (Objec
 		}
 	}
 	// Set item obj
-	log.Printf("Storing val %T at index %d", arr, index)
 	arr.Items[index] = val
 	e.store[storeKey{Name: name, Scope: e.scope}] = arr
 	return arr, true
+}
+
+func (e *Environment) Get(name string) (Object, bool) {
+	// Use current scope if local or global scope if global
+	key := storeKey{Name: name, Scope: e.scope}
+	if e.IsGlobal(name) {
+		key.Scope = -1
+	}
+	obj, ok := e.store[key]
+	if !ok && e.outer != nil {
+		obj, ok = e.outer.Get(name)
+	}
+	return obj, ok
 }
 
 func (e *Environment) Set(name string, val Object) Object {
