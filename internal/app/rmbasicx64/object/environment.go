@@ -224,6 +224,14 @@ func (e *Environment) NewScope() {
 	e.LeaveFunctionSignal = false
 	e.scope++
 }
+func (e *Environment) IsBaseScope() bool {
+	if e.scope == 0 {
+		return true
+	} else {
+		return false
+	}
+}
+
 func (e *Environment) LeaveFunction() {
 	e.LeaveFunctionSignal = true
 }

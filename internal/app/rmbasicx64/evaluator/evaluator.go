@@ -125,6 +125,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalFunctionDeclaration(g, node, env)
 	case *ast.ResultStatement:
 		return evalResultStatement(g, node, env)
+	case *ast.EndfunStatement:
+		return evalEndfunStatement(g, node, env)
 	case *ast.ReadStatement:
 		return evalReadStatement(g, node, env)
 	case *ast.RestoreStatement:
@@ -2024,13 +2026,17 @@ func evalFunctionDeclaration(g *game.Game, stmt *ast.FunctionDeclaration, env *o
 }
 
 func evalResultStatement(g *game.Game, stmt *ast.ResultStatement, env *object.Environment) object.Object {
+	if env.IsBaseScope() {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FunctionExitWithoutCall), ErrorTokenIndex: stmt.Token.Index}
+	}
 	obj := Eval(g, stmt.ResultValue, env)
-	//if isError(obj) {
-	//	return obj
-	//}
 	env.ReturnVals = append(env.ReturnVals, obj)
 	env.LeaveFunction()
-	return nil
+	return nil // Return vals are picked out of the env so this stays as nil
+}
+
+func evalEndfunStatement(g *game.Game, stmt *ast.EndfunStatement, env *object.Environment) object.Object {
+	return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NeedResultToExitFunction), ErrorTokenIndex: stmt.Token.Index}
 }
 
 func evalRenumberStatement(g *game.Game, stmt *ast.RenumberStatement, env *object.Environment) object.Object {
@@ -2520,7 +2526,102 @@ func evalExpressions(g *game.Game, exps []ast.Expression, env *object.Environmen
 	return result
 }
 
+// canObjectCastToIdentifierType checks if the object can be cast to the identifier type.  If so it
+// returns the cast value and true, otherwise it return an error object and false.
+func canObjectCastToIdentifierType(obj object.Object, identifierName string) (object.Object, bool) {
+	if identifierName[len(identifierName)-1:] == "$" {
+		// object must be string type
+		if obj.Type() != object.STRING_OBJ {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: 0}, false
+		} else {
+			return obj, true
+		}
+	}
+	if identifierName[len(identifierName)-1:] == "%" {
+		// object must be numeric type and cast to integer
+		if obj.Type() != object.STRING_OBJ {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: 0}, false
+		} else {
+			val := int(obj.(*object.Numeric).Value)
+			return &object.Numeric{Value: float64(val)}, true
+		}
+	}
+	// object must be numeric but not casting to integer
+	if obj.Type() != object.NUMERIC_OBJ {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: 0}, false
+	} else {
+		return obj, true
+	}
+}
+
 func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment) object.Object {
+
+	// execute runs the function or procedure code and returns the return vals
+	execute := func(g *game.Game, env *object.Environment, startLine int, statementNumber int, skipFirstStatement bool) []object.Object {
+		// jump to position and execute
+		env.Program.Jump(startLine, statementNumber)
+		env.Program.Next()
+		l := &lexer.Lexer{}
+		env.Prerun = false
+		for !env.Program.EndOfProgram() && !g.BreakInterruptDetected && !env.LeaveFunctionSignal {
+			l.Scan(env.Program.GetLine())
+			p := parser.New(l, g)
+			line := p.ParseLine()
+			// Check of parser errors here.  Parser errors are handled just like evaluation errors but
+			// obviously we'll skip evaluation if parsing already failed.
+			if errorMsg, hasError := p.GetError(); hasError {
+				lineNumber := env.Program.GetLineNumber()
+				g.Print(fmt.Sprintf("%s in line %d", errorMsg, lineNumber))
+				g.Put(13)
+				p.JumpToToken(0)
+				g.Print(fmt.Sprintf("%d %s", lineNumber, p.PrettyPrint()))
+				g.Put(13)
+				return nil
+			}
+			// And this is temporary while we're still migrating from Monkey to RM Basic
+			if len(p.Errors()) > 0 {
+				g.Print("Oops! Some random parsing error occurred. These will be handled properly downstream by for now here's some spewage:")
+				g.Put(13)
+				p.JumpToToken(0)
+				g.Print(p.PrettyPrint())
+				g.Put(13)
+				for _, msg := range p.Errors() {
+					g.Print(msg)
+					g.Put(13)
+				}
+				return nil
+			}
+			// Execute each statement in the program line.  If an error occurs, print the
+			// error message and stop.  If JumpToStatement is non-zero, all statements in
+			// the line will be skipped until i == JumpToStatement.
+			for statementNumber, stmt := range line.Statements {
+				if skipFirstStatement {
+					skipFirstStatement = false
+					continue
+				}
+				env.Program.CurrentStatementNumber = statementNumber
+				obj := Eval(g, stmt, env)
+				if errorMsg, ok := obj.(*object.Error); ok {
+					if errorMsg.ErrorTokenIndex != 0 {
+						p.ErrorTokenIndex = errorMsg.ErrorTokenIndex
+					}
+					lineNumber := env.Program.GetLineNumber()
+					g.Print(fmt.Sprintf("%s in line %d", errorMsg.Message, lineNumber))
+					g.Put(13)
+					p.JumpToToken(0)
+					g.Print(fmt.Sprintf("%d %s", lineNumber, p.PrettyPrint()))
+					g.Put(13)
+					return nil
+				}
+				if g.BreakInterruptDetected {
+					break
+				}
+			}
+			env.Program.Next()
+		}
+		return env.ReturnVals
+	}
+
 	if len(node.Subscripts) > 0 {
 		if fun, ok := env.GetFunction(node.Value); ok {
 			log.Printf("Calling function %s", node.Value)
@@ -2529,7 +2630,7 @@ func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment)
 			// 2. Create new env to run the function in
 			// 3. Copy program to new env
 			// 4. Set the receive args in the new scope
-			// 5. Run the function in the new env
+			// 5. Run the function in the new env and return the first return value
 			subscripts := make([]object.Object, len(node.Subscripts))
 			for i := 0; i < len(node.Subscripts); i++ {
 				subscripts[i] = Eval(g, node.Subscripts[i], env)
@@ -2546,72 +2647,13 @@ func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment)
 					return obj
 				}
 			}
-			// jump to function and execute
-			log.Printf("Jumping to line %d, statement %d", fun.LineNumber, fun.StatementNumber)
-			newEnv.Program.Jump(fun.LineNumber, fun.StatementNumber)
-			newEnv.Program.Next()
-			skipThisStatement := true
-			l := &lexer.Lexer{}
-			newEnv.Prerun = false
-			for !newEnv.Program.EndOfProgram() && !g.BreakInterruptDetected && !newEnv.LeaveFunctionSignal {
-				log.Printf("Running line %d, statement %d", newEnv.Program.GetLineNumber(), newEnv.Program.CurrentStatementNumber)
-				l.Scan(newEnv.Program.GetLine())
-				p := parser.New(l, g)
-				line := p.ParseLine()
-				// Check of parser errors here.  Parser errors are handled just like evaluation errors but
-				// obviously we'll skip evaluation if parsing already failed.
-				if errorMsg, hasError := p.GetError(); hasError {
-					lineNumber := env.Program.GetLineNumber()
-					g.Print(fmt.Sprintf("%s in line %d", errorMsg, lineNumber))
-					g.Put(13)
-					p.JumpToToken(0)
-					g.Print(fmt.Sprintf("%d %s", lineNumber, p.PrettyPrint()))
-					g.Put(13)
-					return nil
-				}
-				// And this is temporary while we're still migrating from Monkey to RM Basic
-				if len(p.Errors()) > 0 {
-					g.Print("Oops! Some random parsing error occurred. These will be handled properly downstream by for now here's some spewage:")
-					g.Put(13)
-					p.JumpToToken(0)
-					g.Print(p.PrettyPrint())
-					g.Put(13)
-					for _, msg := range p.Errors() {
-						g.Print(msg)
-						g.Put(13)
-					}
-					return nil
-				}
-				// Execute each statement in the program line.  If an error occurs, print the
-				// error message and stop.  If JumpToStatement is non-zero, all statements in
-				// the line will be skipped until i == JumpToStatement.
-				for statementNumber, stmt := range line.Statements {
-					if skipThisStatement {
-						log.Printf("skipThisStatement")
-						skipThisStatement = false
-						continue
-					}
-					newEnv.Program.CurrentStatementNumber = statementNumber
-					obj := Eval(g, stmt, newEnv)
-					if errorMsg, ok := obj.(*object.Error); ok {
-						if errorMsg.ErrorTokenIndex != 0 {
-							p.ErrorTokenIndex = errorMsg.ErrorTokenIndex
-						}
-						lineNumber := newEnv.Program.GetLineNumber()
-						g.Print(fmt.Sprintf("%s in line %d", errorMsg.Message, lineNumber))
-						g.Put(13)
-						p.JumpToToken(0)
-						g.Print(fmt.Sprintf("%d %s", lineNumber, p.PrettyPrint()))
-						g.Put(13)
-						return nil
-					}
-					if g.BreakInterruptDetected {
-						break
-					}
-				}
-				newEnv.Program.Next()
+			retVal := execute(g, newEnv, fun.LineNumber, fun.StatementNumber, true)[0]
+			if isError(retVal) {
+				return retVal
+			} else {
+				obj, _ := canObjectCastToIdentifierType(retVal, fun.Name.Value)
+				return obj
 			}
-			return newEnv.ReturnVals[0]
 		} else {
 			// handle array
 			subscripts := make([]int, len(node.Subscripts))
@@ -2623,7 +2665,6 @@ func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment)
 					return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: node.Token.Index}
 				}
 			}
-
 			// Error handling here?
 			val, _ := env.GetArray(node.Value, subscripts)
 			return val
