@@ -36,6 +36,9 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return nil
 	case *ast.ByeStatement:
 		os.Exit(0)
+	case *ast.EndStatement:
+		env.EndProgram()
+		return nil
 	case *ast.RunStatement:
 		return evalRunStatement(g, node, env)
 	case *ast.NewStatement:
@@ -155,14 +158,6 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalBlockStatement(g, node, env)
 	case *ast.IfStatement:
 		return evalIfStatement(g, node, env)
-	//case *ast.ReturnStatement:
-	//	val := Eval(g, node.ReturnValue, env)
-	//	if isError(val) {
-	//		return val
-	//	}
-	//	return &object.ReturnValue{
-	//		Value: val,
-	//	}
 	case *ast.LetStatement:
 		val := Eval(g, node.Value, env)
 		if isError(val) {
@@ -207,14 +202,6 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 			// is variable
 			return env.Set(node.Name.Value, val)
 		}
-	//case *ast.FunctionLiteral:
-	//	params := node.Parameters
-	//	body := node.Body
-	//	return &object.Function{
-	//		Parameters: params,
-	//		Env:        env,
-	//		Body:       body,
-	//	}
 
 	// Expressions
 	case *ast.NumericLiteral:
@@ -2411,7 +2398,7 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 	l := &lexer.Lexer{}
 	env.Prerun = false
 	env.Program.Start()
-	for !env.Program.EndOfProgram() && !g.BreakInterruptDetected {
+	for !env.Program.EndOfProgram() && !g.BreakInterruptDetected && !env.EndProgramSignal {
 		l.Scan(env.Program.GetLine())
 		p := parser.New(l, g)
 		line := p.ParseLine()
@@ -2563,7 +2550,7 @@ func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment)
 		env.Program.Next()
 		l := &lexer.Lexer{}
 		env.Prerun = false
-		for !env.Program.EndOfProgram() && !g.BreakInterruptDetected && !env.LeaveFunctionSignal {
+		for !env.Program.EndOfProgram() && !g.BreakInterruptDetected && !env.LeaveFunctionSignal && !env.EndProgramSignal {
 			l.Scan(env.Program.GetLine())
 			p := parser.New(l, g)
 			line := p.ParseLine()
@@ -2648,6 +2635,9 @@ func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment)
 				}
 			}
 			retVal := execute(g, newEnv, fun.LineNumber, fun.StatementNumber, true)[0]
+			if newEnv.EndProgramSignal {
+				env.EndProgram()
+			}
 			if isError(retVal) {
 				return retVal
 			} else {

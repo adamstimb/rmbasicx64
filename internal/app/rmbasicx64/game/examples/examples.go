@@ -46,11 +46,10 @@ func WriteExamples(workspacePath string) {
 			filename: "function.BAS",
 			program: `10 PRINT "This is how functions work in RM Basic."
 20 PRINT Add_Ten(110)
-30 GOTO 70
+30 END : REM Function definitions cannot be executed
 40 FUNCTION Add_Ten(Number%)
 50    RESULT Number% + 10
-60 ENDFUN
-70 PRINT "And that is it."`,
+60 ENDFUN`,
 		},
 		{
 			filename: "hello2.BAS",

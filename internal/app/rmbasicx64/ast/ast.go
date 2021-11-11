@@ -1193,6 +1193,20 @@ func (bs *EndprocStatement) String() string {
 	return out.String()
 }
 
+type EndStatement struct {
+	Token token.Token
+}
+
+func (bs *EndStatement) statementNode() {}
+func (bs *EndStatement) TokenLiteral() string {
+	return bs.Token.Literal
+}
+func (bs *EndStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(bs.TokenLiteral())
+	return out.String()
+}
+
 type NextStatement struct {
 	Token token.Token // the token.Let token
 	Name  *Identifier

@@ -191,6 +191,7 @@ type Environment struct {
 	subroutines         []*ast.SubroutineStatement
 	functions           []*ast.FunctionDeclaration
 	LeaveFunctionSignal bool
+	EndProgramSignal    bool
 	ReturnVals          []Object
 }
 
@@ -231,7 +232,9 @@ func (e *Environment) IsBaseScope() bool {
 		return false
 	}
 }
-
+func (e *Environment) EndProgram() {
+	e.EndProgramSignal = true
+}
 func (e *Environment) LeaveFunction() {
 	e.LeaveFunctionSignal = true
 }

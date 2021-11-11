@@ -382,6 +382,14 @@ func (p *Parser) parseByeStatement() *ast.ByeStatement {
 	return nil
 }
 
+func (p *Parser) parseEndStatement() *ast.EndStatement {
+	stmt := &ast.EndStatement{Token: p.curToken}
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parseListStatement() *ast.ListStatement {
 	stmt := &ast.ListStatement{Token: p.curToken}
 	if p.endOfInstruction() {
@@ -1304,9 +1312,9 @@ func (p *Parser) parseProcedureDeclaration() *ast.ProcedureDeclaration {
 		return stmt
 	}
 	// Otherwise require RETURN token
-	if !p.curTokenIs(token.Return) {
+	if !p.curTokenIs(token.RETURN) {
 		p.ErrorTokenIndex = p.curToken.Index
-		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.ReturnIsNeeded) // check in emulator
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected) // check in emulator
 		return nil
 	}
 	// Optional arguments
@@ -2579,6 +2587,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseRemStatement()
 	case token.BYE:
 		return p.parseByeStatement()
+	case token.END:
+		return p.parseEndStatement()
 	case token.LIST:
 		return p.parseListStatement()
 	case token.RUN:
