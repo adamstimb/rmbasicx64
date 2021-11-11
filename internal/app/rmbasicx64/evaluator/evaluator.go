@@ -2442,6 +2442,8 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 	l := &lexer.Lexer{}
 	env.Prerun = false
 	env.Program.Start()
+	env.EndProgramSignal = false
+	env.LeaveFunctionSignal = false
 	for !env.Program.EndOfProgram() && !g.BreakInterruptDetected && !env.EndProgramSignal {
 		l.Scan(env.Program.GetLine())
 		p := parser.New(l, g)
