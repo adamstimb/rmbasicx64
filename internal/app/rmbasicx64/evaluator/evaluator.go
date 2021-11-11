@@ -2384,11 +2384,9 @@ func prerun(g *game.Game, env *object.Environment) bool {
 		// FUNCTION, PROCEDURE, SUBROUTINE, DATA
 		for statementNumber, stmt := range line.Statements {
 			env.Program.CurrentStatementNumber = statementNumber
-			log.Printf("line=%d stmt=%d", env.Program.GetLineNumber(), statementNumber)
 			tokenType := stmt.TokenLiteral()
 			// Capture DATA statements, FUNCTION and PROCEDURE statements, and SUBROUTINE statements
 			if tokenType == token.DATA || tokenType == token.SUBROUTINE || tokenType == token.FUNCTION || tokenType == token.PROCEDURE {
-				log.Printf("got tokentype=%s", tokenType)
 				obj := Eval(g, stmt, env)
 				if errorMsg, ok := obj.(*object.Error); ok {
 					if errorMsg.ErrorTokenIndex != 0 {
