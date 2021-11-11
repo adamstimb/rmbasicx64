@@ -2695,11 +2695,6 @@ func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment)
 	if len(node.Subscripts) > 0 {
 		if fun, ok := env.GetFunction(node.Value); ok {
 			// Handle function
-			// 1. Evaluate all subscripts
-			// 2. Create new env to run the function in
-			// 3. Copy program to new env
-			// 4. Set the receive args in the new scope
-			// 5. Run the function in the new env and return the first return value
 			subscripts := make([]object.Object, len(node.Subscripts))
 			for i := 0; i < len(node.Subscripts); i++ {
 				subscripts[i] = Eval(g, node.Subscripts[i], env)
@@ -2750,7 +2745,6 @@ func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment)
 	}
 	// Create a new variable with null value and return warning.  It's then up to the caller
 	// to print the warning and do env.Get again to get the value.
-	//name[len(name)-1:] != "$"
 	if node.Value[len(node.Value)-1:] == "$" {
 		env.Set(node.Value, &object.String{Value: ""})
 	} else {
