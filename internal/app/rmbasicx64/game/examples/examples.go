@@ -64,7 +64,7 @@ func WriteExamples(workspacePath string) {
 90    PRINT "Goodbye"
 100 ENDPROC
 110 PROCEDURE Shout_Message Msg$, Font_Size%, Font_Colour%
-120   PLOT Msg$, 0, 0 SIZE Font_Size% BRUSH Font%_Colour%
+120   PLOT Msg$, 0, 0 SIZE Font_Size% BRUSH Font_Colour%
 130 ENDPROC`,
 		},
 		{

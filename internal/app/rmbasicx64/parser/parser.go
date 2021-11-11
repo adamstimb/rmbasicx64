@@ -1337,9 +1337,12 @@ func (p *Parser) parseProcedureDeclaration() *ast.ProcedureDeclaration {
 			return nil
 		}
 	}
+	if p.onEndOfInstruction() {
+		return stmt
+	}
 	// Optional RETURN token following by required args
 	log.Printf("get return args")
-	if !p.onEndOfInstruction() && p.curTokenIs(token.RETURN) {
+	if p.curTokenIs(token.RETURN) {
 		log.Printf("got return")
 		p.nextToken()
 		for !p.onEndOfInstruction() {
