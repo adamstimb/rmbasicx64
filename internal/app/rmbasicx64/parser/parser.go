@@ -2372,6 +2372,14 @@ func (p *Parser) parseEndprocStatement() *ast.EndprocStatement {
 	return nil
 }
 
+func (p *Parser) parseLeaveStatement() *ast.LeaveStatement {
+	stmt := &ast.LeaveStatement{Token: p.curToken}
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 // -------------------------------------------------------------------------
 // -- Numeric Literal
 
@@ -2663,6 +2671,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseProcedureDeclaration()
 	case token.ENDPROC:
 		return p.parseEndprocStatement()
+	case token.LEAVE:
+		return p.parseLeaveStatement()
 	case token.DIM:
 		return p.parseDimStatement()
 	case token.ASK:

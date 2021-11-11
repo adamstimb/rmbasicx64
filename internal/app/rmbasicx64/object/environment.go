@@ -341,7 +341,7 @@ func (e *Environment) PushProcedure(proc *ast.ProcedureDeclaration) {
 	e.procedures = append(e.procedures, proc)
 }
 
-func (e *Environment) GetProcedures(name string) (*ast.ProcedureDeclaration, bool) {
+func (e *Environment) GetProcedure(name string) (*ast.ProcedureDeclaration, bool) {
 	for _, proc := range e.procedures {
 		if proc.Name.Value == name {
 			return proc, true
