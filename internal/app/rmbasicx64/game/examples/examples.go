@@ -52,6 +52,19 @@ func WriteExamples(workspacePath string) {
 60 ENDFUN`,
 		},
 		{
+			filename: "procedure.BAS",
+			program: `10 PRINT "This is how procedures work in RM Basic."
+20 Say_Hello
+30 Say_Goodbye
+40 END : REM Procedure definitions cannot be executed
+50 PROCEDURE Say_Hello
+60    PRINT "Hello"
+70 ENDPROC
+80 PROCEDURE Say_Goodbye
+90    PRINT "Goodbye"
+100 ENDPROC`,
+		},
+		{
 			filename: "hello2.BAS",
 			program: `10 REM A slightly more intereting way to say hello
 20 SET MODE 40

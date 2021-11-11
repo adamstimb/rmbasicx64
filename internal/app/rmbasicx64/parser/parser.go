@@ -1297,6 +1297,7 @@ func (p *Parser) parseDimStatement() *ast.DimStatement {
 }
 
 func (p *Parser) parseProcedureDeclaration() *ast.ProcedureDeclaration {
+	log.Printf("parseProcedureDeclaration")
 	stmt := &ast.ProcedureDeclaration{Token: p.curToken}
 	p.nextToken() // consume PROCEDURE
 	// Require name
@@ -2648,6 +2649,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseFunctionDeclaration()
 	case token.ENDFUN:
 		return p.parseEndfunStatement()
+	case token.PROCEDURE:
+		return p.parseProcedureDeclaration()
 	case token.DIM:
 		return p.parseDimStatement()
 	case token.ASK:

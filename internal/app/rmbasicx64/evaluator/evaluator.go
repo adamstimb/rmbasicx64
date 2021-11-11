@@ -126,6 +126,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalReturnStatement(g, node, env)
 	case *ast.FunctionDeclaration:
 		return evalFunctionDeclaration(g, node, env)
+	case *ast.ProcedureDeclaration:
+		return evalProcedureDeclaration(g, node, env)
 	case *ast.ResultStatement:
 		return evalResultStatement(g, node, env)
 	case *ast.EndfunStatement:
@@ -2026,6 +2028,19 @@ func evalEndfunStatement(g *game.Game, stmt *ast.EndfunStatement, env *object.En
 	return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NeedResultToExitFunction), ErrorTokenIndex: stmt.Token.Index}
 }
 
+func evalProcedureDeclaration(g *game.Game, stmt *ast.ProcedureDeclaration, env *object.Environment) object.Object {
+	// Error if not prerun
+	if !env.Prerun {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.CannotExecuteDefinition), ErrorTokenIndex: stmt.Token.Index}
+	}
+	// Register function
+	stmt.LineNumber = env.Program.GetLineNumber()
+	stmt.StatementNumber = env.Program.CurrentStatementNumber
+	env.PushProcedure(stmt)
+	log.Printf("pushed proc")
+	return nil
+}
+
 func evalRenumberStatement(g *game.Game, stmt *ast.RenumberStatement, env *object.Environment) object.Object {
 	env.Program.Renumber()
 	return nil
@@ -2353,7 +2368,9 @@ func prerun(g *game.Game, env *object.Environment) bool {
 	env.DeleteData()
 	env.DeleteSubroutines()
 	env.DeleteFunctions()
+	env.DeleteProcedures()
 	env.Prerun = true
+	log.Printf("prerun")
 	for !env.Program.EndOfProgram() {
 		l.Scan(env.Program.GetLine())
 		p := parser.New(l, g)
@@ -2362,13 +2379,16 @@ func prerun(g *game.Game, env *object.Environment) bool {
 		if _, hasError := p.GetError(); hasError {
 			continue
 		}
+		log.Printf("line=%d", env.Program.GetLineNumber())
 		// Only evaluate the following statements:
 		// FUNCTION, PROCEDURE, SUBROUTINE, DATA
 		for statementNumber, stmt := range line.Statements {
 			env.Program.CurrentStatementNumber = statementNumber
+			log.Printf("line=%d stmt=%d", env.Program.GetLineNumber(), statementNumber)
 			tokenType := stmt.TokenLiteral()
 			// Capture DATA statements, FUNCTION and PROCEDURE statements, and SUBROUTINE statements
-			if tokenType == token.DATA || tokenType == token.SUBROUTINE || tokenType == token.FUNCTION {
+			if tokenType == token.DATA || tokenType == token.SUBROUTINE || tokenType == token.FUNCTION || tokenType == token.PROCEDURE {
+				log.Printf("got tokentype=%s", tokenType)
 				obj := Eval(g, stmt, env)
 				if errorMsg, ok := obj.(*object.Error); ok {
 					if errorMsg.ErrorTokenIndex != 0 {
