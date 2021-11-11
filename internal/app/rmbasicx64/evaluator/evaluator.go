@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math"
 	"os"
 	"path/filepath"
@@ -2653,10 +2654,25 @@ func executeFunction(g *game.Game, env *object.Environment, startLine int, state
 }
 
 func evalProcedureCallStatement(g *game.Game, stmt *ast.ProcedureCallStatement, env *object.Environment) object.Object {
+	log.Printf("evalProcedureCallStatement")
 	if proc, ok := env.GetProcedure(stmt.Name.Value); ok {
+		args := make([]object.Object, len(stmt.Args))
+		for i := 0; i < len(stmt.Args); i++ {
+			args[i] = Eval(g, stmt.Args[i], env)
+			if isError(args[i]) {
+
+				return args[i]
+			}
+		}
 		newEnv := object.NewEnvironment()
 		newEnv.Copy(env.Dump())
 		newEnv.NewScope()
+		for i := 0; i < len(proc.ReceiveArgs); i++ {
+			obj := newEnv.Set(proc.ReceiveArgs[i].Value, args[i])
+			if isError(obj) {
+				return obj
+			}
+		}
 		retVal := executeFunction(g, newEnv, proc.LineNumber, proc.StatementNumber, true)[0]
 		if newEnv.EndProgramSignal {
 			env.EndProgram()

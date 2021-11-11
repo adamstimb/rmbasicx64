@@ -1171,6 +1171,7 @@ type ProcedureCallStatement struct {
 	Name            *Identifier
 	LineNumber      int
 	StatementNumber int
+	Args            []Expression
 	ReceiveArgs     []*Identifier
 }
 

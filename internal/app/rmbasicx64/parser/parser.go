@@ -1306,13 +1306,11 @@ func (p *Parser) parseProcedureDeclaration() *ast.ProcedureDeclaration {
 	}
 	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 	p.nextToken()
-	log.Printf("got name")
 	// Optional end of instruction
 	if p.onEndOfInstruction() {
 		return stmt
 	}
 	// Optional receive args
-	log.Printf("get receive args")
 	for !p.onEndOfInstruction() && !p.curTokenIs(token.RETURN) {
 		// Require variable name
 		if !p.curTokenIs(token.IdentifierLiteral) {
@@ -1320,7 +1318,6 @@ func (p *Parser) parseProcedureDeclaration() *ast.ProcedureDeclaration {
 			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
 			return nil
 		} else {
-			log.Printf("got receive arg")
 			stmt.ReceiveArgs = append(stmt.ReceiveArgs, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
 			p.nextToken()
 		}
@@ -1341,9 +1338,7 @@ func (p *Parser) parseProcedureDeclaration() *ast.ProcedureDeclaration {
 		return stmt
 	}
 	// Optional RETURN token following by required args
-	log.Printf("get return args")
 	if p.curTokenIs(token.RETURN) {
-		log.Printf("got return")
 		p.nextToken()
 		for !p.onEndOfInstruction() {
 			// Require variable name
@@ -1369,16 +1364,15 @@ func (p *Parser) parseProcedureDeclaration() *ast.ProcedureDeclaration {
 			}
 		}
 	} else {
-		log.Printf("end of instruction expected")
 		p.ErrorTokenIndex = p.curToken.Index
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
 		return nil
 	}
-	log.Printf("return stmt")
 	return stmt
 }
 
 func (p *Parser) parseProcedureCallStatement() *ast.ProcedureCallStatement {
+	log.Printf("parseProcedureCallStatement")
 	stmt := &ast.ProcedureCallStatement{Token: p.curToken}
 	// Require name
 	if !p.curTokenIs(token.IdentifierLiteral) {
@@ -1392,18 +1386,13 @@ func (p *Parser) parseProcedureCallStatement() *ast.ProcedureCallStatement {
 	if p.onEndOfInstruction() {
 		return stmt
 	}
-	// Optional receive args
-	log.Printf("get receive args")
+	// Optional args
 	for !p.onEndOfInstruction() && !p.curTokenIs(token.RECEIVE) {
-		// Require variable name
-		if !p.curTokenIs(token.IdentifierLiteral) {
-			p.ErrorTokenIndex = p.curToken.Index
-			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
-			return nil
+		// Require expression
+		if val, ok := p.requireExpression(); ok {
+			stmt.Args = append(stmt.Args, val)
 		} else {
-			log.Printf("got receive arg")
-			stmt.ReceiveArgs = append(stmt.ReceiveArgs, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
-			p.nextToken()
+			return nil
 		}
 		// Require comma, end of instruction or return
 		if p.curTokenIs(token.Comma) {
@@ -1422,9 +1411,7 @@ func (p *Parser) parseProcedureCallStatement() *ast.ProcedureCallStatement {
 		return stmt
 	}
 	// Optional RETURN token following by required args
-	log.Printf("get return args")
 	if p.curTokenIs(token.RECEIVE) {
-		log.Printf("got receive")
 		p.nextToken()
 		for !p.onEndOfInstruction() {
 			// Require variable name
@@ -1450,7 +1437,6 @@ func (p *Parser) parseProcedureCallStatement() *ast.ProcedureCallStatement {
 			}
 		}
 	} else {
-		log.Printf("end of instruction expected")
 		p.ErrorTokenIndex = p.curToken.Index
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
 		return nil
@@ -2868,7 +2854,7 @@ func (p *Parser) parseStatement() ast.Statement {
 		if p.peekTokenIs(token.LeftParen) {
 			return p.parseBindArrayStatement()
 		}
-		if p.peekTokenIs(token.EOF) || p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.IdentifierLiteral) {
+		if p.peekTokenIs(token.EOF) || p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.IdentifierLiteral) || p.peekTokenIs(token.RECEIVE) || p.peekTokenIs(token.NumericLiteral) || p.peekTokenIs(token.StringLiteral) {
 			return p.parseProcedureCallStatement()
 		}
 		// Catch unknown command/procedure-->this needs to depend on the above

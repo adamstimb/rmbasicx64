@@ -56,6 +56,7 @@ func WriteExamples(workspacePath string) {
 			program: `10 PRINT "This is how procedures work in RM Basic."
 20 Say_Hello
 30 Say_Goodbye
+35 Shout_Message "Hellooo!!!", 4, 2
 40 END : REM Procedure definitions cannot be executed
 50 PROCEDURE Say_Hello
 60    PRINT "Hello"
