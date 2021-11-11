@@ -1165,6 +1165,25 @@ func (s *ProcedureDeclaration) String() string {
 	return out.String()
 }
 
+type ProcedureCallStatement struct {
+	Token           token.Token
+	Name            *Identifier
+	LineNumber      int
+	StatementNumber int
+	ReceiveArgs     []*Identifier
+}
+
+func (s *ProcedureCallStatement) statementNode() {}
+func (s *ProcedureCallStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *ProcedureCallStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	out.WriteString(s.Name.String())
+	return out.String()
+}
+
 type LeaveStatement struct {
 	Token token.Token
 }

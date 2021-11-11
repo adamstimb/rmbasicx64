@@ -164,8 +164,8 @@ func (p *Parser) parseBoolean() ast.Expression {
 }
 
 func (p *Parser) parseIdentifier() ast.Expression {
-	// If immediately followed by ( then it's an array or function
 	ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	// If immediately followed by ( then it's an array or function
 	if p.peekTokenIs(token.LeftParen) {
 		p.nextToken()
 		p.nextToken()
@@ -1332,6 +1332,25 @@ func (p *Parser) parseProcedureDeclaration() *ast.ProcedureDeclaration {
 		if !p.requireComma() {
 			return nil
 		}
+	}
+	return nil
+}
+
+func (p *Parser) parseProcedureCallStatement() *ast.ProcedureCallStatement {
+	stmt := &ast.ProcedureCallStatement{Token: p.curToken}
+	p.nextToken() // consume CALL
+	// Require name
+	if !p.curTokenIs(token.IdentifierLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NameOfDefinitionRequired)
+		return nil
+	}
+	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	p.nextToken()
+	// Optional arguments
+	for !p.onEndOfInstruction() {
+		// Require expression
+		// ...
 	}
 	return nil
 }
@@ -2722,12 +2741,12 @@ func (p *Parser) parseStatement() ast.Statement {
 			return p.parseBindStatement()
 		}
 		if p.peekTokenIs(token.LeftParen) {
-			// This is also where we need to pick up function calls where the result is not stored
 			return p.parseBindArrayStatement()
 		}
-		// Handle procedure/function calls here
-		// ...
-		// Catch unknown command/procedure
+		if p.peekTokenIs(token.EOF) || p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.IdentifierLiteral) {
+			return p.parseProcedureCallStatement()
+		}
+		// Catch unknown command/procedure-->this needs to depend on the above
 		if p.peekTokenIs(token.EOF) || p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) {
 			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.UnknownCommandProcedure)
 			p.ErrorTokenIndex = p.curToken.Index
