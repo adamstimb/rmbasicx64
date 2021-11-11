@@ -2395,7 +2395,7 @@ func prerun(g *game.Game, env *object.Environment) bool {
 		l.Scan(env.Program.GetLine())
 		p := parser.New(l, g)
 		line := p.ParseLine()
-		// Handle parsing error here
+		// Handle parsing error here --> need some tweaks
 		if errorMsg, hasError := p.GetError(); hasError {
 			g.Print(errorMsg)
 			g.Put(13)

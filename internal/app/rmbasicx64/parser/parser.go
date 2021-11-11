@@ -1392,10 +1392,68 @@ func (p *Parser) parseProcedureCallStatement() *ast.ProcedureCallStatement {
 	if p.onEndOfInstruction() {
 		return stmt
 	}
-	// Optional arguments
-	for !p.onEndOfInstruction() {
-		// Require expression
-		// ...
+	// Optional receive args
+	log.Printf("get receive args")
+	for !p.onEndOfInstruction() && !p.curTokenIs(token.RECEIVE) {
+		// Require variable name
+		if !p.curTokenIs(token.IdentifierLiteral) {
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+			return nil
+		} else {
+			log.Printf("got receive arg")
+			stmt.ReceiveArgs = append(stmt.ReceiveArgs, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+			p.nextToken()
+		}
+		// Require comma, end of instruction or return
+		if p.curTokenIs(token.Comma) {
+			p.nextToken()
+			continue
+		}
+		if p.onEndOfInstruction() || p.curTokenIs(token.RECEIVE) {
+			break
+		} else {
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+			return nil
+		}
+	}
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// Optional RETURN token following by required args
+	log.Printf("get return args")
+	if p.curTokenIs(token.RECEIVE) {
+		log.Printf("got receive")
+		p.nextToken()
+		for !p.onEndOfInstruction() {
+			// Require variable name
+			if !p.curTokenIs(token.IdentifierLiteral) {
+				p.ErrorTokenIndex = p.curToken.Index
+				p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+				return nil
+			} else {
+				stmt.ReceiveArgs = append(stmt.ReceiveArgs, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+				p.nextToken()
+			}
+			// Require comma or end of instruction
+			if p.curTokenIs(token.Comma) {
+				p.nextToken()
+				continue
+			}
+			if p.onEndOfInstruction() {
+				break
+			} else {
+				p.ErrorTokenIndex = p.curToken.Index
+				p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+				return nil
+			}
+		}
+	} else {
+		log.Printf("end of instruction expected")
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+		return nil
 	}
 	return nil
 }
@@ -2710,7 +2768,6 @@ func (p *Parser) parseStatement() ast.Statement {
 	case token.ENDFUN:
 		return p.parseEndfunStatement()
 	case token.PROCEDURE:
-		log.Printf("token.PROCEDURE")
 		return p.parseProcedureDeclaration()
 	case token.ENDPROC:
 		return p.parseEndprocStatement()
