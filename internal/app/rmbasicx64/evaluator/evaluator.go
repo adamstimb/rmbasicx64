@@ -2395,9 +2395,14 @@ func prerun(g *game.Game, env *object.Environment) bool {
 		l.Scan(env.Program.GetLine())
 		p := parser.New(l, g)
 		line := p.ParseLine()
-		// Disregard parser errors as these will be handling during execution.
-		if _, hasError := p.GetError(); hasError {
-			continue
+		// Handle parsing error here
+		if errorMsg, hasError := p.GetError(); hasError {
+			g.Print(errorMsg)
+			g.Put(13)
+			p.JumpToToken(0)
+			g.Print(p.PrettyPrint())
+			g.Put(13)
+			return false
 		}
 		// Only evaluate the following statements:
 		// FUNCTION, PROCEDURE, SUBROUTINE, DATA
@@ -2407,6 +2412,7 @@ func prerun(g *game.Game, env *object.Environment) bool {
 			// Capture DATA statements, FUNCTION and PROCEDURE statements, and SUBROUTINE statements
 			if tokenType == token.DATA || tokenType == token.SUBROUTINE || tokenType == token.FUNCTION || tokenType == token.PROCEDURE {
 				obj := Eval(g, stmt, env)
+				// Handle eval error
 				if errorMsg, ok := obj.(*object.Error); ok {
 					if errorMsg.ErrorTokenIndex != 0 {
 						p.ErrorTokenIndex = errorMsg.ErrorTokenIndex
