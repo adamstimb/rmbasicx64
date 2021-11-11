@@ -2,7 +2,6 @@ package parser
 
 import (
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 
@@ -1411,7 +1410,6 @@ func (p *Parser) parseProcedureCallStatement() *ast.ProcedureCallStatement {
 	}
 	// Optional RETURN token following by required args
 	if p.curTokenIs(token.RECEIVE) {
-		log.Printf("got RECEIVE")
 		p.nextToken()
 		for !p.onEndOfInstruction() {
 			// Require variable name

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math"
 	"os"
 	"path/filepath"
@@ -2654,13 +2653,11 @@ func executeFunction(g *game.Game, env *object.Environment, startLine int, state
 }
 
 func evalProcedureCallStatement(g *game.Game, stmt *ast.ProcedureCallStatement, env *object.Environment) object.Object {
-	log.Printf("evalProcedureCallStatement")
 	if proc, ok := env.GetProcedure(stmt.Name.Value); ok {
 		args := make([]object.Object, len(stmt.Args))
 		for i := 0; i < len(stmt.Args); i++ {
 			args[i] = Eval(g, stmt.Args[i], env)
 			if isError(args[i]) {
-
 				return args[i]
 			}
 		}
@@ -2673,16 +2670,21 @@ func evalProcedureCallStatement(g *game.Game, stmt *ast.ProcedureCallStatement, 
 				return obj
 			}
 		}
-		log.Printf("calling executeFunction lineNumber=%d stmtNumber=%d", proc.LineNumber, proc.StatementNumber)
 		retVal := executeFunction(g, newEnv, proc.LineNumber, proc.StatementNumber, true)[0]
 		if newEnv.EndProgramSignal {
 			env.EndProgram()
 		}
 		if isError(retVal) {
 			return retVal
-		} else {
-			return nil
 		}
+		for i := 0; i < len(proc.ReturnArgs); i++ {
+			val, _ := newEnv.Get(proc.ReturnArgs[i].Value)
+			obj := env.Set(proc.ReturnArgs[i].Value, val)
+			if isError(obj) {
+				return obj
+			}
+		}
+		return nil
 	} else {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.UnknownCommandProcedure), ErrorTokenIndex: stmt.Token.Index}
 	}
