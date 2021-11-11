@@ -190,12 +190,14 @@ type Environment struct {
 	dataItems           []Object
 	subroutines         []*ast.SubroutineStatement
 	functions           []*ast.FunctionDeclaration
+	procedures          []*ast.ProcedureDeclaration
 	LeaveFunctionSignal bool
+	EndProgramSignal    bool
 	ReturnVals          []Object
 }
 
 // Dump and Copy are used to transfer global data, including the program itself, from one env to another
-func (e *Environment) Dump() (store map[storeKey]Object, globals []string, scope int, degrees bool, outer *Environment, program program, jumpStack jumpStack, prerun bool, dataItems []Object, subroutines []*ast.SubroutineStatement, functions []*ast.FunctionDeclaration) {
+func (e *Environment) Dump() (store map[storeKey]Object, globals []string, scope int, degrees bool, outer *Environment, program program, jumpStack jumpStack, prerun bool, dataItems []Object, subroutines []*ast.SubroutineStatement, functions []*ast.FunctionDeclaration, procedures []*ast.ProcedureDeclaration, leaveFunctionSignal bool, endProgramSignal bool, returnVals []Object) {
 	store = e.store
 	globals = e.globals
 	scope = e.scope
@@ -205,9 +207,10 @@ func (e *Environment) Dump() (store map[storeKey]Object, globals []string, scope
 	dataItems = e.dataItems
 	subroutines = e.subroutines
 	functions = e.functions
+	procedures = e.procedures
 	return
 }
-func (e *Environment) Copy(store map[storeKey]Object, globals []string, scope int, degrees bool, outer *Environment, program program, jumpStack jumpStack, prerun bool, dataItems []Object, subroutines []*ast.SubroutineStatement, functions []*ast.FunctionDeclaration) {
+func (e *Environment) Copy(store map[storeKey]Object, globals []string, scope int, degrees bool, outer *Environment, program program, jumpStack jumpStack, prerun bool, dataItems []Object, subroutines []*ast.SubroutineStatement, functions []*ast.FunctionDeclaration, procedures []*ast.ProcedureDeclaration, leaveFunctionSignal bool, endProgramSignal bool, returnVals []Object) {
 	e.store = store
 	e.globals = globals
 	e.scope = scope
@@ -219,6 +222,7 @@ func (e *Environment) Copy(store map[storeKey]Object, globals []string, scope in
 	e.dataItems = dataItems
 	e.subroutines = subroutines
 	e.functions = functions
+	e.procedures = procedures
 }
 func (e *Environment) NewScope() {
 	e.LeaveFunctionSignal = false
@@ -231,7 +235,9 @@ func (e *Environment) IsBaseScope() bool {
 		return false
 	}
 }
-
+func (e *Environment) EndProgram() {
+	e.EndProgramSignal = true
+}
 func (e *Environment) LeaveFunction() {
 	e.LeaveFunctionSignal = true
 }
@@ -329,6 +335,23 @@ func (e *Environment) GetFunction(name string) (*ast.FunctionDeclaration, bool) 
 
 func (e *Environment) DeleteFunctions() {
 	e.functions = []*ast.FunctionDeclaration{}
+}
+
+func (e *Environment) PushProcedure(proc *ast.ProcedureDeclaration) {
+	e.procedures = append(e.procedures, proc)
+}
+
+func (e *Environment) GetProcedure(name string) (*ast.ProcedureDeclaration, bool) {
+	for _, proc := range e.procedures {
+		if proc.Name.Value == name {
+			return proc, true
+		}
+	}
+	return nil, false
+}
+
+func (e *Environment) DeleteProcedures() {
+	e.procedures = []*ast.ProcedureDeclaration{}
 }
 
 func (e *Environment) NewArray(name string, subscripts []int) (Object, bool) {

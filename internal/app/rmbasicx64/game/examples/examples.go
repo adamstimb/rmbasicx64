@@ -46,11 +46,34 @@ func WriteExamples(workspacePath string) {
 			filename: "function.BAS",
 			program: `10 PRINT "This is how functions work in RM Basic."
 20 PRINT Add_Ten(110)
-30 GOTO 70
+30 END : REM Function definitions cannot be executed
 40 FUNCTION Add_Ten(Number%)
 50    RESULT Number% + 10
-60 ENDFUN
-70 PRINT "And that is it."`,
+60 ENDFUN`,
+		},
+		{
+			filename: "procedure.BAS",
+			program: `10 PRINT "This is how procedures work in RM Basic."
+20 Say_Hello
+30 Say_Goodbye
+40 Shout_Message "Hellooo!!!", 4, 2
+50 Multiply 10, 50 RECEIVE Answer
+60 PRINT "The result is: "; Answer
+70 END : REM Procedure definitions cannot be executed
+80 PROCEDURE Say_Hello
+90    PRINT "Hello"
+100 ENDPROC
+110 PROCEDURE Say_Goodbye
+120    PRINT "Goodbye"
+130 ENDPROC
+140 PROCEDURE Shout_Message Msg$, Font_Size%, Font_Colour%
+150   PLOT Msg$, 0, 0 SIZE Font_Size% BRUSH Font_Colour%
+160 ENDPROC
+170 PROCEDURE Multiply A, B RETURN C
+180   PRINT "A: "; A
+190   PRINT "B: "; B
+200   C = A + B
+210 ENDPROC`,
 		},
 		{
 			filename: "hello2.BAS",

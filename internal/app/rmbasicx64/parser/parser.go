@@ -2,7 +2,6 @@ package parser
 
 import (
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 
@@ -107,8 +106,6 @@ func New(l *lexer.Lexer, g *game.Game) *Parser {
 	p.registerPrefix(token.TRUE, p.parseBoolean)
 	p.registerPrefix(token.FALSE, p.parseBoolean)
 	p.registerPrefix(token.LeftParen, p.parseGroupedExpression)
-	//p.registerPrefix(token.IF, p.parseIfExpression)
-	//p.registerPrefix(token.FUNCTION, p.parseFunctionDefinition)
 	p.registerPrefix(token.StringLiteral, p.parseStringLiteral)
 	p.infixParseFns = make(map[string]infixParseFn)
 	p.registerInfix(token.Plus, p.parseInfixExpression)
@@ -166,8 +163,8 @@ func (p *Parser) parseBoolean() ast.Expression {
 }
 
 func (p *Parser) parseIdentifier() ast.Expression {
-	// If immediately followed by ( then it's an array or function
 	ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	// If immediately followed by ( then it's an array or function
 	if p.peekTokenIs(token.LeftParen) {
 		p.nextToken()
 		p.nextToken()
@@ -378,6 +375,14 @@ func (p *Parser) parseRemStatement() *ast.RemStatement {
 
 func (p *Parser) parseByeStatement() *ast.ByeStatement {
 	stmt := &ast.ByeStatement{Token: p.curToken}
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseEndStatement() *ast.EndStatement {
+	stmt := &ast.EndStatement{Token: p.curToken}
 	if p.endOfInstruction() {
 		return stmt
 	}
@@ -1163,7 +1168,6 @@ func (p *Parser) parseSubroutineStatement() *ast.SubroutineStatement {
 }
 
 func (p *Parser) parseGosubStatement() *ast.GosubStatement {
-	log.Printf("Parse gosub")
 	stmt := &ast.GosubStatement{Token: p.curToken}
 	p.nextToken() // consume SUBROUTINE
 	// Require name
@@ -1288,6 +1292,154 @@ func (p *Parser) parseDimStatement() *ast.DimStatement {
 		return stmt
 	}
 	return nil
+}
+
+func (p *Parser) parseProcedureDeclaration() *ast.ProcedureDeclaration {
+	stmt := &ast.ProcedureDeclaration{Token: p.curToken}
+	p.nextToken() // consume PROCEDURE
+	// Require name
+	if !p.curTokenIs(token.IdentifierLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NameOfDefinitionRequired)
+		return nil
+	}
+	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	p.nextToken()
+	// Optional end of instruction
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// Optional receive args
+	for !p.onEndOfInstruction() && !p.curTokenIs(token.RETURN) {
+		// Require variable name
+		if !p.curTokenIs(token.IdentifierLiteral) {
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+			return nil
+		} else {
+			stmt.ReceiveArgs = append(stmt.ReceiveArgs, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+			p.nextToken()
+		}
+		// Require comma, end of instruction or return
+		if p.curTokenIs(token.Comma) {
+			p.nextToken()
+			continue
+		}
+		if p.onEndOfInstruction() || p.curTokenIs(token.RETURN) {
+			break
+		} else {
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+			return nil
+		}
+	}
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// Optional RETURN token following by required args
+	if p.curTokenIs(token.RETURN) {
+		p.nextToken()
+		for !p.onEndOfInstruction() {
+			// Require variable name
+			if !p.curTokenIs(token.IdentifierLiteral) {
+				p.ErrorTokenIndex = p.curToken.Index
+				p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+				return nil
+			} else {
+				stmt.ReturnArgs = append(stmt.ReturnArgs, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+				p.nextToken()
+			}
+			// Require comma or end of instruction
+			if p.curTokenIs(token.Comma) {
+				p.nextToken()
+				continue
+			}
+			if p.onEndOfInstruction() {
+				break
+			} else {
+				p.ErrorTokenIndex = p.curToken.Index
+				p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+				return nil
+			}
+		}
+	} else {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+		return nil
+	}
+	return stmt
+}
+
+func (p *Parser) parseProcedureCallStatement() *ast.ProcedureCallStatement {
+	// Require name
+	if !p.curTokenIs(token.IdentifierLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NameOfDefinitionRequired)
+		return nil
+	}
+	stmt := &ast.ProcedureCallStatement{Token: p.curToken}
+	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	p.nextToken()
+	// Case of no arguments
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// Optional args
+	for !p.onEndOfInstruction() && !p.curTokenIs(token.RECEIVE) {
+		// Require expression
+		if val, ok := p.requireExpression(); ok {
+			stmt.Args = append(stmt.Args, val)
+		} else {
+			return nil
+		}
+		// Require comma, end of instruction or return
+		if p.curTokenIs(token.Comma) {
+			p.nextToken()
+			continue
+		}
+		if p.onEndOfInstruction() || p.curTokenIs(token.RECEIVE) {
+			break
+		} else {
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+			return nil
+		}
+	}
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// Optional RETURN token following by required args
+	if p.curTokenIs(token.RECEIVE) {
+		p.nextToken()
+		for !p.onEndOfInstruction() {
+			// Require variable name
+			if !p.curTokenIs(token.IdentifierLiteral) {
+				p.ErrorTokenIndex = p.curToken.Index
+				p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+				return nil
+			} else {
+				stmt.ReceiveArgs = append(stmt.ReceiveArgs, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+				p.nextToken()
+			}
+			// Require comma or end of instruction
+			if p.curTokenIs(token.Comma) {
+				p.nextToken()
+				continue
+			}
+			if p.onEndOfInstruction() {
+				break
+			} else {
+				p.ErrorTokenIndex = p.curToken.Index
+				p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+				return nil
+			}
+		}
+	} else {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+		return nil
+	}
+	return stmt
 }
 
 func (p *Parser) parseAskMouseStatement() *ast.AskMouseStatement {
@@ -2296,6 +2448,22 @@ func (p *Parser) parseResultStatement() *ast.ResultStatement {
 	return stmt
 }
 
+func (p *Parser) parseEndprocStatement() *ast.EndprocStatement {
+	stmt := &ast.EndprocStatement{Token: p.curToken}
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseLeaveStatement() *ast.LeaveStatement {
+	stmt := &ast.LeaveStatement{Token: p.curToken}
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 // -------------------------------------------------------------------------
 // -- Numeric Literal
 
@@ -2413,11 +2581,11 @@ func (p *Parser) PrettyPrint() string {
 	indent := "  "
 	lineString := p.g.PrettyPrintIndent
 	// Add indent for following lines
-	if p.curTokenIs(token.REPEAT) || p.curTokenIs(token.FOR) || p.curTokenIs(token.FUNCTION) {
+	if p.curTokenIs(token.REPEAT) || p.curTokenIs(token.FOR) || p.curTokenIs(token.FUNCTION) || p.curTokenIs(token.PROCEDURE) {
 		p.g.PrettyPrintIndent += indent
 	}
 	// Remove indent for this and following lines
-	if p.curTokenIs(token.UNTIL) || p.curTokenIs(token.NEXT) || p.curTokenIs(token.ENDFUN) {
+	if p.curTokenIs(token.UNTIL) || p.curTokenIs(token.NEXT) || p.curTokenIs(token.ENDFUN) || p.curTokenIs(token.ENDPROC) {
 		if len(p.g.PrettyPrintIndent) >= 2 {
 			p.g.PrettyPrintIndent = p.g.PrettyPrintIndent[:len(p.g.PrettyPrintIndent)-2]
 			lineString = p.g.PrettyPrintIndent
@@ -2541,6 +2709,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseRemStatement()
 	case token.BYE:
 		return p.parseByeStatement()
+	case token.END:
+		return p.parseEndStatement()
 	case token.LIST:
 		return p.parseListStatement()
 	case token.RUN:
@@ -2581,6 +2751,12 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseFunctionDeclaration()
 	case token.ENDFUN:
 		return p.parseEndfunStatement()
+	case token.PROCEDURE:
+		return p.parseProcedureDeclaration()
+	case token.ENDPROC:
+		return p.parseEndprocStatement()
+	case token.LEAVE:
+		return p.parseLeaveStatement()
 	case token.DIM:
 		return p.parseDimStatement()
 	case token.ASK:
@@ -2674,12 +2850,12 @@ func (p *Parser) parseStatement() ast.Statement {
 			return p.parseBindStatement()
 		}
 		if p.peekTokenIs(token.LeftParen) {
-			// This is also where we need to pick up function calls where the result is not stored
 			return p.parseBindArrayStatement()
 		}
-		// Handle procedure/function calls here
-		// ...
-		// Catch unknown command/procedure
+		if p.peekTokenIs(token.EOF) || p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.IdentifierLiteral) || p.peekTokenIs(token.RECEIVE) || p.peekTokenIs(token.NumericLiteral) || p.peekTokenIs(token.StringLiteral) {
+			return p.parseProcedureCallStatement()
+		}
+		// Catch unknown command/procedure-->this needs to depend on the above
 		if p.peekTokenIs(token.EOF) || p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) {
 			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.UnknownCommandProcedure)
 			p.ErrorTokenIndex = p.curToken.Index

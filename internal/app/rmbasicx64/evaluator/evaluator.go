@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math"
 	"os"
 	"path/filepath"
@@ -36,6 +35,9 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return nil
 	case *ast.ByeStatement:
 		os.Exit(0)
+	case *ast.EndStatement:
+		env.EndProgram()
+		return nil
 	case *ast.RunStatement:
 		return evalRunStatement(g, node, env)
 	case *ast.NewStatement:
@@ -123,10 +125,18 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalReturnStatement(g, node, env)
 	case *ast.FunctionDeclaration:
 		return evalFunctionDeclaration(g, node, env)
+	case *ast.ProcedureDeclaration:
+		return evalProcedureDeclaration(g, node, env)
+	case *ast.ProcedureCallStatement:
+		return evalProcedureCallStatement(g, node, env)
 	case *ast.ResultStatement:
 		return evalResultStatement(g, node, env)
 	case *ast.EndfunStatement:
 		return evalEndfunStatement(g, node, env)
+	case *ast.EndprocStatement:
+		return evalEndprocStatement(g, node, env)
+	case *ast.LeaveStatement:
+		return evalLeaveStatement(g, node, env)
 	case *ast.ReadStatement:
 		return evalReadStatement(g, node, env)
 	case *ast.RestoreStatement:
@@ -155,14 +165,6 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalBlockStatement(g, node, env)
 	case *ast.IfStatement:
 		return evalIfStatement(g, node, env)
-	//case *ast.ReturnStatement:
-	//	val := Eval(g, node.ReturnValue, env)
-	//	if isError(val) {
-	//		return val
-	//	}
-	//	return &object.ReturnValue{
-	//		Value: val,
-	//	}
 	case *ast.LetStatement:
 		val := Eval(g, node.Value, env)
 		if isError(val) {
@@ -207,14 +209,6 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 			// is variable
 			return env.Set(node.Name.Value, val)
 		}
-	//case *ast.FunctionLiteral:
-	//	params := node.Parameters
-	//	body := node.Body
-	//	return &object.Function{
-	//		Parameters: params,
-	//		Env:        env,
-	//		Body:       body,
-	//	}
 
 	// Expressions
 	case *ast.NumericLiteral:
@@ -1974,12 +1968,10 @@ func evalSubroutineStatement(g *game.Game, stmt *ast.SubroutineStatement, env *o
 	stmt.LineNumber = env.Program.GetLineNumber()
 	stmt.StatementNumber = env.Program.CurrentStatementNumber
 	env.PushSubroutine(stmt)
-	log.Printf("push subroutine")
 	return nil
 }
 
 func evalGosubStatement(g *game.Game, stmt *ast.GosubStatement, env *object.Environment) object.Object {
-	log.Printf("eval gosub")
 	// Push gosub statement onto jump stack so RETURN will know where to jump back to
 	stmt.LineNumber = env.Program.GetLineNumber()
 	stmt.StatementNumber = env.Program.CurrentStatementNumber
@@ -1997,7 +1989,6 @@ func evalGosubStatement(g *game.Game, stmt *ast.GosubStatement, env *object.Envi
 }
 
 func evalReturnStatement(g *game.Game, stmt *ast.ReturnStatement, env *object.Environment) object.Object {
-	log.Printf("eval return")
 	// Pop return stack until we find a gosub statement.  If we don't find one, return the
 	// RETURN without any GOSUB error.
 	looking := true
@@ -2037,6 +2028,38 @@ func evalResultStatement(g *game.Game, stmt *ast.ResultStatement, env *object.En
 
 func evalEndfunStatement(g *game.Game, stmt *ast.EndfunStatement, env *object.Environment) object.Object {
 	return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NeedResultToExitFunction), ErrorTokenIndex: stmt.Token.Index}
+}
+
+func evalProcedureDeclaration(g *game.Game, stmt *ast.ProcedureDeclaration, env *object.Environment) object.Object {
+	// Error if not prerun
+	if !env.Prerun {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.CannotExecuteDefinition), ErrorTokenIndex: stmt.Token.Index}
+	}
+	// Register function
+	stmt.LineNumber = env.Program.GetLineNumber()
+	stmt.StatementNumber = env.Program.CurrentStatementNumber
+	env.PushProcedure(stmt)
+	return nil
+}
+
+func evalEndprocStatement(g *game.Game, stmt *ast.EndprocStatement, env *object.Environment) object.Object {
+	if env.IsBaseScope() {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ProcedureExitWithoutCall), ErrorTokenIndex: stmt.Token.Index}
+	}
+	// TODO: Handle return values
+	env.ReturnVals = append(env.ReturnVals, nil)
+	env.LeaveFunction()
+	return nil
+}
+
+func evalLeaveStatement(g *game.Game, stmt *ast.LeaveStatement, env *object.Environment) object.Object {
+	if env.IsBaseScope() {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ProcedureExitWithoutCall), ErrorTokenIndex: stmt.Token.Index}
+	}
+	// TODO: Handle return values
+	env.ReturnVals = append(env.ReturnVals, nil)
+	env.LeaveFunction()
+	return nil
 }
 
 func evalRenumberStatement(g *game.Game, stmt *ast.RenumberStatement, env *object.Environment) object.Object {
@@ -2366,14 +2389,20 @@ func prerun(g *game.Game, env *object.Environment) bool {
 	env.DeleteData()
 	env.DeleteSubroutines()
 	env.DeleteFunctions()
+	env.DeleteProcedures()
 	env.Prerun = true
 	for !env.Program.EndOfProgram() {
 		l.Scan(env.Program.GetLine())
 		p := parser.New(l, g)
 		line := p.ParseLine()
-		// Disregard parser errors as these will be handling during execution.
-		if _, hasError := p.GetError(); hasError {
-			continue
+		// Handle parsing error here --> need some tweaks
+		if errorMsg, hasError := p.GetError(); hasError {
+			g.Print(errorMsg)
+			g.Put(13)
+			p.JumpToToken(0)
+			g.Print(p.PrettyPrint())
+			g.Put(13)
+			return false
 		}
 		// Only evaluate the following statements:
 		// FUNCTION, PROCEDURE, SUBROUTINE, DATA
@@ -2381,8 +2410,9 @@ func prerun(g *game.Game, env *object.Environment) bool {
 			env.Program.CurrentStatementNumber = statementNumber
 			tokenType := stmt.TokenLiteral()
 			// Capture DATA statements, FUNCTION and PROCEDURE statements, and SUBROUTINE statements
-			if tokenType == token.DATA || tokenType == token.SUBROUTINE || tokenType == token.FUNCTION {
+			if tokenType == token.DATA || tokenType == token.SUBROUTINE || tokenType == token.FUNCTION || tokenType == token.PROCEDURE {
 				obj := Eval(g, stmt, env)
+				// Handle eval error
 				if errorMsg, ok := obj.(*object.Error); ok {
 					if errorMsg.ErrorTokenIndex != 0 {
 						p.ErrorTokenIndex = errorMsg.ErrorTokenIndex
@@ -2411,7 +2441,9 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 	l := &lexer.Lexer{}
 	env.Prerun = false
 	env.Program.Start()
-	for !env.Program.EndOfProgram() && !g.BreakInterruptDetected {
+	env.EndProgramSignal = false
+	env.LeaveFunctionSignal = false
+	for !env.Program.EndOfProgram() && !g.BreakInterruptDetected && !env.EndProgramSignal {
 		l.Scan(env.Program.GetLine())
 		p := parser.New(l, g)
 		line := p.ParseLine()
@@ -2554,83 +2586,115 @@ func canObjectCastToIdentifierType(obj object.Object, identifierName string) (ob
 	}
 }
 
-func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment) object.Object {
-
-	// execute runs the function or procedure code and returns the return vals
-	execute := func(g *game.Game, env *object.Environment, startLine int, statementNumber int, skipFirstStatement bool) []object.Object {
-		// jump to position and execute
-		env.Program.Jump(startLine, statementNumber)
-		env.Program.Next()
-		l := &lexer.Lexer{}
-		env.Prerun = false
-		for !env.Program.EndOfProgram() && !g.BreakInterruptDetected && !env.LeaveFunctionSignal {
-			l.Scan(env.Program.GetLine())
-			p := parser.New(l, g)
-			line := p.ParseLine()
-			// Check of parser errors here.  Parser errors are handled just like evaluation errors but
-			// obviously we'll skip evaluation if parsing already failed.
-			if errorMsg, hasError := p.GetError(); hasError {
+// execute runs the function or procedure code and returns the return vals
+func executeFunction(g *game.Game, env *object.Environment, startLine int, statementNumber int, skipFirstStatement bool) []object.Object {
+	// jump to position and execute
+	env.Program.Jump(startLine, statementNumber)
+	env.Program.Next()
+	l := &lexer.Lexer{}
+	env.Prerun = false
+	for !env.Program.EndOfProgram() && !g.BreakInterruptDetected && !env.LeaveFunctionSignal && !env.EndProgramSignal {
+		l.Scan(env.Program.GetLine())
+		p := parser.New(l, g)
+		line := p.ParseLine()
+		// Check of parser errors here.  Parser errors are handled just like evaluation errors but
+		// obviously we'll skip evaluation if parsing already failed.
+		if errorMsg, hasError := p.GetError(); hasError {
+			lineNumber := env.Program.GetLineNumber()
+			g.Print(fmt.Sprintf("%s in line %d", errorMsg, lineNumber))
+			g.Put(13)
+			p.JumpToToken(0)
+			g.Print(fmt.Sprintf("%d %s", lineNumber, p.PrettyPrint()))
+			g.Put(13)
+			return nil
+		}
+		// And this is temporary while we're still migrating from Monkey to RM Basic
+		if len(p.Errors()) > 0 {
+			g.Print("Oops! Some random parsing error occurred. These will be handled properly downstream by for now here's some spewage:")
+			g.Put(13)
+			p.JumpToToken(0)
+			g.Print(p.PrettyPrint())
+			g.Put(13)
+			for _, msg := range p.Errors() {
+				g.Print(msg)
+				g.Put(13)
+			}
+			return nil
+		}
+		// Execute each statement in the program line.  If an error occurs, print the
+		// error message and stop.  If JumpToStatement is non-zero, all statements in
+		// the line will be skipped until i == JumpToStatement.
+		for statementNumber, stmt := range line.Statements {
+			if skipFirstStatement {
+				skipFirstStatement = false
+				continue
+			}
+			env.Program.CurrentStatementNumber = statementNumber
+			obj := Eval(g, stmt, env)
+			if errorMsg, ok := obj.(*object.Error); ok {
+				if errorMsg.ErrorTokenIndex != 0 {
+					p.ErrorTokenIndex = errorMsg.ErrorTokenIndex
+				}
 				lineNumber := env.Program.GetLineNumber()
-				g.Print(fmt.Sprintf("%s in line %d", errorMsg, lineNumber))
+				g.Print(fmt.Sprintf("%s in line %d", errorMsg.Message, lineNumber))
 				g.Put(13)
 				p.JumpToToken(0)
 				g.Print(fmt.Sprintf("%d %s", lineNumber, p.PrettyPrint()))
 				g.Put(13)
 				return nil
 			}
-			// And this is temporary while we're still migrating from Monkey to RM Basic
-			if len(p.Errors()) > 0 {
-				g.Print("Oops! Some random parsing error occurred. These will be handled properly downstream by for now here's some spewage:")
-				g.Put(13)
-				p.JumpToToken(0)
-				g.Print(p.PrettyPrint())
-				g.Put(13)
-				for _, msg := range p.Errors() {
-					g.Print(msg)
-					g.Put(13)
-				}
-				return nil
+			if g.BreakInterruptDetected {
+				break
 			}
-			// Execute each statement in the program line.  If an error occurs, print the
-			// error message and stop.  If JumpToStatement is non-zero, all statements in
-			// the line will be skipped until i == JumpToStatement.
-			for statementNumber, stmt := range line.Statements {
-				if skipFirstStatement {
-					skipFirstStatement = false
-					continue
-				}
-				env.Program.CurrentStatementNumber = statementNumber
-				obj := Eval(g, stmt, env)
-				if errorMsg, ok := obj.(*object.Error); ok {
-					if errorMsg.ErrorTokenIndex != 0 {
-						p.ErrorTokenIndex = errorMsg.ErrorTokenIndex
-					}
-					lineNumber := env.Program.GetLineNumber()
-					g.Print(fmt.Sprintf("%s in line %d", errorMsg.Message, lineNumber))
-					g.Put(13)
-					p.JumpToToken(0)
-					g.Print(fmt.Sprintf("%d %s", lineNumber, p.PrettyPrint()))
-					g.Put(13)
-					return nil
-				}
-				if g.BreakInterruptDetected {
-					break
-				}
-			}
-			env.Program.Next()
 		}
-		return env.ReturnVals
+		env.Program.Next()
 	}
+	return env.ReturnVals
+}
+
+func evalProcedureCallStatement(g *game.Game, stmt *ast.ProcedureCallStatement, env *object.Environment) object.Object {
+	if proc, ok := env.GetProcedure(stmt.Name.Value); ok {
+		args := make([]object.Object, len(stmt.Args))
+		for i := 0; i < len(stmt.Args); i++ {
+			args[i] = Eval(g, stmt.Args[i], env)
+			if isError(args[i]) {
+				return args[i]
+			}
+		}
+		newEnv := object.NewEnvironment()
+		newEnv.Copy(env.Dump())
+		newEnv.NewScope()
+		for i := 0; i < len(proc.ReceiveArgs); i++ {
+			obj := newEnv.Set(proc.ReceiveArgs[i].Value, args[i])
+			if isError(obj) {
+				return obj
+			}
+		}
+		retVal := executeFunction(g, newEnv, proc.LineNumber, proc.StatementNumber, true)[0]
+		if newEnv.EndProgramSignal {
+			env.EndProgram()
+		}
+		if isError(retVal) {
+			return retVal
+		}
+		for i := 0; i < len(stmt.ReceiveArgs); i++ {
+			val, _ := newEnv.Get(proc.ReturnArgs[i].Value)
+			obj := env.Set(stmt.ReceiveArgs[i].Value, val)
+			if isError(obj) {
+				return obj
+			}
+		}
+		return nil
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.UnknownCommandProcedure), ErrorTokenIndex: stmt.Token.Index}
+	}
+}
+
+func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment) object.Object {
 
 	if len(node.Subscripts) > 0 {
 		if fun, ok := env.GetFunction(node.Value); ok {
-			log.Printf("Calling function %s", node.Value)
 			// Handle function
-			// 1. Evaluate all subscripts
-			// 2. Create new env to run the function in
-			// 3. Copy program to new env
-			// 4. Set the receive args in the new scope
-			// 5. Run the function in the new env and return the first return value
 			subscripts := make([]object.Object, len(node.Subscripts))
 			for i := 0; i < len(node.Subscripts); i++ {
 				subscripts[i] = Eval(g, node.Subscripts[i], env)
@@ -2647,7 +2711,10 @@ func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment)
 					return obj
 				}
 			}
-			retVal := execute(g, newEnv, fun.LineNumber, fun.StatementNumber, true)[0]
+			retVal := executeFunction(g, newEnv, fun.LineNumber, fun.StatementNumber, true)[0]
+			if newEnv.EndProgramSignal {
+				env.EndProgram()
+			}
 			if isError(retVal) {
 				return retVal
 			} else {
@@ -2678,7 +2745,6 @@ func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment)
 	}
 	// Create a new variable with null value and return warning.  It's then up to the caller
 	// to print the warning and do env.Get again to get the value.
-	//name[len(name)-1:] != "$"
 	if node.Value[len(node.Value)-1:] == "$" {
 		env.Set(node.Value, &object.String{Value: ""})
 	} else {

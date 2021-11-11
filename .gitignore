@@ -3,7 +3,7 @@ build/rmbasicx64.exe
 build/rmbasicx64setup.exe
 build/*.yaml
 build/*.yml
-build/workspace/*.BAS
+build/workspace/**
 scripts/*.BAS
 .env
 .DS_Store

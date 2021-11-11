@@ -60,6 +60,7 @@ const (
 	ReturnWithoutAnyGosub
 	NeedResultToExitFunction
 	FunctionExitWithoutCall
+	ProcedureExitWithoutCall
 )
 
 // ErrorMessage returns the template error message for a given error code
@@ -123,6 +124,7 @@ func ErrorMessage(errorCode int) string {
 		ReturnWithoutAnyGosub:                        "RETURN without any GOSUB",
 		NeedResultToExitFunction:                     "Need RESULT to exit function",
 		FunctionExitWithoutCall:                      "Function exit without call",
+		ProcedureExitWithoutCall:                     "Procedure exit without call",
 	}
 	return errorMessages[errorCode]
 }
