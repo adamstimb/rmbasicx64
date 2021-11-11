@@ -2677,9 +2677,9 @@ func evalProcedureCallStatement(g *game.Game, stmt *ast.ProcedureCallStatement, 
 		if isError(retVal) {
 			return retVal
 		}
-		for i := 0; i < len(proc.ReturnArgs); i++ {
+		for i := 0; i < len(stmt.ReceiveArgs); i++ {
 			val, _ := newEnv.Get(proc.ReturnArgs[i].Value)
-			obj := env.Set(proc.ReturnArgs[i].Value, val)
+			obj := env.Set(stmt.ReceiveArgs[i].Value, val)
 			if isError(obj) {
 				return obj
 			}
