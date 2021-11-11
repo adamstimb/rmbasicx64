@@ -1151,7 +1151,8 @@ type ProcedureDeclaration struct {
 	Name            *Identifier
 	LineNumber      int
 	StatementNumber int
-	ReturnArgs      []Expression
+	ReceiveArgs     []*Identifier
+	ReturnArgs      []*Identifier
 }
 
 func (s *ProcedureDeclaration) statementNode() {}

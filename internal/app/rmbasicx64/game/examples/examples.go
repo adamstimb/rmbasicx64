@@ -62,7 +62,10 @@ func WriteExamples(workspacePath string) {
 70 ENDPROC
 80 PROCEDURE Say_Goodbye
 90    PRINT "Goodbye"
-100 ENDPROC`,
+100 ENDPROC
+110 PROCEDURE Shout_Message Msg$, Font_Size%, Font_Colour%
+120   PLOT Msg$, 0, 0 SIZE Font_Size% BRUSH Font%_Colour%
+130 ENDPROC`,
 		},
 		{
 			filename: "hello2.BAS",
