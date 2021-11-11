@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math"
 	"os"
 	"path/filepath"
@@ -1969,12 +1968,10 @@ func evalSubroutineStatement(g *game.Game, stmt *ast.SubroutineStatement, env *o
 	stmt.LineNumber = env.Program.GetLineNumber()
 	stmt.StatementNumber = env.Program.CurrentStatementNumber
 	env.PushSubroutine(stmt)
-	log.Printf("push subroutine")
 	return nil
 }
 
 func evalGosubStatement(g *game.Game, stmt *ast.GosubStatement, env *object.Environment) object.Object {
-	log.Printf("eval gosub")
 	// Push gosub statement onto jump stack so RETURN will know where to jump back to
 	stmt.LineNumber = env.Program.GetLineNumber()
 	stmt.StatementNumber = env.Program.CurrentStatementNumber
@@ -1992,7 +1989,6 @@ func evalGosubStatement(g *game.Game, stmt *ast.GosubStatement, env *object.Envi
 }
 
 func evalReturnStatement(g *game.Game, stmt *ast.ReturnStatement, env *object.Environment) object.Object {
-	log.Printf("eval return")
 	// Pop return stack until we find a gosub statement.  If we don't find one, return the
 	// RETURN without any GOSUB error.
 	looking := true
@@ -2043,7 +2039,6 @@ func evalProcedureDeclaration(g *game.Game, stmt *ast.ProcedureDeclaration, env 
 	stmt.LineNumber = env.Program.GetLineNumber()
 	stmt.StatementNumber = env.Program.CurrentStatementNumber
 	env.PushProcedure(stmt)
-	log.Printf("pushed proc")
 	return nil
 }
 
@@ -2396,7 +2391,6 @@ func prerun(g *game.Game, env *object.Environment) bool {
 	env.DeleteFunctions()
 	env.DeleteProcedures()
 	env.Prerun = true
-	log.Printf("prerun")
 	for !env.Program.EndOfProgram() {
 		l.Scan(env.Program.GetLine())
 		p := parser.New(l, g)
@@ -2405,7 +2399,6 @@ func prerun(g *game.Game, env *object.Environment) bool {
 		if _, hasError := p.GetError(); hasError {
 			continue
 		}
-		log.Printf("line=%d", env.Program.GetLineNumber())
 		// Only evaluate the following statements:
 		// FUNCTION, PROCEDURE, SUBROUTINE, DATA
 		for statementNumber, stmt := range line.Statements {
@@ -2655,7 +2648,6 @@ func executeFunction(g *game.Game, env *object.Environment, startLine int, state
 
 func evalProcedureCallStatement(g *game.Game, stmt *ast.ProcedureCallStatement, env *object.Environment) object.Object {
 	if proc, ok := env.GetProcedure(stmt.Name.Value); ok {
-		log.Printf("Calling procedure %s", stmt.Name.Value)
 		newEnv := object.NewEnvironment()
 		newEnv.Copy(env.Dump())
 		newEnv.NewScope()
@@ -2677,7 +2669,6 @@ func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment)
 
 	if len(node.Subscripts) > 0 {
 		if fun, ok := env.GetFunction(node.Value); ok {
-			log.Printf("Calling function %s", node.Value)
 			// Handle function
 			// 1. Evaluate all subscripts
 			// 2. Create new env to run the function in

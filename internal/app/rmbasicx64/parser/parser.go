@@ -2,7 +2,6 @@ package parser
 
 import (
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 
@@ -1169,7 +1168,6 @@ func (p *Parser) parseSubroutineStatement() *ast.SubroutineStatement {
 }
 
 func (p *Parser) parseGosubStatement() *ast.GosubStatement {
-	log.Printf("Parse gosub")
 	stmt := &ast.GosubStatement{Token: p.curToken}
 	p.nextToken() // consume SUBROUTINE
 	// Require name
