@@ -2052,6 +2052,7 @@ func evalEndprocStatement(g *game.Game, stmt *ast.EndprocStatement, env *object.
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ProcedureExitWithoutCall), ErrorTokenIndex: stmt.Token.Index}
 	}
 	// TODO: Handle return values
+	env.ReturnVals = append(env.ReturnVals, nil)
 	env.LeaveFunction()
 	return nil
 }
@@ -2061,6 +2062,7 @@ func evalLeaveStatement(g *game.Game, stmt *ast.LeaveStatement, env *object.Envi
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ProcedureExitWithoutCall), ErrorTokenIndex: stmt.Token.Index}
 	}
 	// TODO: Handle return values
+	env.ReturnVals = append(env.ReturnVals, nil)
 	env.LeaveFunction()
 	return nil
 }
