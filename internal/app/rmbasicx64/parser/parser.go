@@ -1372,14 +1372,13 @@ func (p *Parser) parseProcedureDeclaration() *ast.ProcedureDeclaration {
 }
 
 func (p *Parser) parseProcedureCallStatement() *ast.ProcedureCallStatement {
-	log.Printf("parseProcedureCallStatement")
-	stmt := &ast.ProcedureCallStatement{Token: p.curToken}
 	// Require name
 	if !p.curTokenIs(token.IdentifierLiteral) {
 		p.ErrorTokenIndex = p.curToken.Index
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NameOfDefinitionRequired)
 		return nil
 	}
+	stmt := &ast.ProcedureCallStatement{Token: p.curToken}
 	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 	p.nextToken()
 	// Case of no arguments
@@ -1412,6 +1411,7 @@ func (p *Parser) parseProcedureCallStatement() *ast.ProcedureCallStatement {
 	}
 	// Optional RETURN token following by required args
 	if p.curTokenIs(token.RECEIVE) {
+		log.Printf("got RECEIVE")
 		p.nextToken()
 		for !p.onEndOfInstruction() {
 			// Require variable name
@@ -1441,7 +1441,7 @@ func (p *Parser) parseProcedureCallStatement() *ast.ProcedureCallStatement {
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
 		return nil
 	}
-	return nil
+	return stmt
 }
 
 func (p *Parser) parseAskMouseStatement() *ast.AskMouseStatement {

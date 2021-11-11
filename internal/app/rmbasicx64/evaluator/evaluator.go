@@ -2673,6 +2673,7 @@ func evalProcedureCallStatement(g *game.Game, stmt *ast.ProcedureCallStatement, 
 				return obj
 			}
 		}
+		log.Printf("calling executeFunction lineNumber=%d stmtNumber=%d", proc.LineNumber, proc.StatementNumber)
 		retVal := executeFunction(g, newEnv, proc.LineNumber, proc.StatementNumber, true)[0]
 		if newEnv.EndProgramSignal {
 			env.EndProgram()
