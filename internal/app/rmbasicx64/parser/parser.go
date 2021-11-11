@@ -1297,7 +1297,6 @@ func (p *Parser) parseDimStatement() *ast.DimStatement {
 }
 
 func (p *Parser) parseProcedureDeclaration() *ast.ProcedureDeclaration {
-	log.Printf("parseProcedureDeclaration")
 	stmt := &ast.ProcedureDeclaration{Token: p.curToken}
 	p.nextToken() // consume PROCEDURE
 	// Require name
@@ -1339,7 +1338,6 @@ func (p *Parser) parseProcedureDeclaration() *ast.ProcedureDeclaration {
 
 func (p *Parser) parseProcedureCallStatement() *ast.ProcedureCallStatement {
 	stmt := &ast.ProcedureCallStatement{Token: p.curToken}
-	p.nextToken() // consume CALL
 	// Require name
 	if !p.curTokenIs(token.IdentifierLiteral) {
 		p.ErrorTokenIndex = p.curToken.Index
@@ -1348,6 +1346,10 @@ func (p *Parser) parseProcedureCallStatement() *ast.ProcedureCallStatement {
 	}
 	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 	p.nextToken()
+	// Case of no arguments
+	if p.onEndOfInstruction() {
+		return stmt
+	}
 	// Optional arguments
 	for !p.onEndOfInstruction() {
 		// Require expression
@@ -2479,11 +2481,11 @@ func (p *Parser) PrettyPrint() string {
 	indent := "  "
 	lineString := p.g.PrettyPrintIndent
 	// Add indent for following lines
-	if p.curTokenIs(token.REPEAT) || p.curTokenIs(token.FOR) || p.curTokenIs(token.FUNCTION) {
+	if p.curTokenIs(token.REPEAT) || p.curTokenIs(token.FOR) || p.curTokenIs(token.FUNCTION) || p.curTokenIs(token.PROCEDURE) {
 		p.g.PrettyPrintIndent += indent
 	}
 	// Remove indent for this and following lines
-	if p.curTokenIs(token.UNTIL) || p.curTokenIs(token.NEXT) || p.curTokenIs(token.ENDFUN) {
+	if p.curTokenIs(token.UNTIL) || p.curTokenIs(token.NEXT) || p.curTokenIs(token.ENDFUN) || p.curTokenIs(token.ENDPROC) {
 		if len(p.g.PrettyPrintIndent) >= 2 {
 			p.g.PrettyPrintIndent = p.g.PrettyPrintIndent[:len(p.g.PrettyPrintIndent)-2]
 			lineString = p.g.PrettyPrintIndent
