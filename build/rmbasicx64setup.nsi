@@ -2,7 +2,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "RM BASICx64"
-!define PRODUCT_VERSION "0.10A"
+!define PRODUCT_VERSION "0.20"
 !define PRODUCT_PUBLISHER "Tim Adams"
 !define PRODUCT_WEB_SITE "https://adamstimb.github.io/rmbasicx64site"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\rmbasicx64.exe"
@@ -21,7 +21,12 @@
 !insertmacro MUI_PAGE_WELCOME
 ; License page
 !insertmacro MUI_PAGE_LICENSE "license.txt"
-; Directory page
+; Installartion directory page
+!insertmacro MUI_PAGE_DIRECTORY
+; Workspace directory page
+!define MUI_PAGE_HEADER_SUBTEXT "Choose where to create your workspace directory."
+!define MUI_DIRECTORYPAGE_TEXT_TOP "RM BASICx64 will create a folder called 'RMBASICx64 Workspace' in this location if it does not already exist.  Your BASIC programs will be stored here.  To use a differenct folder, click Browse and select another folder. Click Next to continue."
+!define MUI_DIRECTORYPAGE_VARIABLE $WorkspaceDir
 !insertmacro MUI_PAGE_DIRECTORY
 ; Instfiles page
 !insertmacro MUI_PAGE_INSTFILES
@@ -48,9 +53,10 @@ Section "MainSection" SEC01
   SetOutPath "$INSTDIR"
   SetOverwrite ifnewer
   File "rmbasicx64.exe"
+  File "rmbasicx64-ico-256.ico"
   CreateDirectory "$SMPROGRAMS\RM BASICx64"
-  CreateShortCut "$SMPROGRAMS\RM BASICx64\RM BASICx64.lnk" "$INSTDIR\rmbasicx64.exe"
-  CreateShortCut "$DESKTOP\RM BASICx64.lnk" "$INSTDIR\rmbasicx64.exe"
+  CreateShortCut "$SMPROGRAMS\RM BASICx64\RM BASICx64.lnk" "$INSTDIR\rmbasicx64.exe" "" "$INSTDIR\rmbasicx64-ico-256.ico" 0
+  CreateShortCut "$DESKTOP\RM BASICx64.lnk" "$INSTDIR\rmbasicx64.exe" "" "$INSTDIR\rmbasicx64-ico-256.ico" 0
 SectionEnd
 
 Section -AdditionalIcons
@@ -85,6 +91,7 @@ Section Uninstall
   Delete "$INSTDIR\${PRODUCT_NAME}.url"
   Delete "$INSTDIR\uninst.exe"
   Delete "$INSTDIR\rmbasicx64.exe"
+  Delete "$INSTDIR\rmbasicx64-ico-256.ico"
 
   Delete "$SMPROGRAMS\RM BASICx64\Uninstall.lnk"
   Delete "$SMPROGRAMS\RM BASICx64\Website.lnk"

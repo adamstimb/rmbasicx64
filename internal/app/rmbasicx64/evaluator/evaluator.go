@@ -239,8 +239,16 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		result := evalInfixExpression(node.Operator, left, right)
 		return result
 	case *ast.Identifier:
-		// If a warning is returned, print the warning *then* re-run the evaluation and return
 		obj := evalIdentifier(g, node, env)
+		// Catch builtin
+		if obj.Type() == object.BUILTIN_OBJ {
+			args := evalExpressions(g, node.Subscripts, env)
+			if len(args) == 1 && isError(args[0]) {
+				return args[0]
+			}
+			return applyFunction(env, g, obj, args)
+		}
+		// If a warning is returned, print the warning *then* re-run the evaluation and return
 		if warningMsg, ok := obj.(*object.Warning); ok {
 			g.Print(fmt.Sprintf("Warning: %s", warningMsg.Message))
 			g.Put(13)
@@ -249,6 +257,7 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 			return obj
 		}
 	case *ast.CallExpression:
+		// This is most likely redundant now
 		function := Eval(g, node.Function, env)
 		if isError(function) {
 			return function
@@ -2691,7 +2700,9 @@ func evalProcedureCallStatement(g *game.Game, stmt *ast.ProcedureCallStatement, 
 }
 
 func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment) object.Object {
-
+	if builtin, ok := builtins[node.Value]; ok {
+		return builtin
+	}
 	if len(node.Subscripts) > 0 {
 		if fun, ok := env.GetFunction(node.Value); ok {
 			// Handle function
@@ -2739,9 +2750,6 @@ func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment)
 	}
 	if val, ok := env.Get(node.Value); ok {
 		return val
-	}
-	if builtin, ok := builtins[node.Value]; ok {
-		return builtin
 	}
 	// Create a new variable with null value and return warning.  It's then up to the caller
 	// to print the warning and do env.Get again to get the value.

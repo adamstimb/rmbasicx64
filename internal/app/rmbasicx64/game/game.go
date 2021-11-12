@@ -68,7 +68,7 @@ func (g *Game) ReadConf() (AppConfig, error) {
 	// Try to get directory of executable
 	exeDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
-		log.Printf("Error resolving directory of executable: %v", err)
+		log.Fatalf("Error resolving directory of executable: %v", err)
 	}
 	// If the config file doesn't exist, create one with default settings
 	c := AppConfig{Boot: true}
@@ -105,14 +105,22 @@ func (g *Game) ReadConf() (AppConfig, error) {
 
 // EnsureWorkspace makes sure the workspace folder exists and sets its location
 func (g *Game) EnsureWorkspace() {
-	// Determine if workspace path exists and it's a directory
-	// If either is wrong then we need to create the directory
-	exeDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
-	if err != nil {
-		log.Printf("Error resolving directory of executable: %v", err)
+	// Is workspace set in the env var?
+	workspacePath, isSet := os.LookupEnv("RM_BASICX64_WORKSPACE_DIR")
+	if !isSet {
+		// No workspace set in env var, use default
+		exeDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+		if err != nil {
+			log.Fatalf("Error resolving directory of executable: %v", err)
+		} else {
+			workspacePath = filepath.Join(exeDir, "RMBASICx64 Workspace")
+		}
+	} else {
+		workspacePath = filepath.Join(workspacePath, "RMBASICx64 Workspace")
 	}
-	workspacePath := filepath.Join(exeDir, "workspace")
-	err = os.MkdirAll(workspacePath, os.ModePerm)
+
+	// Create workspace if it doesn't already exist and write examples
+	err := os.MkdirAll(workspacePath, os.ModePerm)
 	if err != nil {
 		log.Fatalf("Error creating workspace folder %q: %v", workspacePath, err)
 	}
