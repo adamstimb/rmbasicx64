@@ -24,6 +24,7 @@
 ; Installartion directory page
 !insertmacro MUI_PAGE_DIRECTORY
 ; Workspace directory page
+Var WorkspaceDir
 !define MUI_PAGE_HEADER_SUBTEXT "Choose where to create your workspace directory."
 !define MUI_DIRECTORYPAGE_TEXT_TOP "RM BASICx64 will create a folder called 'RMBASICx64 Workspace' in this location if it does not already exist.  Your BASIC programs will be stored here.  To use a differenct folder, click Browse and select another folder. Click Next to continue."
 !define MUI_DIRECTORYPAGE_VARIABLE $WorkspaceDir
