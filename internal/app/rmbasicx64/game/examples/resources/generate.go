@@ -13,6 +13,7 @@
 // limitations under the License.
 
 //go:generate file2byteslice -package=images -input=images/astronaut.jpg -output=images/astronaut.go -var=Astronaut_jpg
+//go:generate file2byteslice -package=images -input=images/meme.jpg -output=images/meme.go -var=Meme_jpg
 //go:generate gofmt -s -w .
 
 package resources

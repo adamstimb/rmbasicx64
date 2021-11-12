@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 
@@ -2614,11 +2615,22 @@ func (p *Parser) PrettyPrint() string {
 			p.nextToken()
 			continue
 		}
-		// Remove trailing space if ) or (
+		// Remove trailing space if )
 		if len(lineString) > 0 {
-			if lineString[len(lineString)-1] == ' ' && (p.curToken.TokenType == token.RightParen || p.curToken.TokenType == token.LeftParen) {
+			if lineString[len(lineString)-1] == ' ' && (p.curToken.TokenType == token.RightParen) {
+				log.Printf("found )")
 				lineString = lineString[0 : len(lineString)-1]
 				lineString += ") "
+				p.nextToken()
+				continue
+			}
+		}
+		// Remove trailing space if (
+		if len(lineString) > 0 {
+			if lineString[len(lineString)-1] == ' ' && (p.curToken.TokenType == token.LeftParen) {
+				log.Printf("found (")
+				lineString = lineString[0 : len(lineString)-1]
+				lineString += "( "
 				p.nextToken()
 				continue
 			}
@@ -2643,12 +2655,13 @@ func (p *Parser) PrettyPrint() string {
 		}
 		// Otherwise add literal with trailing space
 		curLiteral := p.curToken.Literal
-		_, ok := lexer.Builtins[curLiteral]
-		if ok {
-			lineString += p.curToken.Literal
-		} else {
-			lineString += p.curToken.Literal + " "
-		}
+		lineString += curLiteral + " "
+		//_, ok := lexer.Builtins[curLiteral]
+		//if ok {
+		//	lineString += p.curToken.Literal
+		//} else {
+		//	lineString += p.curToken.Literal + " "
+		//}
 		p.nextToken()
 	}
 	return strings.TrimRight(lineString, " ")

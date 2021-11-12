@@ -136,6 +136,30 @@ func WriteExamples(workspacePath string) {
 230 PLOT "The Mandelbrot Set", 90, 2 BRUSH 1
 240 PLOT "The Mandelbrot Set", 91, 3 BRUSH 13`,
 		},
+		{
+			filename: "meme.BAS",
+			program: `10 REM RM Basic Meme Generator
+20 SET MODE 40 : SET BORDER 15
+30 FETCH 0, "meme.jpg"
+40 WRITEBLOCK 0, 0, 0, -1
+50 Meme_Text "LEARN TO PROGRAM", 30, 200
+60 Meme_text "LIKE THE ANCIENTS", 25, 0
+70 READBLOCK 0, 0, 0, 320, 250
+80 KEEP 0, "learnrmbasic.jpg"
+90 END
+100 PROCEDURE Meme_Text Text$, X%, Y%
+110   PLOT Text$, X% - 1, Y% - 1 SIZE 2, 4 BRUSH 0 FONT 1
+120   PLOT Text$, X%, Y% - 1 SIZE 2, 4 BRUSH 0 FONT 1
+130   PLOT Text$, X% + 1, Y% - 1 SIZE 2, 4 BRUSH 0 FONT 1
+140   PLOT Text$, X% + 1, Y% SIZE 2, 4 BRUSH 0 FONT 1
+150   PLOT Text$, X% + 1, Y% + 1 SIZE 2, 4 BRUSH 0 FONT 1
+160   PLOT Text$, X%, Y% + 1 SIZE 2, 4 BRUSH 0 FONT 1
+170   PLOT Text$, X% - 1, Y% + 1 SIZE 2, 4 BRUSH 0 FONT 1
+180   PLOT Text$, X% - 1, Y% SIZE 2, 4 BRUSH 0 FONT 1
+190   PLOT Text$, X%, Y% SIZE 2, 4 BRUSH 15 FONT 1
+200 ENDPROC
+`,
+		},
 	}
 
 	for _, example := range examples {
@@ -157,4 +181,12 @@ func WriteExamples(workspacePath string) {
 	}
 	defer file.Close()
 	file.Write(images.Astronaut_jpg)
+
+	fullpath = filepath.Join(workspacePath, "meme.jpg")
+	file, err = os.Create(fullpath)
+	if err != nil {
+		log.Printf("Error creating example program %q - %e", fullpath, err)
+	}
+	defer file.Close()
+	file.Write(images.Meme_jpg)
 }
