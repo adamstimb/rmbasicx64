@@ -114,9 +114,8 @@ Section Uninstall
 
   ; delete env vars
   DeleteRegValue HKLM "RM_BASICX64_WORKSPACE_DIR" ""
-  ;DeleteRegValue ${env_hkcu} RM_BASICX64_WORKSPACE_DIR
   ; make sure windows knows about the change
-  SendMessage ${HWND_BROADCAST} ${WM_WININICHANGE} 0 "STR:Environment" /TIMEOUT=5000
+  SendMessage ${HWND_BROADCAST} ${WM_WININICHANGE} 0 "STR:Environment" /TIMEOUT=2000
 
   DeleteRegKey ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}"
   DeleteRegKey HKLM "${PRODUCT_DIR_REGKEY}"
