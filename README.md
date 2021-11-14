@@ -8,7 +8,7 @@ RM BASICx64 is a re-implementation of RM Basic, a dialect of BASIC developed by 
 
 ## Status
 
-Roughly half of the original language specification is implemented.  The code has not been hardened so may crash unexpectedly or produce strange errors.  Click the "Watch" button on the top right to get notifications of new releases!
+Over half of the original language specification is implemented.  The code has not been hardened so may crash unexpectedly or produce strange errors.  Click the "Watch" button on the top right to get notifications of new releases!
 
 ## I want it now!
 
@@ -68,6 +68,10 @@ Using big fonts to say hello
 ![Mandelbrot Set](https://github.com/adamstimb/rmbasicx64/blob/main/docs/screenshots/mandelbrot-set.png)
 
 The Mandelbrot Set
+
+![Meme Generator](https://github.com/adamstimb/rmbasicx64/blob/main/docs/screenshots/meme-screenshot.png)
+
+Making daft memes with RM Basic
 
 ## Links
 
