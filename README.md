@@ -51,6 +51,10 @@ Use File Explorer to make a new folder called `rmbasicx64` in `C:\Program Files`
 
 If you get a message saying "Windows protected your PC" click "More info" then "Run anyway".
 
+## Videos
+
+[Quick Start Guide](https://youtu.be/BCfvL_8wwHk)
+
 ## Screenshots
 
 ![RM BASICx64 running on Windows 10](https://github.com/adamstimb/rmbasicx64/blob/main/docs/screenshots/interpreter-loaded.png)
