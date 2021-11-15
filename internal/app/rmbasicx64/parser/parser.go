@@ -422,6 +422,7 @@ func (p *Parser) parseListStatement() *ast.ListStatement {
 	stmt.FromLinenumber = p.curToken
 	p.nextToken()
 	if p.onEndOfInstruction() {
+		stmt.FromLineOnly = true
 		return stmt
 	}
 	// LIST lineNumber TO

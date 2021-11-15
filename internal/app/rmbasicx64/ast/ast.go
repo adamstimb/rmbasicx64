@@ -288,6 +288,7 @@ type ListStatement struct {
 	Token          token.Token
 	FromLinenumber token.Token
 	ToLinenumber   token.Token
+	FromLineOnly   bool
 }
 
 func (s *ListStatement) statementNode() {}
