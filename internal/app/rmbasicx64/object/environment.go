@@ -104,13 +104,38 @@ func (p *program) EndOfProgram() bool {
 		return false
 	}
 }
-func (p *program) List() []string {
+func (p *program) List(fromLinenumber, toLinenumber int, fromLineOnly bool) []string {
 	if len(p.lines) == 0 {
 		return nil
 	}
 	listing := []string{}
+
 	for i := 0; i < len(p.lines); i++ {
-		listing = append(listing, fmt.Sprintf("%d %s", p.sortedIndex[i], p.lines[p.sortedIndex[i]]))
+		// list entire program
+		if fromLinenumber == 0 && toLinenumber == 0 {
+			listing = append(listing, fmt.Sprintf("%d %s", p.sortedIndex[i], p.lines[p.sortedIndex[i]]))
+		}
+		// use lower and upper boundary to get the lines
+		if fromLinenumber != 0 && toLinenumber != 0 {
+			if p.sortedIndex[i] >= fromLinenumber && p.sortedIndex[i] <= toLinenumber {
+				listing = append(listing, fmt.Sprintf("%d %s", p.sortedIndex[i], p.lines[p.sortedIndex[i]]))
+			}
+		}
+		// use lower boundary to get the lines, and get only first line if fromLineOnly
+		if fromLinenumber != 0 && toLinenumber == 0 {
+			if p.sortedIndex[i] >= fromLinenumber {
+				listing = append(listing, fmt.Sprintf("%d %s", p.sortedIndex[i], p.lines[p.sortedIndex[i]]))
+				if fromLineOnly {
+					break
+				}
+			}
+		}
+		// use upper boundary to get the lines
+		if fromLinenumber == 0 && toLinenumber != 0 {
+			if p.sortedIndex[i] <= toLinenumber {
+				listing = append(listing, fmt.Sprintf("%d %s", p.sortedIndex[i], p.lines[p.sortedIndex[i]]))
+			}
+		}
 	}
 	return listing
 }

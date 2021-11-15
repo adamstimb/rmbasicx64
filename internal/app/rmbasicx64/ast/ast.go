@@ -285,7 +285,10 @@ func (bs *ByeStatement) String() string {
 }
 
 type ListStatement struct {
-	Token token.Token
+	Token          token.Token
+	FromLinenumber token.Token
+	ToLinenumber   token.Token
+	FromLineOnly   bool
 }
 
 func (s *ListStatement) statementNode() {}

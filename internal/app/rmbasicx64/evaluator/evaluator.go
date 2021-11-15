@@ -1121,7 +1121,7 @@ func evalSaveStatement(g *game.Game, stmt *ast.SaveStatement, env *object.Enviro
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure)}
 	}
 	defer file.Close()
-	for _, lineString := range env.Program.List() {
+	for _, lineString := range env.Program.List(0, 0, false) {
 		file.WriteString(fmt.Sprintf("%s\n", lineString))
 	}
 	return obj
@@ -2379,7 +2379,17 @@ func evalSetRadStatement(g *game.Game, stmt *ast.SetRadStatement, env *object.En
 }
 
 func evalListStatement(g *game.Game, stmt *ast.ListStatement, env *object.Environment) object.Object {
-	listing := env.Program.List()
+	fromLinenumber := 0
+	toLinenumber := 0
+	if stmt.FromLinenumber.Literal != "" {
+		val, _ := strconv.ParseFloat(stmt.FromLinenumber.Literal, 64)
+		fromLinenumber = int(val)
+	}
+	if stmt.ToLinenumber.Literal != "" {
+		val, _ := strconv.ParseFloat(stmt.ToLinenumber.Literal, 64)
+		toLinenumber = int(val)
+	}
+	listing := env.Program.List(fromLinenumber, toLinenumber, stmt.FromLineOnly)
 	if listing == nil {
 		return nil
 	}
