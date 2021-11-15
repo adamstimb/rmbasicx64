@@ -71,7 +71,7 @@ func (l *Line) TokenLiteral() string {
 
 // redundant?
 type BlockStatement struct {
-	Token      token.Token // then { token
+	Token      token.Token
 	Statements []Statement
 }
 
@@ -88,7 +88,7 @@ func (bs *BlockStatement) String() string {
 }
 
 type IfExpression struct {
-	Token       token.Token // the If token
+	Token       token.Token
 	Condition   Expression
 	Consequence *Line
 	Alternative *Line
@@ -112,7 +112,7 @@ func (ie *IfExpression) String() string {
 }
 
 type IfStatement struct {
-	Token       token.Token // the If token
+	Token       token.Token
 	Condition   Expression
 	Consequence *Line
 	Alternative *Line
@@ -271,7 +271,7 @@ func (ie *InfixExpression) String() string {
 }
 
 type ByeStatement struct {
-	Token token.Token // the token.Bye token
+	Token token.Token
 }
 
 func (bs *ByeStatement) statementNode() {}
@@ -285,7 +285,7 @@ func (bs *ByeStatement) String() string {
 }
 
 type ListStatement struct {
-	Token token.Token // the token.Bye token
+	Token token.Token
 }
 
 func (s *ListStatement) statementNode() {}
@@ -299,7 +299,8 @@ func (s *ListStatement) String() string {
 }
 
 type RunStatement struct {
-	Token token.Token // the token.Bye token
+	Token      token.Token
+	Linenumber token.Token
 }
 
 func (s *RunStatement) statementNode() {}
@@ -313,7 +314,7 @@ func (s *RunStatement) String() string {
 }
 
 type NewStatement struct {
-	Token token.Token // the token.Bye token
+	Token token.Token
 }
 
 func (s *NewStatement) statementNode() {}
@@ -327,7 +328,7 @@ func (s *NewStatement) String() string {
 }
 
 type ClearblockStatement struct {
-	Token token.Token // the token.Bye token
+	Token token.Token
 }
 
 func (s *ClearblockStatement) statementNode() {}
@@ -341,7 +342,7 @@ func (s *ClearblockStatement) String() string {
 }
 
 type DelblockStatement struct {
-	Token token.Token // the token.Bye token
+	Token token.Token
 	Block Expression
 }
 
@@ -356,7 +357,7 @@ func (s *DelblockStatement) String() string {
 }
 
 type KeepStatement struct {
-	Token token.Token // the token.Bye token
+	Token token.Token
 	Block Expression
 	Path  Expression
 }
@@ -372,7 +373,7 @@ func (s *KeepStatement) String() string {
 }
 
 type RenumberStatement struct {
-	Token token.Token // the token.Bye token
+	Token token.Token
 }
 
 func (s *RenumberStatement) statementNode() {}
@@ -1017,7 +1018,7 @@ func (s *RepeatStatement) String() string {
 }
 
 type LetStatement struct {
-	Token     token.Token // the token.Let token
+	Token     token.Token
 	BindToken token.Token // either then = or := token
 	Name      *Identifier
 	Value     Expression
@@ -1039,7 +1040,7 @@ func (ls *LetStatement) String() string {
 }
 
 type ForStatement struct {
-	Token           token.Token // the token.Let token
+	Token           token.Token
 	Name            *Identifier
 	BindToken       token.Token
 	Start           Expression
@@ -1229,7 +1230,7 @@ func (bs *EndStatement) String() string {
 }
 
 type NextStatement struct {
-	Token token.Token // the token.Let token
+	Token token.Token
 	Name  *Identifier
 }
 
@@ -1262,7 +1263,7 @@ func (s *DimStatement) String() string {
 }
 
 type AskMouseStatement struct {
-	Token token.Token // the token.Let token
+	Token token.Token
 	XName *Identifier
 	YName *Identifier
 	BName *Identifier
