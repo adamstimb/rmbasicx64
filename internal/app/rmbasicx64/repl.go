@@ -46,6 +46,7 @@ func welcomeScreen(g *game.Game) {
 func repl(g *game.Game) {
 	l := &lexer.Lexer{}
 	env := object.NewEnvironment()
+	env.Path.SetRootDir(g.WorkspacePath)
 	for {
 		g.Print(":")
 		rawInput := g.Input("")
