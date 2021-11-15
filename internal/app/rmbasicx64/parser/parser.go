@@ -392,10 +392,57 @@ func (p *Parser) parseEndStatement() *ast.EndStatement {
 
 func (p *Parser) parseListStatement() *ast.ListStatement {
 	stmt := &ast.ListStatement{Token: p.curToken}
-	if p.endOfInstruction() {
+	p.nextToken() // consume LIST
+	if p.onEndOfInstruction() {
+		// LIST
 		return stmt
 	}
-	return nil
+	if p.curTokenIs(token.TO) {
+		// LIST TO lineNumber
+		p.nextToken() // consume TO
+		if !p.curTokenIs(token.NumericLiteral) {
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.LineNumberLabelNeeded)
+			return nil
+		}
+		stmt.ToLinenumber = p.curToken
+		// require end of instruction
+		if p.endOfInstruction() {
+			return stmt
+		} else {
+			return nil
+		}
+	}
+	// LIST lineNumber
+	if !p.curTokenIs(token.NumericLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.LineNumberLabelNeeded)
+		return nil
+	}
+	stmt.FromLinenumber = p.curToken
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// LIST lineNumber TO
+	if !p.requireTo() {
+		return nil
+	}
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// LIST lineNumber TO lineNumber
+	if !p.curTokenIs(token.NumericLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.LineNumberLabelNeeded)
+		return nil
+	}
+	stmt.ToLinenumber = p.curToken
+	if p.endOfInstruction() {
+		return stmt
+	} else {
+		return nil
+	}
 }
 
 func (p *Parser) parseRunStatement() *ast.RunStatement {
