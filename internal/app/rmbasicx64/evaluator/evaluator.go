@@ -2452,6 +2452,20 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 	env.Program.Start()
 	env.EndProgramSignal = false
 	env.LeaveFunctionSignal = false
+	// If a line number was passed, attempt to jump to it and return error if this fails
+	if stmt.Linenumber.Literal != "" {
+		val, _ := strconv.ParseFloat(stmt.Linenumber.Literal, 64)
+		lineNumber := int(val)
+		if lineNumber < 0 {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.PositiveValueRequired), ErrorTokenIndex: stmt.Linenumber.Index}
+		}
+		if !env.Program.Jump(lineNumber, 0) {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.LineNumberDoesNotExist), ErrorTokenIndex: stmt.Linenumber.Index}
+		} else {
+			env.Program.Next()
+		}
+	}
+	// And away we go
 	for !env.Program.EndOfProgram() && !g.BreakInterruptDetected && !env.EndProgramSignal {
 		l.Scan(env.Program.GetLine())
 		p := parser.New(l, g)

@@ -400,10 +400,22 @@ func (p *Parser) parseListStatement() *ast.ListStatement {
 
 func (p *Parser) parseRunStatement() *ast.RunStatement {
 	stmt := &ast.RunStatement{Token: p.curToken}
-	if p.endOfInstruction() {
+	p.nextToken()
+	if p.onEndOfInstruction() {
 		return stmt
 	}
-	return nil
+	if !p.curTokenIs(token.NumericLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.LineNumberLabelNeeded)
+		return nil
+	}
+	stmt.Linenumber = p.curToken
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		return stmt
+	} else {
+		return nil
+	}
 }
 
 func (p *Parser) parseNewStatement() *ast.NewStatement {
