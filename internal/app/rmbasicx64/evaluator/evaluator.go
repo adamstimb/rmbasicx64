@@ -2558,21 +2558,81 @@ func evalHomeStatement(g *game.Game, stmt *ast.HomeStatement, env *object.Enviro
 }
 
 func evalDirStatement(g *game.Game, stmt *ast.DirStatement, env *object.Environment) object.Object {
-	// TODO: Handle select different path
-	files, err := ioutil.ReadDir(g.WorkspacePath)
-	if err != nil {
-		return nil // TODO: io error
-	}
-	g.Print(fmt.Sprintf("Directory of %s", g.WorkspacePath))
-	g.Put(13)
-	g.Put(13)
-	for _, f := range files {
-		if !strings.HasSuffix(f.Name(), ".BAS") {
-			continue
+	// evaluate path if given
+	val := ""
+	if stmt.Value != nil {
+		obj := Eval(g, stmt.Value, env)
+		if isError(obj) {
+			return obj
 		}
-		timeString := fmt.Sprintf("%s", f.ModTime().Round(time.Second))[:19]
-		g.Print(fmt.Sprintf("%16s %6d Bytes %16s", f.Name(), f.Size(), timeString))
-		g.Put(13)
+		if stringVal, ok := obj.(*object.String); ok {
+			val = stringVal.Value
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	// add *.BAS if no extension given
+	if !strings.Contains(val, ".") {
+		if strings.HasSuffix(val, "\\") {
+			val += "*.BAS"
+		} else {
+			val += "\\*.BAS"
+		}
+	}
+	// get dir listing and print it
+	var nimbusPath string
+	if strings.HasSuffix(env.Path.WorkingDir, "\\") {
+		nimbusPath = env.Path.WorkingDir[:len(env.Path.WorkingDir)-1] + val
+	} else {
+		nimbusPath = env.Path.WorkingDir + val
+	}
+	// list all files in the directory
+	systemPath := env.Path.GetSystemPath(val)
+	files, err := filepath.Glob(systemPath)
+	if err != nil {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.DirectoryCannotBeFound), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	g.Print(fmt.Sprintf("Directory of %s", nimbusPath))
+	g.Put(13)
+	g.Put(13)
+	// list subdirs first - get rid of wildcard expression if present
+	var subdirsSystemPath string
+	pathStrings := strings.Split(systemPath, "*")
+	for _, pathString := range pathStrings {
+		if strings.HasPrefix(pathString, ".") {
+			break
+		} else {
+			subdirsSystemPath += pathString
+		}
+	}
+	dirs, err := ioutil.ReadDir(subdirsSystemPath)
+	if err != nil {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	for _, d := range dirs {
+		if d.IsDir() {
+			dirName := d.Name()
+			dirDate := d.ModTime().Format("2006-01-02 15:04:05")
+			dirString := fmt.Sprintf("%16s %6s       %16s", dirName, "<DIR>", dirDate)
+			g.Print(dirString)
+			g.Put(13)
+		}
+	}
+	// then list files
+	for _, f := range files {
+		fileInfo, err := os.Stat(f)
+		if err != nil {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+		fileSize := fileInfo.Size()
+		fileName := filepath.Base(f)
+		fileDate := fileInfo.ModTime().Format("2006-01-02 15:04:05")
+		var dirString string
+		if !fileInfo.IsDir() {
+			dirString = fmt.Sprintf("%16s %6d Bytes %16s", fileName, fileSize, fileDate)
+			g.Print(dirString)
+			g.Put(13)
+		}
 	}
 	g.Put(13)
 	return nil

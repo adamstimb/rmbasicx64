@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
@@ -18,12 +19,19 @@ func (p *path) SetRootDir(dir string) {
 	p.rootDir = dir
 }
 
-func (p *path) GetSystemPath(filename string) string {
+func (p *path) GetSystemPath(suffix string) string {
+	// flip the slashes if not running on Windows
+	rootDir := p.rootDir
 	workingDir := filepath.FromSlash(p.WorkingDir)
-	if filename == "" {
-		return filepath.Join(workingDir, p.rootDir)
+	if filepath.Separator != '\\' {
+		suffix = strings.ReplaceAll(suffix, "\\", "/")
+		rootDir = filepath.FromSlash(rootDir)
+		workingDir = strings.ReplaceAll(workingDir, "\\", "/")
+	}
+	if suffix == "" {
+		return filepath.Join(p.rootDir, workingDir)
 	} else {
-		return filepath.Join(workingDir, p.rootDir, filename)
+		return filepath.Join(p.rootDir, workingDir, suffix)
 	}
 }
 

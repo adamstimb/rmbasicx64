@@ -561,6 +561,7 @@ func (s *HomeStatement) String() string {
 
 type DirStatement struct {
 	Token token.Token
+	Value Expression
 }
 
 func (s *DirStatement) statementNode() {}

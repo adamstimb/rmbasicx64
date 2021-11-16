@@ -508,10 +508,24 @@ func (p *Parser) parseHomeStatement() *ast.HomeStatement {
 
 func (p *Parser) parseDirStatement() *ast.DirStatement {
 	stmt := &ast.DirStatement{Token: p.curToken}
-	if p.endOfInstruction() {
+	p.nextToken()
+	// DIR
+	if p.onEndOfInstruction() {
 		return stmt
 	}
-	return nil
+	// DIR e$
+	val, ok := p.requireExpression()
+	if !ok {
+		return nil
+	}
+	stmt.Value = val
+	if !p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+		return nil
+	} else {
+		return stmt
+	}
 }
 
 func (p *Parser) parsePrintStatement() *ast.PrintStatement {

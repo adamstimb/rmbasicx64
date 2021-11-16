@@ -61,6 +61,7 @@ const (
 	NeedResultToExitFunction
 	FunctionExitWithoutCall
 	ProcedureExitWithoutCall
+	DirectoryCannotBeFound
 )
 
 // ErrorMessage returns the template error message for a given error code
@@ -125,6 +126,7 @@ func ErrorMessage(errorCode int) string {
 		NeedResultToExitFunction:                     "Need RESULT to exit function",
 		FunctionExitWithoutCall:                      "Function exit without call",
 		ProcedureExitWithoutCall:                     "Procedure exit without call",
+		DirectoryCannotBeFound:                       "Directory cannot be found",
 	}
 	return errorMessages[errorCode]
 }
