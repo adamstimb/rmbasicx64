@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math"
 	"os"
 	"path/filepath"
@@ -71,6 +72,16 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalHomeStatement(g, node, env)
 	case *ast.DirStatement:
 		return evalDirStatement(g, node, env)
+	case *ast.ChdirStatement:
+		return evalChdirStatement(g, node, env)
+	case *ast.MkdirStatement:
+		return evalMkdirStatement(g, node, env)
+	case *ast.RmdirStatement:
+		return evalRmdirStatement(g, node, env)
+	case *ast.EraseStatement:
+		return evalEraseStatement(g, node, env)
+	case *ast.RenameStatement:
+		return evalRenameStatement(g, node, env)
 	case *ast.SetMouseStatement:
 		return evalSetMouseStatement(g, node, env)
 	case *ast.SetModeStatement:
@@ -2557,30 +2568,289 @@ func evalHomeStatement(g *game.Game, stmt *ast.HomeStatement, env *object.Enviro
 	return nil
 }
 
-func evalDirStatement(g *game.Game, stmt *ast.DirStatement, env *object.Environment) object.Object {
-	// TODO: Handle select different path
-	files, err := ioutil.ReadDir(g.WorkspacePath)
+func getAbsPath(p string) string {
+	wd, err := os.Getwd()
 	if err != nil {
-		return nil // TODO: io error
+		log.Fatalf("Error getting working directory: %s", err)
 	}
-	g.Print(fmt.Sprintf("Directory of %s", g.WorkspacePath))
-	g.Put(13)
-	g.Put(13)
-	for _, f := range files {
-		if !strings.HasSuffix(f.Name(), ".BAS") {
-			continue
+	return filepath.Join(wd, filepath.FromSlash(strings.ReplaceAll(p, "\\", "/")))
+}
+
+func evalDirStatement(g *game.Game, stmt *ast.DirStatement, env *object.Environment) object.Object {
+	// evaluate path if given
+	val := ""
+	if stmt.Value != nil {
+		obj := Eval(g, stmt.Value, env)
+		if isError(obj) {
+			return obj
 		}
-		timeString := fmt.Sprintf("%s", f.ModTime().Round(time.Second))[:19]
-		g.Print(fmt.Sprintf("%16s %6d Bytes %16s", f.Name(), f.Size(), timeString))
-		g.Put(13)
+		if stringVal, ok := obj.(*object.String); ok {
+			val = stringVal.Value
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	// add *.BAS if no extension given
+	if !strings.Contains(val, ".") {
+		if !strings.HasSuffix(val, "\\") && len(val) > 0 {
+			val += "\\*.BAS"
+		} else {
+			val += "*.BAS"
+		}
+	}
+	systemPath := getAbsPath(val)
+	nimbusPath := strings.ReplaceAll(systemPath[len(g.WorkspacePath):], "/", "\\")
+	files, err := filepath.Glob(systemPath)
+	if err != nil {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.DirectoryCannotBeFound), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	g.Print(fmt.Sprintf("Directory of %s", nimbusPath))
+	g.Put(13)
+	g.Put(13)
+	// list subdirs first - get rid of wildcard expression if present
+	var subdirsSystemPath string
+	pathStrings := strings.Split(systemPath, "*")
+	for _, pathString := range pathStrings {
+		if strings.HasPrefix(pathString, ".") {
+			break
+		} else {
+			subdirsSystemPath += pathString
+		}
+	}
+	dirs, err := ioutil.ReadDir(subdirsSystemPath)
+	if err != nil {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	for _, d := range dirs {
+		if d.IsDir() {
+			dirName := d.Name()
+			dirDate := d.ModTime().Format("2006-01-02 15:04:05")
+			dirString := fmt.Sprintf("%16s %6s       %16s", dirName, "<DIR>", dirDate)
+			g.Print(dirString)
+			g.Put(13)
+		}
+	}
+	// then list files
+	for _, f := range files {
+		fileInfo, err := os.Stat(f)
+		if err != nil {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+		fileSize := fileInfo.Size()
+		fileName := filepath.Base(f)
+		fileDate := fileInfo.ModTime().Format("2006-01-02 15:04:05")
+		var dirString string
+		if !fileInfo.IsDir() {
+			dirString = fmt.Sprintf("%16s %6d Bytes %16s", fileName, fileSize, fileDate)
+			g.Print(dirString)
+			g.Put(13)
+		}
 	}
 	g.Put(13)
 	return nil
 }
 
+func evalChdirStatement(g *game.Game, stmt *ast.ChdirStatement, env *object.Environment) object.Object {
+	// evaluate path if given
+	val := ""
+	if stmt.Value != nil {
+		obj := Eval(g, stmt.Value, env)
+		if isError(obj) {
+			return obj
+		}
+		if stringVal, ok := obj.(*object.String); ok {
+			val = stringVal.Value
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	// execute
+	systemPath := getAbsPath(val)
+	// Special case of "/" indicating user wants to go back to root (which is really the workspace dir)
+	if val == "\\" {
+		systemPath = g.WorkspacePath
+	}
+	err := os.Chdir(systemPath)
+	if err != nil {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.DirectoryCannotBeFound), ErrorTokenIndex: stmt.Token.Index + 1}
+	} else {
+		return nil
+	}
+}
+
+func evalMkdirStatement(g *game.Game, stmt *ast.MkdirStatement, env *object.Environment) object.Object {
+	// evaluate path if given
+	val := ""
+	if stmt.Value != nil {
+		obj := Eval(g, stmt.Value, env)
+		if isError(obj) {
+			return obj
+		}
+		if stringVal, ok := obj.(*object.String); ok {
+			val = stringVal.Value
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	// execute
+	systemPath := getAbsPath(val)
+	// Special case of "/" indicating user wants to go back to root (which is really the workspace dir)
+	if val == "\\" {
+		systemPath = g.WorkspacePath
+	}
+	err := os.Mkdir(systemPath, 0755)
+	if err != nil {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.UnableToCreateDirectory), ErrorTokenIndex: stmt.Token.Index + 1}
+	} else {
+		return nil
+	}
+}
+
+func evalRmdirStatement(g *game.Game, stmt *ast.RmdirStatement, env *object.Environment) object.Object {
+	// evaluate path if given
+	val := ""
+	if stmt.Value != nil {
+		obj := Eval(g, stmt.Value, env)
+		if isError(obj) {
+			return obj
+		}
+		if stringVal, ok := obj.(*object.String); ok {
+			val = stringVal.Value
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	// execute
+	systemPath := getAbsPath(val)
+	// Special case of "/" indicating user wants to go back to root (which is really the workspace dir)
+	if val == "\\" {
+		systemPath = g.WorkspacePath
+	}
+	// ensure systemPath is a directory and not a file
+	fileInfo, err := os.Stat(systemPath)
+	if err != nil {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	if !fileInfo.IsDir() {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.DirectoryCannotBeFound), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	err = os.Remove(systemPath)
+	if err != nil {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.UnableToRemoveDirectory), ErrorTokenIndex: stmt.Token.Index + 1}
+	} else {
+		return nil
+	}
+}
+
+func evalEraseStatement(g *game.Game, stmt *ast.EraseStatement, env *object.Environment) object.Object {
+	// evaluate path if given
+	val := ""
+	if stmt.Value != nil {
+		obj := Eval(g, stmt.Value, env)
+		if isError(obj) {
+			return obj
+		}
+		if stringVal, ok := obj.(*object.String); ok {
+			val = stringVal.Value
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	// Don't allow * or ?
+	if strings.Contains(val, "*") || strings.Contains(val, "?") {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ExactFilenameIsNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Add .BAS if necessary
+	if !strings.HasSuffix(strings.ToUpper(val), ".BAS") {
+		val += ".BAS"
+	}
+	// execute
+	systemPath := getAbsPath(val)
+	// Special case of "/" indicating user wants to go back to root (which is really the workspace dir)
+	if val == "\\" {
+		systemPath = g.WorkspacePath
+	}
+	// ensure systemPath is a file and not a directory
+	fileInfo, err := os.Stat(systemPath)
+	if err != nil {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.UnableToEraseTheFile), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	if fileInfo.IsDir() {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FilenameIsADirectory), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	err = os.Remove(systemPath)
+	if err != nil {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.UnableToEraseTheFile), ErrorTokenIndex: stmt.Token.Index + 1}
+	} else {
+		return nil
+	}
+}
+
+func evalRenameStatement(g *game.Game, stmt *ast.RenameStatement, env *object.Environment) object.Object {
+	// evaluate filename1
+	val1 := ""
+	if stmt.Value1 != nil {
+		obj := Eval(g, stmt.Value1, env)
+		if isError(obj) {
+			return obj
+		}
+		if stringVal, ok := obj.(*object.String); ok {
+			val1 = stringVal.Value
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	// Don't allow * or ?
+	if strings.Contains(val1, "*") || strings.Contains(val1, "?") {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ExactFilenameIsNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Add .BAS if necessary
+	if !strings.HasSuffix(strings.ToUpper(val1), ".BAS") {
+		val1 += ".BAS"
+	}
+	// ensure val1 is a file and not a directory
+	fileInfo, err := os.Stat(val1)
+	if err != nil {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.UnableToRenameTheFile), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	if fileInfo.IsDir() {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FilenameIsADirectory), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// evaluate filename2
+	val2 := ""
+	if stmt.Value2 != nil {
+		obj := Eval(g, stmt.Value2, env)
+		if isError(obj) {
+			return obj
+		}
+		if stringVal, ok := obj.(*object.String); ok {
+			val2 = stringVal.Value
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	// Don't allow * or ?
+	if strings.Contains(val2, "*") || strings.Contains(val2, "?") {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ExactFilenameIsNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Add .BAS if necessary
+	if !strings.HasSuffix(strings.ToUpper(val2), ".BAS") {
+		val2 += ".BAS"
+	}
+	// execute
+	systemPath1 := getAbsPath(val1)
+	systemPath2 := getAbsPath(val2)
+	// rename file 1 to file 2
+	err = os.Rename(systemPath1, systemPath2)
+	if err != nil {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.UnableToRenameTheFile), ErrorTokenIndex: stmt.Token.Index + 1}
+	} else {
+		return nil
+	}
+}
+
 func evalExpressions(g *game.Game, exps []ast.Expression, env *object.Environment) []object.Object {
 	var result []object.Object
-
 	for _, e := range exps {
 		evaluated := Eval(g, e, env)
 		if isError(evaluated) {

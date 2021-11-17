@@ -8,6 +8,36 @@ import (
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
 )
 
+//type path struct {
+//	WorkingDir string
+//	rootDir    string
+//}
+//
+//func (p *path) SetRootDir(dir string) {
+//	p.rootDir = dir
+//}
+//
+//func (p *path) GetSystemPath(suffix string) string {
+//	wd, err := os.Getwd()
+//	if err != nil {
+//		log.Fatalf("Error getting working directory: %s", err)
+//	}
+//	return path.Join(wd, suffix)
+//	//// flip the slashes if not running on Windows
+//	//rootDir := p.rootDir
+//	//workingDir := filepath.FromSlash(p.WorkingDir)
+//	//if filepath.Separator != '\\' {
+//	//	suffix = strings.ReplaceAll(suffix, "\\", "/")
+//	//	rootDir = filepath.FromSlash(rootDir)
+//	//	workingDir = strings.ReplaceAll(workingDir, "\\", "/")
+//	//}
+//	//if suffix == "" {
+//	//	return filepath.Join(p.rootDir, workingDir)
+//	//} else {
+//	//	return filepath.Join(p.rootDir, workingDir, suffix)
+//	//}
+//}
+
 type program struct {
 	lines                  map[int]string
 	sortedIndex            []int
@@ -219,6 +249,7 @@ type Environment struct {
 	LeaveFunctionSignal bool
 	EndProgramSignal    bool
 	ReturnVals          []Object
+	//Path                path
 }
 
 // Dump and Copy are used to transfer global data, including the program itself, from one env to another
