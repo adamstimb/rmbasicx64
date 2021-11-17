@@ -166,20 +166,23 @@ func (s *Lexer) getNumber(firstRune rune) {
 
 // This is a bit hacky:
 var Builtins = map[string]string{
-	"LEN": "LEN",
-	"ABS": "ABS",
-	"ATN": "ATN",
-	"COS": "COS",
-	"EXP": "EXP",
-	"INT": "INT",
-	"LN":  "LN",
-	"LOG": "LOG",
-	"RND": "RND",
-	"SGN": "SGN",
-	"SIN": "SIN",
-	"SQR": "SQR",
-	"TAN": "TAN",
-	"GET": "GET",
+	"LEN":    "LEN",
+	"ABS":    "ABS",
+	"ATN":    "ATN",
+	"COS":    "COS",
+	"EXP":    "EXP",
+	"INT":    "INT",
+	"LN":     "LN",
+	"LOG":    "LOG",
+	"RND":    "RND",
+	"SGN":    "SGN",
+	"SIN":    "SIN",
+	"SQR":    "SQR",
+	"TAN":    "TAN",
+	"GET":    "GET",
+	"LOOKUP": "LOOKUP",
+	"PATH$":  "PATH$",
+	"STR$":   "STR$",
 }
 
 // getIdentifier extracts an identifier (keyword, variable, etc) from the source code
@@ -215,6 +218,13 @@ func (s *Lexer) getIdentifier(firstRune rune) {
 		if s.peek() == '$' || s.peek() == '%' {
 			// consume this char and add token
 			stringVal = append(stringVal, s.advance())
+		}
+		// Check if token matches a built-in function and return the token type ToUpper if so
+		_, ok := Builtins[strings.ToUpper(string(stringVal))]
+		if ok {
+			// is built-in
+			s.addToken(token.IdentifierLiteral, strings.ToUpper(string(stringVal)))
+			return
 		}
 		// Enforce the Rm_Basic_Camel_Case_Thing by splitting around _, titling the words
 		// and recombining

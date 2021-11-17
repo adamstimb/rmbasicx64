@@ -574,6 +574,82 @@ func (s *DirStatement) String() string {
 	return out.String()
 }
 
+type ChdirStatement struct {
+	Token token.Token
+	Value Expression
+}
+
+func (s *ChdirStatement) statementNode() {}
+func (s *ChdirStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *ChdirStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type MkdirStatement struct {
+	Token token.Token
+	Value Expression
+}
+
+func (s *MkdirStatement) statementNode() {}
+func (s *MkdirStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *MkdirStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type RmdirStatement struct {
+	Token token.Token
+	Value Expression
+}
+
+func (s *RmdirStatement) statementNode() {}
+func (s *RmdirStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *RmdirStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type EraseStatement struct {
+	Token token.Token
+	Value Expression
+}
+
+func (s *EraseStatement) statementNode() {}
+func (s *EraseStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *EraseStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type RenameStatement struct {
+	Token  token.Token
+	Value1 Expression
+	Value2 Expression
+}
+
+func (s *RenameStatement) statementNode() {}
+func (s *RenameStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *RenameStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
 type SetConfigBootStatement struct {
 	Token token.Token
 	Value Expression

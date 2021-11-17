@@ -2,38 +2,41 @@ package object
 
 import (
 	"fmt"
-	"path/filepath"
 	"sort"
-	"strings"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
 )
 
-type path struct {
-	WorkingDir string
-	rootDir    string
-}
-
-func (p *path) SetRootDir(dir string) {
-	p.rootDir = dir
-}
-
-func (p *path) GetSystemPath(suffix string) string {
-	// flip the slashes if not running on Windows
-	rootDir := p.rootDir
-	workingDir := filepath.FromSlash(p.WorkingDir)
-	if filepath.Separator != '\\' {
-		suffix = strings.ReplaceAll(suffix, "\\", "/")
-		rootDir = filepath.FromSlash(rootDir)
-		workingDir = strings.ReplaceAll(workingDir, "\\", "/")
-	}
-	if suffix == "" {
-		return filepath.Join(p.rootDir, workingDir)
-	} else {
-		return filepath.Join(p.rootDir, workingDir, suffix)
-	}
-}
+//type path struct {
+//	WorkingDir string
+//	rootDir    string
+//}
+//
+//func (p *path) SetRootDir(dir string) {
+//	p.rootDir = dir
+//}
+//
+//func (p *path) GetSystemPath(suffix string) string {
+//	wd, err := os.Getwd()
+//	if err != nil {
+//		log.Fatalf("Error getting working directory: %s", err)
+//	}
+//	return path.Join(wd, suffix)
+//	//// flip the slashes if not running on Windows
+//	//rootDir := p.rootDir
+//	//workingDir := filepath.FromSlash(p.WorkingDir)
+//	//if filepath.Separator != '\\' {
+//	//	suffix = strings.ReplaceAll(suffix, "\\", "/")
+//	//	rootDir = filepath.FromSlash(rootDir)
+//	//	workingDir = strings.ReplaceAll(workingDir, "\\", "/")
+//	//}
+//	//if suffix == "" {
+//	//	return filepath.Join(p.rootDir, workingDir)
+//	//} else {
+//	//	return filepath.Join(p.rootDir, workingDir, suffix)
+//	//}
+//}
 
 type program struct {
 	lines                  map[int]string
@@ -246,11 +249,11 @@ type Environment struct {
 	LeaveFunctionSignal bool
 	EndProgramSignal    bool
 	ReturnVals          []Object
-	Path                path
+	//Path                path
 }
 
 // Dump and Copy are used to transfer global data, including the program itself, from one env to another
-func (e *Environment) Dump() (store map[storeKey]Object, globals []string, scope int, degrees bool, outer *Environment, program program, jumpStack jumpStack, prerun bool, dataItems []Object, subroutines []*ast.SubroutineStatement, functions []*ast.FunctionDeclaration, procedures []*ast.ProcedureDeclaration, leaveFunctionSignal bool, endProgramSignal bool, returnVals []Object, path path) {
+func (e *Environment) Dump() (store map[storeKey]Object, globals []string, scope int, degrees bool, outer *Environment, program program, jumpStack jumpStack, prerun bool, dataItems []Object, subroutines []*ast.SubroutineStatement, functions []*ast.FunctionDeclaration, procedures []*ast.ProcedureDeclaration, leaveFunctionSignal bool, endProgramSignal bool, returnVals []Object) {
 	store = e.store
 	globals = e.globals
 	scope = e.scope
@@ -261,10 +264,9 @@ func (e *Environment) Dump() (store map[storeKey]Object, globals []string, scope
 	subroutines = e.subroutines
 	functions = e.functions
 	procedures = e.procedures
-	path = e.Path
 	return
 }
-func (e *Environment) Copy(store map[storeKey]Object, globals []string, scope int, degrees bool, outer *Environment, program program, jumpStack jumpStack, prerun bool, dataItems []Object, subroutines []*ast.SubroutineStatement, functions []*ast.FunctionDeclaration, procedures []*ast.ProcedureDeclaration, leaveFunctionSignal bool, endProgramSignal bool, returnVals []Object, path path) {
+func (e *Environment) Copy(store map[storeKey]Object, globals []string, scope int, degrees bool, outer *Environment, program program, jumpStack jumpStack, prerun bool, dataItems []Object, subroutines []*ast.SubroutineStatement, functions []*ast.FunctionDeclaration, procedures []*ast.ProcedureDeclaration, leaveFunctionSignal bool, endProgramSignal bool, returnVals []Object) {
 	e.store = store
 	e.globals = globals
 	e.scope = scope
@@ -277,7 +279,6 @@ func (e *Environment) Copy(store map[storeKey]Object, globals []string, scope in
 	e.subroutines = subroutines
 	e.functions = functions
 	e.procedures = procedures
-	e.Path = path
 }
 func (e *Environment) NewScope() {
 	e.LeaveFunctionSignal = false
@@ -559,7 +560,6 @@ func NewEnvironment() *Environment {
 	s := make(map[storeKey]Object)
 	p := &program{}
 	j := &jumpStack{}
-	path := &path{WorkingDir: "\\"}
 	p.New()
 	j.New()
 	return &Environment{
@@ -570,7 +570,6 @@ func NewEnvironment() *Environment {
 		JumpStack: *j,
 		dataItems: []Object{},
 		scope:     0,
-		Path:      *path,
 	}
 }
 

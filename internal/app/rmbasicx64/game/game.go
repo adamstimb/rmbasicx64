@@ -119,13 +119,17 @@ func (g *Game) EnsureWorkspace() {
 		workspacePath = filepath.Join(workspacePath, "RMBASICx64 Workspace")
 	}
 
-	// Create workspace if it doesn't already exist and write examples
+	// Create workspace if it doesn't already exist, write examples, set working directory
 	err := os.MkdirAll(workspacePath, os.ModePerm)
 	if err != nil {
 		log.Fatalf("Error creating workspace folder %q: %v", workspacePath, err)
 	}
 	g.WorkspacePath = workspacePath
 	examples.WriteExamples(g.WorkspacePath)
+	err = os.Chdir(g.WorkspacePath)
+	if err != nil {
+		log.Fatalf("Error setting working directory to %q: %v", workspacePath, err)
+	}
 }
 
 func (g *Game) Update() error {

@@ -62,6 +62,10 @@ const (
 	FunctionExitWithoutCall
 	ProcedureExitWithoutCall
 	DirectoryCannotBeFound
+	UnableToCreateDirectory
+	UnableToRemoveDirectory
+	UnableToEraseTheFile
+	UnableToRenameTheFile
 )
 
 // ErrorMessage returns the template error message for a given error code
@@ -127,6 +131,10 @@ func ErrorMessage(errorCode int) string {
 		FunctionExitWithoutCall:                      "Function exit without call",
 		ProcedureExitWithoutCall:                     "Procedure exit without call",
 		DirectoryCannotBeFound:                       "Directory cannot be found",
+		UnableToCreateDirectory:                      "Unable to create directory",
+		UnableToRemoveDirectory:                      "Unable to remove directory",
+		UnableToEraseTheFile:                         "Unable to erase the file",
+		UnableToRenameTheFile:                        "Unable to rename the file",
 	}
 	return errorMessages[errorCode]
 }

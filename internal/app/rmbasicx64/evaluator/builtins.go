@@ -1,13 +1,17 @@
 package evaluator
 
 import (
+	"fmt"
 	"log"
 	"math"
 	"math/rand"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/game"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/object"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
 )
 
 // don't forget to add builtins to the map in lexer as well (better solution?)
@@ -243,6 +247,55 @@ var builtins = map[string]*object.Builtin{
 			}
 		},
 	},
+	"LOOKUP": &object.Builtin{
+		Fn: func(env *object.Environment, g *game.Game, args []object.Object) object.Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
+			}
+
+			obj := args[0]
+			var val string
+			if stringVal, ok := obj.(*object.String); ok {
+				val = stringVal.Value
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: 0}
+			}
+			// Don't allow * or ?
+			if strings.Contains(val, "*") || strings.Contains(val, "?") {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ExactFilenameIsNeeded), ErrorTokenIndex: 0}
+			}
+			// Add .BAS if necessary
+			if !strings.HasSuffix(strings.ToUpper(val), ".BAS") {
+				val += ".BAS"
+			}
+			// execute
+			systemPath := getAbsPath(val)
+			// ensuring systemPath is a file and not a directory gets you a true, otherwise false
+			fileInfo, err := os.Stat(systemPath)
+			result := -1.0
+			if err != nil {
+				result = 0.0
+			} else {
+				if fileInfo.IsDir() {
+					result = 0.0
+				}
+			}
+			return &object.Numeric{Value: result}
+		},
+	},
+	"PATH$": &object.Builtin{
+		Fn: func(env *object.Environment, g *game.Game, args []object.Object) object.Object {
+			if len(args) != 0 {
+				return newError("wrong number of arguments, got %d, want %d", len(args), 0)
+			}
+			systemPath := getAbsPath("")
+			nimbusPath := strings.ReplaceAll(systemPath[len(g.WorkspacePath):], "/", "\\")
+			if nimbusPath == "" {
+				nimbusPath = "\\"
+			}
+			return &object.String{Value: nimbusPath}
+		},
+	},
 	"GET": &object.Builtin{
 		Fn: func(env *object.Environment, g *game.Game, args []object.Object) object.Object {
 			if len(args) > 1 {
@@ -291,20 +344,20 @@ var builtins = map[string]*object.Builtin{
 			}
 		},
 	},
-	//"STR$": &object.Builtin{
-	//	Fn: func(args ...object.Object) object.Object {
-	//		if len(args) != 1 {
-	//			return newError("wrong number of arguments, got %d, want %d", len(args), 1)
-	//		}
-	//
-	//		switch arg := args[0].(type) {
-	//		case *object.Numeric:
-	//			return &object.String{
-	//				Value: fmt.Sprintf("%g", arg.Value),
-	//			}
-	//		default:
-	//			return newError("argument to `STR$` not supported, got %s", args[0].Type())
-	//		}
-	//	},
-	//},
+	"STR$": &object.Builtin{
+		Fn: func(env *object.Environment, g *game.Game, args []object.Object) object.Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
+			}
+
+			switch arg := args[0].(type) {
+			case *object.Numeric:
+				return &object.String{
+					Value: fmt.Sprintf("%g", arg.Value),
+				}
+			default:
+				return newError("argument to `STR$` not supported, got %s", args[0].Type())
+			}
+		},
+	},
 }

@@ -528,6 +528,134 @@ func (p *Parser) parseDirStatement() *ast.DirStatement {
 	}
 }
 
+func (p *Parser) parseChdirStatement() *ast.ChdirStatement {
+	stmt := &ast.ChdirStatement{Token: p.curToken}
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded)
+		return nil
+	}
+	// CHDIR e$
+	val, ok := p.requireExpression()
+	if !ok {
+		return nil
+	}
+	stmt.Value = val
+	if !p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+		return nil
+	} else {
+		return stmt
+	}
+}
+
+func (p *Parser) parseMkdirStatement() *ast.MkdirStatement {
+	stmt := &ast.MkdirStatement{Token: p.curToken}
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded)
+		return nil
+	}
+	// MKDIR e$
+	val, ok := p.requireExpression()
+	if !ok {
+		return nil
+	}
+	stmt.Value = val
+	if !p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+		return nil
+	} else {
+		return stmt
+	}
+}
+
+func (p *Parser) parseRmdirStatement() *ast.RmdirStatement {
+	stmt := &ast.RmdirStatement{Token: p.curToken}
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded)
+		return nil
+	}
+	// MKDIR e$
+	val, ok := p.requireExpression()
+	if !ok {
+		return nil
+	}
+	stmt.Value = val
+	if !p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+		return nil
+	} else {
+		return stmt
+	}
+}
+
+func (p *Parser) parseEraseStatement() *ast.EraseStatement {
+	stmt := &ast.EraseStatement{Token: p.curToken}
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded)
+		return nil
+	}
+	// ERASE e$
+	val, ok := p.requireExpression()
+	if !ok {
+		return nil
+	}
+	stmt.Value = val
+	if !p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+		return nil
+	} else {
+		return stmt
+	}
+}
+
+func (p *Parser) parseRenameStatement() *ast.RenameStatement {
+	stmt := &ast.RenameStatement{Token: p.curToken}
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded)
+		return nil
+	}
+	// RENAME e$ TO e$
+	val1, ok := p.requireExpression()
+	if !ok {
+		return nil
+	}
+	stmt.Value1 = val1
+	if !p.requireTo() {
+		return nil
+	}
+	if p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded)
+		return nil
+	}
+	val2, ok := p.requireExpression()
+	if !ok {
+		return nil
+	}
+	stmt.Value2 = val2
+	if !p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+		return nil
+	} else {
+		return stmt
+	}
+}
+
 func (p *Parser) parsePrintStatement() *ast.PrintStatement {
 	stmt := &ast.PrintStatement{Token: p.curToken}
 	stmt.PrintList = make([]interface{}, 0)
@@ -2810,6 +2938,16 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseHomeStatement()
 	case token.DIR:
 		return p.parseDirStatement()
+	case token.CHDIR:
+		return p.parseChdirStatement()
+	case token.MKDIR:
+		return p.parseMkdirStatement()
+	case token.RMDIR:
+		return p.parseRmdirStatement()
+	case token.ERASE:
+		return p.parseEraseStatement()
+	case token.RENAME:
+		return p.parseRenameStatement()
 	case token.SAVE:
 		return p.parseSaveStatement()
 	case token.LOAD:
