@@ -160,6 +160,62 @@ func WriteExamples(workspacePath string) {
 200 ENDPROC
 `,
 		},
+		{
+			filename: "conways.BAS",
+			program: `10 SET MODE 40
+20 Box_Size% := 83 
+30 REM Matrix_A is current, Matrix_B is next iteration
+40 DIM Matrix_A%(Box_Size%, Box_Size%)
+50 DIM Matrix_B%(Box_Size%, Box_Size%)
+60 REM Set blinker
+70 Matrix_A%(40, 40) = 1 : Matrix_A%(40, 41) = 1 : Matrix_A%(40, 42) = 1 
+80 REM Set glider
+90 Matrix_A%(5, 7) = 1 : Matrix_A%(6, 7) = 1 : Matrix_A%(7, 7) = 1 : Matrix_A%(7, 6) = 1 : Matrix_A%(6, 5) = 1
+100 REM Main loop
+110 REPEAT
+120   CLS   
+130   REM Draw the matrix
+140   FOR X% := 0 TO Box_Size% - 2
+150     FOR Y% := 0 TO Box_Size% - 2		 
+160       IF Matrix_A%(X%, Y%) = 1 THEN POINTS X% * 2, Y% * 2 BRUSH 13
+170     NEXT Y%
+180   NEXT X%
+190   REM Counts the count of the surrounding cell
+200   REM Then apply the operation to the cell
+210   FOR X% := 1 TO Box_Size% - 2
+220     FOR Y% := 1 TO Box_Size% - 2    
+230       REM Count the surrounding cells
+240       Count% = 0
+250       IF Matrix_A%(X% - 1, Y% + 1) = 1 THEN Count% = Count% + 1
+260       IF Matrix_A%(X%, Y% + 1) = 1 THEN Count% = Count% + 1
+270       IF Matrix_A%(X% + 1, Y% + 1) = 1 THEN Count% = Count% + 1
+280       IF Matrix_A%(X% - 1, Y%) = 1 THEN Count% = Count% + 1
+290       IF Matrix_A%(X% + 1, Y%) = 1 THEN Count% = Count% + 1
+300       IF Matrix_A%(X% - 1, Y% - 1) = 1 THEN Count% = Count% + 1
+310       IF Matrix_A%(X%, Y% - 1) = 1 THEN Count% = Count% + 1
+320       IF Matrix_A%(X% + 1, Y% - 1) = 1 THEN Count% = Count% + 1
+330       REM Apply the operations
+340       REM Death
+350       IF Matrix_A%(X%, Y%) = 1 THEN GOSUB Dead_Or_Alive
+360       REM Birth
+370       IF Matrix_A%(X%, Y%) = 0 THEN GOSUB Born_Or_Not
+380     NEXT Y%
+390   NEXT X%
+400   REM Update the matrix with the new matrix that we have calculated.
+410   FOR X% := 0 TO Box_Size% - 1
+420     FOR Y% := 0 TO Box_Size% - 1
+430       Matrix_A%(X%, Y%) = Matrix_B%(X%, Y%)
+440     NEXT Y%
+450   NEXT X%
+460 UNTIL TRUE = FALSE
+470 SUBROUTINE Dead_Or_Alive
+480 IF Count% = 2 OR Count% = 3 THEN Matrix_B%(X%, Y%) = 1 ELSE Matrix_B%(X%, Y%) = 0
+490 RETURN
+500 SUBROUTINE Born_Or_Not
+510 IF Count% = 3 THEN Matrix_B%(X%, Y%) = 1 ELSE Matrix_B%(X%, Y%) = 0
+520 RETURN
+`,
+		},
 	}
 
 	for _, example := range examples {

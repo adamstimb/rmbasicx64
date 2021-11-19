@@ -460,7 +460,7 @@ func (e *Environment) GetArray(name string, subscripts []int) (Object, bool) {
 	// Resolve index
 	index := subscripts[len(subscripts)-1]
 	if len(arr.Subscripts) > 1 {
-		for j := len(arr.Subscripts) - 2; j >= 0; j-- {
+		for j := len(arr.Subscripts) - 2; j > 0; j-- {
 			index += subscripts[j] * arr.Subscripts[j]
 		}
 	}
@@ -503,7 +503,7 @@ func (e *Environment) SetArray(name string, subscripts []int, val Object) (Objec
 	// Resolve index
 	index := subscripts[len(subscripts)-1]
 	if len(arr.Subscripts) > 1 {
-		for j := len(arr.Subscripts) - 2; j >= 0; j-- {
+		for j := len(arr.Subscripts) - 2; j > 0; j-- {
 			index += subscripts[j] * arr.Subscripts[j]
 		}
 	}

@@ -116,42 +116,36 @@ func testBooleanObject(t *testing.T, obj object.Object, expected bool) bool {
 func TestNotOperator(t *testing.T) {
 	tests := []struct {
 		input    string
-		expected bool
+		expected float64
 	}{
-		{"not true", false},
-		{"not false", true},
-		{"not not true", true},
-		{"not not false", false},
+		{"not true", 0},
+		{"not false", -1},
+		{"not not true", -1},
+		{"not not false", 0},
 	}
 
 	for _, tt := range tests {
 		evaluated := testEval(tt.input)
-		testBooleanObject(t, evaluated, tt.expected)
+		testNumericObject(t, evaluated, tt.expected)
 	}
 }
 
 func TestIfElseExpressions(t *testing.T) {
 	tests := []struct {
 		input    string
-		expected interface{}
+		expected float64
 	}{
-		{"if (true) { 10 }", float64(10)},
-		{"if (false) { 10 }", nil},
-		{"if (1) { 10 }", float64(10)},
-		{"if (1 < 2) { 10 }", float64(10)},
-		{"if (1 > 2) { 10 }", nil},
-		{"if (1 > 2) { 10 } else { 20 }", float64(20)},
-		{"if (1 < 2) { 10 } else { 20 }", float64(10)},
+		{"IF TRUE THEN TRUE", -1.0},
+		{"IF -1.0 THEN TRUE", -1.0},
+		{"IF 1 < 2 THEN TRUE", -1.0},
+		{"IF 1 > 2 THEN TRUE ELSE FALSE", 0.0},
+		{"IF 1 < 2 THEN TRUE ELSE FALSE", -1.0},
 	}
 
 	for _, tt := range tests {
+		log.Printf("input: %s", tt.input)
 		evaluated := testEval(tt.input)
-		num, ok := tt.expected.(float64)
-		if ok {
-			testNumericObject(t, evaluated, float64(num))
-		} else {
-			testNullObject(t, evaluated)
-		}
+		testNumericObject(t, evaluated, tt.expected)
 	}
 }
 

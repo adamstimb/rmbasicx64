@@ -1,6 +1,7 @@
 package lexer
 
 import (
+	"log"
 	"regexp"
 	"strings"
 	"unicode"
@@ -261,6 +262,8 @@ func (s *Lexer) scanToken() {
 		// ignore whitespace
 	case ' ':
 		return
+	case '\t':
+		return
 	// one- and two-character tokens
 	case ':':
 		if s.match('=') {
@@ -392,6 +395,7 @@ func (s *Lexer) scanToken() {
 			return
 		}
 		// unexpected chars are tokenized as Illegal
+		log.Printf("lexer found illegal token: %q", r)
 		s.addToken(token.Illegal, string(r))
 	}
 }
