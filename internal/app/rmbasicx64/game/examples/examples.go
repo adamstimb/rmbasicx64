@@ -177,7 +177,7 @@ func WriteExamples(workspacePath string) {
 130   REM Draw the matrix
 140   FOR X% := 0 TO Box_Size% - 2
 150     FOR Y% := 0 TO Box_Size% - 2		 
-160       IF Matrix_A%(X%, Y%) = 1 THEN POINTS X% * 2, Y% * 2 BRUSH 13
+160       IF Matrix_A%(X%, Y%) = 1 THEN POINTS X% * 3, Y% * 3 BRUSH 13
 170     NEXT Y%
 180   NEXT X%
 190   REM Counts the count of the surrounding cell
@@ -207,7 +207,7 @@ func WriteExamples(workspacePath string) {
 430       Matrix_A%(X%, Y%) = Matrix_B%(X%, Y%)
 440     NEXT Y%
 450   NEXT X%
-460 UNTIL TRUE = FALSE
+460 UNTIL TRUE = TRUE
 470 SUBROUTINE Dead_Or_Alive
 480 IF Count% = 2 OR Count% = 3 THEN Matrix_B%(X%, Y%) = 1 ELSE Matrix_B%(X%, Y%) = 0
 490 RETURN
