@@ -202,6 +202,7 @@ func WriteExamples(workspacePath string) {
 380     NEXT Y%
 390   NEXT X%
 400   REM Update the matrix with the new matrix that we have calculated.
+405   REM We can optimize this with array referencing when implemented.
 410   FOR X% := 0 TO Box_Size% - 1
 420     FOR Y% := 0 TO Box_Size% - 1
 430       Matrix_A%(X%, Y%) = Matrix_B%(X%, Y%)
