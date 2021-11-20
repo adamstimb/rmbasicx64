@@ -410,6 +410,29 @@ func (e *Environment) DeleteProcedures() {
 	e.procedures = []*ast.ProcedureDeclaration{}
 }
 
+func calculateAddressFromArraySubscripts(bounds []int, subscripts []int) int {
+	// Special case of 1D array
+	if len(bounds) == 1 {
+		return subscripts[0] - 1
+	}
+	// Use method for row-major calculation: https://www.geeksforgeeks.org/calculating-the-address-of-an-element-in-an-n-dimensional-array/
+	// calculate internal sequence
+	internalSequence := []int{}
+	for i := 0; i < len(subscripts)-1; i++ {
+		if i == 0 {
+			internalSequence = append(internalSequence, ((subscripts[i]-1)*bounds[i+1] + (subscripts[i+1] - 1)))
+		} else {
+			internalSequence = append(internalSequence, ((internalSequence[i-1] * bounds[i+1]) + (subscripts[i+1] - 1)))
+		}
+	}
+	w := len(bounds)
+	addr := internalSequence[0]
+	for i := 1; i < len(internalSequence)-1; i++ {
+		addr *= internalSequence[i]
+	}
+	return w * addr
+}
+
 func (e *Environment) NewArray(name string, subscripts []int) (Object, bool) {
 	_, ok := e.store[storeKey{Name: name, Scope: e.scope}]
 	if ok {
@@ -503,7 +526,7 @@ func (e *Environment) SetArray(name string, subscripts []int, val Object) (Objec
 	// Resolve index
 	index := subscripts[len(subscripts)-1]
 	if len(arr.Subscripts) > 1 {
-		for j := len(arr.Subscripts) - 2; j > 0; j-- {
+		for j := len(arr.Subscripts) - 2; j >= 0; j-- {
 			index += subscripts[j] * arr.Subscripts[j]
 		}
 	}
