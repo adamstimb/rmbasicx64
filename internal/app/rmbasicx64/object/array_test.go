@@ -4,22 +4,25 @@ import "testing"
 
 func TestCalculateAddressFromArraySubscripts(t *testing.T) {
 	tests := []struct {
-		subscripts []int
 		bounds     []int
+		subscripts []int
 		expected   int
 	}{
-		{[]int{10}, []int{10}, 9},
-		{[]int{10}, []int{1}, 0},
-		{[]int{10}, []int{5}, 4},
-		{[]int{5, 2}, []int{4, 1}, 9},
-		{[]int{5, 2}, []int{4, 0}, 8},
-		{[]int{5, 2, 2}, []int{4, 1, 1}, 19},
+		{[]int{10}, []int{9}, 9},
+		{[]int{10}, []int{0}, 0},
+		{[]int{10}, []int{5}, 5},
+		{[]int{0, 0}, []int{0, 0}, 0},
+		{[]int{5, 2}, []int{0, 0}, 0},
+		{[]int{5, 2}, []int{2, 0}, 3},
+		{[]int{5, 2}, []int{4, 1}, 10},
+		//{[]int{5, 2}, []int{5, 1}, 5},
+		//{[]int{5, 2, 2}, []int{4, 1, 1}, 19},
 	}
 
 	for _, tt := range tests {
-		actual := calculateAddressFromArraySubscripts(tt.subscripts, tt.bounds)
+		actual := calculateAddressFromArraySubscripts(tt.bounds, tt.subscripts)
 		if actual != tt.expected {
-			t.Errorf("CalculateAddressFromArraySubscripts(%v, %v) expected %v, got %v", tt.subscripts, tt.bounds, tt.expected, actual)
+			t.Errorf("CalculateAddressFromArraySubscripts(%v, %v) expected %v, got %v", tt.bounds, tt.subscripts, tt.expected, actual)
 		}
 	}
 }

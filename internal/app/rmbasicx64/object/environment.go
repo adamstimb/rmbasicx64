@@ -413,24 +413,24 @@ func (e *Environment) DeleteProcedures() {
 func calculateAddressFromArraySubscripts(bounds []int, subscripts []int) int {
 	// Special case of 1D array
 	if len(bounds) == 1 {
-		return subscripts[0] - 1
+		return subscripts[0]
 	}
 	// Use method for row-major calculation: https://www.geeksforgeeks.org/calculating-the-address-of-an-element-in-an-n-dimensional-array/
 	// calculate internal sequence
 	internalSequence := []int{}
 	for i := 0; i < len(subscripts)-1; i++ {
 		if i == 0 {
-			internalSequence = append(internalSequence, ((subscripts[i]-1)*bounds[i+1] + (subscripts[i+1] - 1)))
+			internalSequence = append(internalSequence, ((subscripts[i]-1)*(bounds[i+1]-0) + (subscripts[i+1] - 0)))
 		} else {
-			internalSequence = append(internalSequence, ((internalSequence[i-1] * bounds[i+1]) + (subscripts[i+1] - 1)))
+			if i == len(subscripts)-1 {
+				internalSequence = append(internalSequence, (internalSequence[i-1]*(bounds[i+1]-0))+(subscripts[i+1]-0))
+			} else {
+				internalSequence = append(internalSequence, ((internalSequence[i-1] * (bounds[i+1] - 0)) + (subscripts[i+1] - 0)))
+			}
 		}
 	}
 	w := len(bounds)
-	addr := internalSequence[0]
-	for i := 1; i < len(internalSequence)-1; i++ {
-		addr *= internalSequence[i]
-	}
-	return w * addr
+	return w * internalSequence[len(internalSequence)-1]
 }
 
 func (e *Environment) NewArray(name string, subscripts []int) (Object, bool) {
