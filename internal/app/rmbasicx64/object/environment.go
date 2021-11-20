@@ -2,6 +2,7 @@ package object
 
 import (
 	"fmt"
+	"log"
 	"sort"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
@@ -411,26 +412,46 @@ func (e *Environment) DeleteProcedures() {
 }
 
 func calculateAddressFromArraySubscripts(bounds []int, subscripts []int) int {
+	log.Printf("Calculating address from array subscripts: %v %v\n", bounds, subscripts)
 	// Special case of 1D array
 	if len(bounds) == 1 {
-		return subscripts[0]
+		log.Printf("1D array -> return early")
+		log.Printf("Address: %v\n", subscripts[0]+1)
+		return subscripts[0] + 1
 	}
 	// Use method for row-major calculation: https://www.geeksforgeeks.org/calculating-the-address-of-an-element-in-an-n-dimensional-array/
 	// calculate internal sequence
 	internalSequence := []int{}
+	//j := 0
+	//for i := len(subscripts) - 1; i >= 0; i-- {
+	//	if i == len(subscripts)-1 {
+	//		internalSequence = append(internalSequence, (subscripts[i]*bounds[i-1])+bounds[i-1])
+	//	} else {
+	//		internalSequence = append(internalSequence, (internalSequence[j-1]*bounds[i])+subscripts[i])
+	//	}
+	//	j++
+	//}
+	subOffset := 0
+	boundsOffset := 1
 	for i := 0; i < len(subscripts)-1; i++ {
 		if i == 0 {
-			internalSequence = append(internalSequence, ((subscripts[i]-1)*(bounds[i+1]-0) + (subscripts[i+1] - 0)))
+			en := subscripts[i] - subOffset
+			snp1 := bounds[i+1] - boundsOffset
+			enp1 := subscripts[i+1] - subOffset
+			log.Printf("got first: en=%d, snp1=%d, enp1=%d", en, snp1, enp1)
+			internalSequence = append(internalSequence, (en*snp1)+(enp1))
 		} else {
-			if i == len(subscripts)-1 {
-				internalSequence = append(internalSequence, (internalSequence[i-1]*(bounds[i+1]-0))+(subscripts[i+1]-0))
-			} else {
-				internalSequence = append(internalSequence, ((internalSequence[i-1] * (bounds[i+1] - 0)) + (subscripts[i+1] - 0)))
-			}
+			prev := internalSequence[i-1]
+			snp1 := bounds[i+1] - boundsOffset
+			enp1 := subscripts[i+1] - subOffset
+			log.Printf("got next: prev=%d, snp1=%d, enp1=%d", prev, snp1, enp1)
+			internalSequence = append(internalSequence, (prev*snp1)+enp1)
 		}
 	}
 	w := len(bounds)
-	return w * internalSequence[len(internalSequence)-1]
+	addr := w * internalSequence[len(internalSequence)-1]
+	log.Printf("returning %d", addr)
+	return addr
 }
 
 func (e *Environment) NewArray(name string, subscripts []int) (Object, bool) {

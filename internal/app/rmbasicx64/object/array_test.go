@@ -8,15 +8,15 @@ func TestCalculateAddressFromArraySubscripts(t *testing.T) {
 		subscripts []int
 		expected   int
 	}{
-		{[]int{10}, []int{9}, 9},
-		{[]int{10}, []int{0}, 0},
-		{[]int{10}, []int{5}, 5},
-		{[]int{0, 0}, []int{0, 0}, 0},
+		{[]int{10}, []int{9}, 10},
+		{[]int{10}, []int{0}, 1},
+		{[]int{10}, []int{5}, 6},
 		{[]int{5, 2}, []int{0, 0}, 0},
-		{[]int{5, 2}, []int{2, 0}, 3},
 		{[]int{5, 2}, []int{4, 1}, 10},
-		//{[]int{5, 2}, []int{5, 1}, 5},
-		//{[]int{5, 2, 2}, []int{4, 1, 1}, 19},
+		{[]int{10, 2}, []int{9, 1}, 20},
+		{[]int{5, 2, 2}, []int{0, 0, 0}, 0},
+		{[]int{5, 2, 2}, []int{4, 1, 1}, 20},
+		//{[]int{5, 2, 3}, []int{4, 1, 2}, 30},
 	}
 
 	for _, tt := range tests {
