@@ -442,11 +442,6 @@ func (e *Environment) NewArray(name string, subscripts []int) (Object, bool) {
 	if ok {
 		return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.ArrayAlreadyDimensioned), ErrorTokenIndex: 0}, false
 	}
-	//maxIndex := 1
-	//for _, subscript := range subscripts {
-	//	maxIndex *= subscript
-	//}
-	//maxIndex++
 	maxIndex := calculateAddressFromArraySubscripts(subscripts, subscripts)
 	// initialize items according to type
 	items := make([]Object, maxIndex)
@@ -486,13 +481,6 @@ func (e *Environment) GetArray(name string, subscripts []int) (Object, bool) {
 			return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.ArraySubscriptIsWrong), ErrorTokenIndex: 0}, false
 		}
 	}
-	// Resolve index
-	//index := subscripts[len(subscripts)-1]
-	//if len(arr.Subscripts) > 1 {
-	//	for j := len(arr.Subscripts) - 2; j > 0; j-- {
-	//		index += subscripts[j] * arr.Subscripts[j]
-	//	}
-	//}
 	index := calculateAddressFromArraySubscripts(arr.Subscripts, subscripts)
 	// Return item obj
 	return arr.Items[index], true
@@ -530,13 +518,6 @@ func (e *Environment) SetArray(name string, subscripts []int, val Object) (Objec
 			return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.ArraySubscriptIsWrong), ErrorTokenIndex: 0}, false
 		}
 	}
-	// Resolve index
-	//index := subscripts[len(subscripts)-1]
-	//if len(arr.Subscripts) > 1 {
-	//	for j := len(arr.Subscripts) - 2; j >= 0; j-- {
-	//		index += subscripts[j] * arr.Subscripts[j]
-	//	}
-	//}
 	index := calculateAddressFromArraySubscripts(arr.Subscripts, subscripts)
 	// Set item obj
 	arr.Items[index] = val
