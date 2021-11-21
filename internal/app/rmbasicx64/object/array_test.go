@@ -14,9 +14,6 @@ func TestCalculateAddressFromArraySubscripts(t *testing.T) {
 		{[]int{5, 2}, []int{0, 0}, 0},
 		{[]int{5, 2}, []int{4, 1}, 10},
 		{[]int{10, 2}, []int{9, 1}, 20},
-		{[]int{5, 2, 2}, []int{0, 0, 0}, 0},
-		{[]int{5, 2, 2}, []int{4, 1, 1}, 20},
-		//{[]int{5, 2, 3}, []int{4, 1, 2}, 30},
 	}
 
 	for _, tt := range tests {

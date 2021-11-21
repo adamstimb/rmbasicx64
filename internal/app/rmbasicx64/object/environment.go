@@ -2,7 +2,6 @@ package object
 
 import (
 	"fmt"
-	"log"
 	"sort"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
@@ -412,25 +411,12 @@ func (e *Environment) DeleteProcedures() {
 }
 
 func calculateAddressFromArraySubscripts(bounds []int, subscripts []int) int {
-	log.Printf("Calculating address from array subscripts: %v %v\n", bounds, subscripts)
 	// Special case of 1D array
 	if len(bounds) == 1 {
-		log.Printf("1D array -> return early")
-		log.Printf("Address: %v\n", subscripts[0]+1)
 		return subscripts[0] + 1
 	}
 	// Use method for row-major calculation: https://www.geeksforgeeks.org/calculating-the-address-of-an-element-in-an-n-dimensional-array/
-	// calculate internal sequence
 	internalSequence := []int{}
-	//j := 0
-	//for i := len(subscripts) - 1; i >= 0; i-- {
-	//	if i == len(subscripts)-1 {
-	//		internalSequence = append(internalSequence, (subscripts[i]*bounds[i-1])+bounds[i-1])
-	//	} else {
-	//		internalSequence = append(internalSequence, (internalSequence[j-1]*bounds[i])+subscripts[i])
-	//	}
-	//	j++
-	//}
 	subOffset := 0
 	boundsOffset := 1
 	for i := 0; i < len(subscripts)-1; i++ {
@@ -438,19 +424,16 @@ func calculateAddressFromArraySubscripts(bounds []int, subscripts []int) int {
 			en := subscripts[i] - subOffset
 			snp1 := bounds[i+1] - boundsOffset
 			enp1 := subscripts[i+1] - subOffset
-			log.Printf("got first: en=%d, snp1=%d, enp1=%d", en, snp1, enp1)
 			internalSequence = append(internalSequence, (en*snp1)+(enp1))
 		} else {
-			prev := internalSequence[i-1]
+			prev := internalSequence[len(internalSequence)-1]
 			snp1 := bounds[i+1] - boundsOffset
 			enp1 := subscripts[i+1] - subOffset
-			log.Printf("got next: prev=%d, snp1=%d, enp1=%d", prev, snp1, enp1)
 			internalSequence = append(internalSequence, (prev*snp1)+enp1)
 		}
 	}
 	w := len(bounds)
 	addr := w * internalSequence[len(internalSequence)-1]
-	log.Printf("returning %d", addr)
 	return addr
 }
 
@@ -459,10 +442,12 @@ func (e *Environment) NewArray(name string, subscripts []int) (Object, bool) {
 	if ok {
 		return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.ArrayAlreadyDimensioned), ErrorTokenIndex: 0}, false
 	}
-	maxIndex := 1
-	for _, subscript := range subscripts {
-		maxIndex *= subscript
-	}
+	//maxIndex := 1
+	//for _, subscript := range subscripts {
+	//	maxIndex *= subscript
+	//}
+	//maxIndex++
+	maxIndex := calculateAddressFromArraySubscripts(subscripts, subscripts)
 	// initialize items according to type
 	items := make([]Object, maxIndex)
 	if name[len(name)-1:] != "$" {
@@ -502,12 +487,13 @@ func (e *Environment) GetArray(name string, subscripts []int) (Object, bool) {
 		}
 	}
 	// Resolve index
-	index := subscripts[len(subscripts)-1]
-	if len(arr.Subscripts) > 1 {
-		for j := len(arr.Subscripts) - 2; j > 0; j-- {
-			index += subscripts[j] * arr.Subscripts[j]
-		}
-	}
+	//index := subscripts[len(subscripts)-1]
+	//if len(arr.Subscripts) > 1 {
+	//	for j := len(arr.Subscripts) - 2; j > 0; j-- {
+	//		index += subscripts[j] * arr.Subscripts[j]
+	//	}
+	//}
+	index := calculateAddressFromArraySubscripts(arr.Subscripts, subscripts)
 	// Return item obj
 	return arr.Items[index], true
 }
@@ -545,12 +531,13 @@ func (e *Environment) SetArray(name string, subscripts []int, val Object) (Objec
 		}
 	}
 	// Resolve index
-	index := subscripts[len(subscripts)-1]
-	if len(arr.Subscripts) > 1 {
-		for j := len(arr.Subscripts) - 2; j >= 0; j-- {
-			index += subscripts[j] * arr.Subscripts[j]
-		}
-	}
+	//index := subscripts[len(subscripts)-1]
+	//if len(arr.Subscripts) > 1 {
+	//	for j := len(arr.Subscripts) - 2; j >= 0; j-- {
+	//		index += subscripts[j] * arr.Subscripts[j]
+	//	}
+	//}
+	index := calculateAddressFromArraySubscripts(arr.Subscripts, subscripts)
 	// Set item obj
 	arr.Items[index] = val
 	e.store[storeKey{Name: name, Scope: e.scope}] = arr
