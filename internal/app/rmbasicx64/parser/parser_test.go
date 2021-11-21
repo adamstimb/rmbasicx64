@@ -623,20 +623,45 @@ func TestBooleanExpression(t *testing.T) {
 // -- If
 
 func TestIfExpression(t *testing.T) {
-	input := "if x < y then x = 8\n"
-	l := &lexer.Lexer{}
-	l.Scan(input)
-	p := New(l, &game.Game{})
-	program := p.ParseProgram()
-	checkParserErrors(t, p)
+	tests := []string{
+		"if x < y then x = 8\n",
+		"if x > y AND b < 0 then x = 8\n",
+		"if x = y AND b < 0 OR c = 3 then x = 8\n",
+		"if x(2) = y(5) then c = 9\n",
+		"if x(1) = 4 AND y(5) = g(9) then c = 0\n",
+	}
 
-	if len(program.Statements) != 1 {
-		t.Fatalf("program.Statements does not contain %d statements, got %d\n", 1, len(program.Statements))
+	for _, tt := range tests {
+		log.Printf(tt)
+		l := &lexer.Lexer{}
+		l.Scan(tt)
+		p := New(l, &game.Game{})
+		program := p.ParseProgram()
+		checkParserErrors(t, p)
+
+		if len(program.Statements) != 1 {
+			t.Fatalf("program.Statements does not contain %d statements, got %d\n", 1, len(program.Statements))
+		}
+
+		ifStmt, ok := program.Statements[0].(*ast.IfStatement)
+		if !ok {
+			t.Fatalf("program.Statements[0] is not ast.IfStatement. got=%T",
+				program.Statements[0])
+		}
+
+		if ifStmt.Condition == nil {
+			t.Errorf("Condition is nil!")
+		}
+
+		if len(ifStmt.Consequence.Statements) != 1 {
+			t.Errorf("consequence is not 1 statements. got=%d\n",
+				len(ifStmt.Consequence.Statements))
+		}
 	}
 }
 
 func TestIfElseExpression(t *testing.T) {
-	input := "if x < y then x = 0 : b = 3 else y = 2\n"
+	input := "if x < y then x = 5 : b = 2 else y = 2\n"
 	l := &lexer.Lexer{}
 	l.Scan(input)
 	p := New(l, &game.Game{})
@@ -651,11 +676,22 @@ func TestIfElseExpression(t *testing.T) {
 			1, len(program.Statements))
 	}
 
-	_, ok := program.Statements[0].(*ast.IfStatement)
+	ifStmt, ok := program.Statements[0].(*ast.IfStatement)
 	if !ok {
 		t.Fatalf("program.Statements[0] is not ast.IfStatement. got=%T",
 			program.Statements[0])
 	}
+
+	if len(ifStmt.Consequence.Statements) != 2 {
+		t.Errorf("consequence is not 2 statements. got=%d\n",
+			len(ifStmt.Consequence.Statements))
+	}
+
+	if len(ifStmt.Alternative.Statements) != 1 {
+		t.Errorf("alternative is not 1 statements. got=%d\n",
+			len(ifStmt.Alternative.Statements))
+	}
+
 }
 
 // -------------------------------------------------------------------------

@@ -410,15 +410,39 @@ func (e *Environment) DeleteProcedures() {
 	e.procedures = []*ast.ProcedureDeclaration{}
 }
 
+func calculateAddressFromArraySubscripts(bounds []int, subscripts []int) int {
+	// Special case of 1D array
+	if len(bounds) == 1 {
+		return subscripts[0] + 1
+	}
+	// Use method for row-major calculation: https://www.geeksforgeeks.org/calculating-the-address-of-an-element-in-an-n-dimensional-array/
+	internalSequence := []int{}
+	subOffset := 0
+	boundsOffset := 1
+	for i := 0; i < len(subscripts)-1; i++ {
+		if i == 0 {
+			en := subscripts[i] - subOffset
+			snp1 := bounds[i+1] - boundsOffset
+			enp1 := subscripts[i+1] - subOffset
+			internalSequence = append(internalSequence, (en*snp1)+(enp1))
+		} else {
+			prev := internalSequence[len(internalSequence)-1]
+			snp1 := bounds[i+1] - boundsOffset
+			enp1 := subscripts[i+1] - subOffset
+			internalSequence = append(internalSequence, (prev*snp1)+enp1)
+		}
+	}
+	w := len(bounds)
+	addr := w * internalSequence[len(internalSequence)-1]
+	return addr
+}
+
 func (e *Environment) NewArray(name string, subscripts []int) (Object, bool) {
 	_, ok := e.store[storeKey{Name: name, Scope: e.scope}]
 	if ok {
 		return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.ArrayAlreadyDimensioned), ErrorTokenIndex: 0}, false
 	}
-	maxIndex := 1
-	for _, subscript := range subscripts {
-		maxIndex *= subscript
-	}
+	maxIndex := calculateAddressFromArraySubscripts(subscripts, subscripts)
 	// initialize items according to type
 	items := make([]Object, maxIndex)
 	if name[len(name)-1:] != "$" {
@@ -457,13 +481,7 @@ func (e *Environment) GetArray(name string, subscripts []int) (Object, bool) {
 			return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.ArraySubscriptIsWrong), ErrorTokenIndex: 0}, false
 		}
 	}
-	// Resolve index
-	index := subscripts[len(subscripts)-1]
-	if len(arr.Subscripts) > 1 {
-		for j := len(arr.Subscripts) - 2; j >= 0; j-- {
-			index += subscripts[j] * arr.Subscripts[j]
-		}
-	}
+	index := calculateAddressFromArraySubscripts(arr.Subscripts, subscripts)
 	// Return item obj
 	return arr.Items[index], true
 }
@@ -500,13 +518,7 @@ func (e *Environment) SetArray(name string, subscripts []int, val Object) (Objec
 			return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.ArraySubscriptIsWrong), ErrorTokenIndex: 0}, false
 		}
 	}
-	// Resolve index
-	index := subscripts[len(subscripts)-1]
-	if len(arr.Subscripts) > 1 {
-		for j := len(arr.Subscripts) - 2; j >= 0; j-- {
-			index += subscripts[j] * arr.Subscripts[j]
-		}
-	}
+	index := calculateAddressFromArraySubscripts(arr.Subscripts, subscripts)
 	// Set item obj
 	arr.Items[index] = val
 	e.store[storeKey{Name: name, Scope: e.scope}] = arr

@@ -2,7 +2,6 @@ package parser
 
 import (
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 
@@ -36,6 +35,7 @@ var precedences = map[string]int{
 	token.Minus:               SUM,
 	token.Star:                PRODUCT,
 	token.ForwardSlash:        PRODUCT,
+	token.MOD:                 PRODUCT,
 	token.LeftParen:           CALL,
 	token.AND:                 LOGICAL,
 	token.OR:                  LOGICAL,
@@ -57,6 +57,8 @@ type Parser struct {
 	errors          []string // For debugging only - RM Basic-ish error handling to be implemented separately - or not?
 	errorMsg        string   // This is for the holding parse error.  We don't collect errors before but fail on the first one.
 	ErrorTokenIndex int      // the index of the token where an error occured
+	inBindStatement bool     // Flag to prevent binding of variables withinin a bind statement
+	inConditional   bool     // Flag to help parse conditional statements correctly
 	g               *game.Game
 }
 
@@ -94,6 +96,8 @@ func New(l *lexer.Lexer, g *game.Game) *Parser {
 		errors:          []string{},
 		errorMsg:        "",
 		ErrorTokenIndex: -1,
+		inBindStatement: false,
+		inConditional:   false,
 	}
 	// Read 2 tokens so curToken and peekToken are both set
 	p.nextToken()
@@ -128,6 +132,7 @@ func New(l *lexer.Lexer, g *game.Game) *Parser {
 	p.registerInfix(token.OR, p.parseInfixExpression)
 	p.registerInfix(token.XOR, p.parseInfixExpression)
 	p.registerInfix(token.InterestinglyEqual, p.parseInfixExpression)
+	p.registerInfix(token.MOD, p.parseInfixExpression)
 
 	return p
 }
@@ -177,7 +182,7 @@ func (p *Parser) parseIdentifier() ast.Expression {
 				ident.Subscripts = append(ident.Subscripts, val)
 			}
 			if p.curTokenIs(token.RightParen) {
-				p.nextToken()
+				//p.nextToken()
 				break
 			}
 			if !p.requireComma() {
@@ -326,19 +331,18 @@ func (p *Parser) parseIfStatement() ast.Statement {
 	}
 
 	p.nextToken() // consume IF
-
+	p.inConditional = true
+	p.inBindStatement = false
 	stmt.Condition = p.parseExpression(LOWEST)
-
-	if !p.expectPeek(token.THEN) {
-		// this will be a syntax error
+	p.nextToken()
+	if !p.curTokenIs(token.THEN) {
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.ThenExpected)
 		p.ErrorTokenIndex = p.curToken.Index + 1
 		return nil
 	}
 	p.nextToken() // consume THEN
-
-	stmt.Consequence = p.parseIfConsequence()
-
+	p.inConditional = false
+	stmt.Consequence = p.ParseLine() //p.parseIfConsequence()
 	if p.curTokenIs(token.ELSE) {
 		p.nextToken()
 		stmt.Alternative = p.ParseLine()
@@ -790,6 +794,7 @@ func (p *Parser) parsePlotStatement() *ast.PlotStatement {
 }
 
 func (p *Parser) parseLineStatement() *ast.LineStatement {
+	p.inBindStatement = false
 	stmt := &ast.LineStatement{Token: p.curToken}
 	// Handle LINE without args
 	p.nextToken()
@@ -1491,10 +1496,13 @@ func (p *Parser) parseDimStatement() *ast.DimStatement {
 		}
 	}
 	// Require end of instruction
-	if p.endOfInstruction() {
+	if p.onEndOfInstruction() {
 		return stmt
+	} else {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+		return nil
 	}
-	return nil
 }
 
 func (p *Parser) parseProcedureDeclaration() *ast.ProcedureDeclaration {
@@ -2573,6 +2581,7 @@ func (p *Parser) parseBindStatement() *ast.BindStatement {
 	if !p.peekTokenIs(token.Assign) && !p.peekTokenIs(token.Equal) {
 		return nil
 	}
+	p.inBindStatement = true
 	p.nextToken()
 	stmt.Token = p.curToken
 	p.nextToken()
@@ -2582,7 +2591,7 @@ func (p *Parser) parseBindStatement() *ast.BindStatement {
 	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) {
 		p.nextToken()
 	}
-
+	p.inBindStatement = false
 	return stmt
 }
 
@@ -2615,6 +2624,7 @@ func (p *Parser) getArraySubscripts() (subscripts []ast.Expression, ok bool) {
 }
 
 func (p *Parser) parseBindArrayStatement() *ast.BindStatement {
+	p.inBindStatement = true
 	ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 	stmt := &ast.BindStatement{Name: ident}
 	// parse subscripts
@@ -2635,7 +2645,6 @@ func (p *Parser) parseBindArrayStatement() *ast.BindStatement {
 	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) {
 		p.nextToken()
 	}
-
 	return stmt
 }
 
@@ -2820,7 +2829,6 @@ func (p *Parser) PrettyPrint() string {
 		// Remove trailing space if )
 		if len(lineString) > 0 {
 			if lineString[len(lineString)-1] == ' ' && (p.curToken.TokenType == token.RightParen) {
-				log.Printf("found )")
 				lineString = lineString[0 : len(lineString)-1]
 				lineString += ") "
 				p.nextToken()
@@ -2830,7 +2838,6 @@ func (p *Parser) PrettyPrint() string {
 		// Remove trailing space if (
 		if len(lineString) > 0 {
 			if lineString[len(lineString)-1] == ' ' && (p.curToken.TokenType == token.LeftParen) {
-				log.Printf("found (")
 				lineString = lineString[0 : len(lineString)-1]
 				lineString += "( "
 				p.nextToken()
@@ -2885,6 +2892,10 @@ func (p *Parser) ParseLine() *ast.Line {
 	}
 
 	for !(p.curTokenIs(token.EOF) || p.curTokenIs(token.NewLine)) {
+		// Catch ELSE
+		if p.curTokenIs(token.ELSE) {
+			break
+		}
 		statements = append(statements, p.parseStatement())
 		p.nextToken()
 		if p.curTokenIs(token.Colon) {
@@ -2919,7 +2930,7 @@ func (p *Parser) parseIfConsequence() *ast.Line {
 func (p *Parser) parseStatement() ast.Statement {
 	switch p.curToken.TokenType {
 	case token.ELSE:
-		return nil
+		return nil // really?
 	case token.REM:
 		return p.parseRemStatement()
 	case token.BYE:
@@ -3071,11 +3082,15 @@ func (p *Parser) parseStatement() ast.Statement {
 	case token.LET:
 		return p.parseLetStatement() // all these methods need to return when they encounter :
 	case token.IdentifierLiteral:
-		if p.peekTokenIs(token.Equal) || p.peekTokenIs(token.Assign) {
+		if !p.inConditional && (p.peekTokenIs(token.Equal) || p.peekTokenIs(token.Assign)) {
 			return p.parseBindStatement()
 		}
 		if p.peekTokenIs(token.LeftParen) {
-			return p.parseBindArrayStatement()
+			if p.inBindStatement {
+				return p.parseExpressionStatement()
+			} else {
+				return p.parseBindArrayStatement()
+			}
 		}
 		if p.peekTokenIs(token.EOF) || p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.IdentifierLiteral) || p.peekTokenIs(token.RECEIVE) || p.peekTokenIs(token.NumericLiteral) || p.peekTokenIs(token.StringLiteral) {
 			return p.parseProcedureCallStatement()

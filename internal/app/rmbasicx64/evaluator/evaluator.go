@@ -2422,6 +2422,7 @@ func prerun(g *game.Game, env *object.Environment) bool {
 	env.DeleteProcedures()
 	env.Prerun = true
 	for !env.Program.EndOfProgram() {
+		//log.Printf("%s", env.Program.GetLine())
 		l.Scan(env.Program.GetLine())
 		p := parser.New(l, g)
 		line := p.ParseLine()
@@ -2488,6 +2489,7 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 	}
 	// And away we go
 	for !env.Program.EndOfProgram() && !g.BreakInterruptDetected && !env.EndProgramSignal {
+		//log.Printf("%s", env.Program.GetLine())
 		l.Scan(env.Program.GetLine())
 		p := parser.New(l, g)
 		line := p.ParseLine()
@@ -3082,23 +3084,28 @@ func evalIfStatement(g *game.Game, ie *ast.IfStatement, env *object.Environment)
 	if isError(condition) {
 		return condition
 	}
+	var returnObject object.Object
 	if isTruthy(condition) {
 		for _, stmt := range ie.Consequence.Statements {
 			obj := Eval(g, stmt, env)
+			returnObject = obj
 			if isError(obj) {
 				return obj
 			}
 		}
-		return NULL
+		//return NULL
+		return returnObject
 	} else if ie.Alternative != nil {
 		for _, stmt := range ie.Alternative.Statements {
 			obj := Eval(g, stmt, env)
+			returnObject = obj
 			if isError(obj) {
 				return obj
 			}
 		}
 	}
-	return NULL
+	//return NULL
+	return returnObject
 }
 
 func isTruthy(obj object.Object) bool {
@@ -3228,6 +3235,13 @@ func evalNumericInfixExpression(operator string, left, right object.Object) obje
 		return &object.Numeric{Value: float64(int(leftVal) | int(rightVal))}
 	case "XOR":
 		return &object.Numeric{Value: float64(int(leftVal) ^ int(rightVal))}
+	case "MOD":
+		// catch divide by zero
+		if rightVal == 0 {
+			return newError(syntaxerror.ErrorMessage(syntaxerror.TryingToDivideByZero))
+		} else {
+			return &object.Numeric{Value: math.Mod(leftVal, rightVal)}
+		}
 	default:
 		return newError("%s (unknown operator: %s %s %s)", syntaxerror.ErrorMessage(syntaxerror.InvalidExpressionFound), left.Type(), operator, right.Type())
 	}
