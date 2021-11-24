@@ -15,6 +15,8 @@
 //go:generate file2byteslice -package=audio -input=audio/squareWave440.wav -output=audio/squareWav440.go -var=SquareWav440_wav
 //go:generate file2byteslice -package=audio -input=audio/pinkNoise.wav -output=audio/pinkNoise.go -var=PinkNoise_wav
 //go:generate file2byteslice -package=icon -input=icon/rmbasicx64_ico_48.png -output=icon/rmbasicx64_ico_48.go -var=Rmbasicx64_ico_48_png
+//go:generate file2byteslice -package=font -input=font/charsets.png -output=font/charsets.go -var=Charsets_png
+//go:generate file2byteslice -package=logo -input=logo/nimbusLogoFinal.png -output=logo/nimbusLogoFinal.go -var=NimbusLogoFinal_png
 //go:generate gofmt -s -w .
 
 package resources

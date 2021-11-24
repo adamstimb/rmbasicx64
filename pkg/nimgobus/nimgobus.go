@@ -10,7 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/adamstimb/rmbasicx64/pkg/nimgobus/images"
+	"github.com/adamstimb/rmbasicx64/pkg/nimgobus/resources/font"
+	"github.com/adamstimb/rmbasicx64/pkg/nimgobus/resources/logo"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/audio"
 )
@@ -438,8 +439,8 @@ func (n *Nimbus) loadLogoImage() {
 					continue
 				}
 				if r < 10000 && g < 10000 && b < 10000 && a > 60000 {
-					// black
-					newArray[y][x] = 0
+					// green
+					newArray[y][x] = 1
 					continue
 				}
 			}
@@ -447,7 +448,7 @@ func (n *Nimbus) loadLogoImage() {
 		return newArray
 	}
 
-	img, _, err := image.Decode(bytes.NewReader(images.NimbusLogoImage))
+	img, _, err := image.Decode(bytes.NewReader(logo.NimbusLogoFinal_png))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -480,9 +481,9 @@ func (n *Nimbus) loadCharsetImages(charset int) {
 	var imgArray [][]int
 	var err error
 	if charset == 0 {
-		img, _, err = image.Decode(bytes.NewReader(images.CharSetZeroImage))
+		img, _, err = image.Decode(bytes.NewReader(font.Charsets_png)) //images.CharSetZeroImage
 	} else {
-		img, _, err = image.Decode(bytes.NewReader(images.CharSetOneImage))
+		img, _, err = image.Decode(bytes.NewReader(font.Charsets_png)) //images.CharSetZeroImage
 	}
 	if err != nil {
 		log.Fatal(err)
@@ -490,9 +491,9 @@ func (n *Nimbus) loadCharsetImages(charset int) {
 	imgArray = convertToArray(img)
 	for i := 0; i <= 255; i++ {
 		if charset == 0 {
-			n.charImages0[i] = n.charImageSelecta(imgArray, i)
+			n.charImages0[i] = n.charImageSelecta(imgArray, i, charset)
 		} else {
-			n.charImages1[i] = n.charImageSelecta(imgArray, i)
+			n.charImages1[i] = n.charImageSelecta(imgArray, i, charset)
 		}
 	}
 }
@@ -500,19 +501,30 @@ func (n *Nimbus) loadCharsetImages(charset int) {
 // charImageSelecta returns the subimage pointer of a char from the charset
 // image for any given ASCII code.  If control char is received, a blank char
 // is returned instead.
-func (n *Nimbus) charImageSelecta(img [][]int, c int) [][]int {
-	// select blank char 127 if control char
-	if c < 33 {
+func (n *Nimbus) charImageSelecta(img [][]int, c int, charSet int) [][]int {
+	// Hotfix: RM Basic on the emulator somehow skips chars 28 and 29 -
+	// we'll redo the dump again later.  For now, we'll just return a blank for
+	// those chars and increment c by 2 if c > 29
+	if c >= 28 && c <= 29 {
 		c = 127
 	}
-	// Calculate row and column position of the char on the charset image
-	mapNumber := c - 32 // codes < 33 are not on the map
-	row := int(math.Ceil(float64(mapNumber) / float64(30)))
-	column := mapNumber - (30 * (row - 1))
+	if c > 29 {
+		c -= 2
+	}
+	charsPerRow := 40
+	c++
+	row := int(math.Ceil(float64(c) / float64(charsPerRow)))
+	column := c - (charsPerRow * (row - 1))
 	// Calculate corners of rectangle around the char
-	x1 := (column - 1) * 10
-	x2 := x1 + 10
-	y1 := (row - 1) * 10
+	var yOffset int
+	if charSet == 0 {
+		yOffset = 0
+	} else {
+		yOffset = 70
+	}
+	x1 := (column - 1) * 8
+	x2 := x1 + 8
+	y1 := yOffset + ((row - 1) * 10)
 	y2 := y1 + 10
 	// Get char and return
 	charImgArray := make2dArray(10, 10)

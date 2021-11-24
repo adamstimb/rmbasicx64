@@ -149,16 +149,20 @@ func drawBackground(n *Nimbus) {
 	n.Area(areaOpts, []XyCoord{{3, 2}, {636, 2}, {636, 247}, {3, 247}, {3, 2}})
 	xl := 10
 	yl := 212
-	n.PlonkLogo(xl, yl)
+	areaOpts = AreaOptions{
+		Brush: 3,
+		Over:  -1,
+	}
+	n.Area(areaOpts, []XyCoord{{xl, yl}, {xl + 304, yl}, {xl + 304, yl + 32}, {xl, yl + 32}, {xl, yl}})
 	lineOpts := LineOptions{
 		Brush: 2,
 		Over:  -1,
 	}
-	//n.Line(lineOpts, xl, yl, xl+304, yl, xl+304, yl+32, xl, yl+32, xl, yl)
 	n.Line(lineOpts, []XyCoord{{xl, yl}, {xl + 304, yl}, {xl + 304, yl + 32}, {xl, yl + 32}, {xl, yl}})
 	plotOpts := PlotOptions{
 		SizeX: 3, SizeY: 3, Font: 1, Direction: 0, Over: -1,
 	}
+	n.PlonkLogo(xl+10, yl+6)
 
 	// Welcome
 	n.Plot(plotOpts, "Welcome", 238, 145)
