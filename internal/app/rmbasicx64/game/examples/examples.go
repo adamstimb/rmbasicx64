@@ -144,7 +144,7 @@ func WriteExamples(workspacePath string) {
 40 WRITEBLOCK 0, 0, 0, -1
 50 Meme_Text "LEARN TO PROGRAM", 30, 200
 60 Meme_text "LIKE THE ANCIENTS", 25, 0
-70 READBLOCK 0, 0, 0, 320, 250
+70 READBLOCK 0, 0, 0; 320, 250
 80 KEEP 0, "learnrmbasic.jpg"
 90 END
 100 PROCEDURE Meme_Text Text$, X%, Y%

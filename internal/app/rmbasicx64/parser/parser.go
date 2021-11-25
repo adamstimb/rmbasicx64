@@ -256,6 +256,17 @@ func (p *Parser) requireComma() bool {
 	return true
 }
 
+func (p *Parser) requireSemicolon() bool {
+	if !p.curTokenIs(token.Semicolon) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.SemicolonSeparatorIsNeeded)
+		p.ErrorTokenIndex = p.curToken.Index
+		p.nextToken()
+		return false
+	}
+	p.nextToken()
+	return true
+}
+
 func (p *Parser) requireOpenBracket() bool {
 	if !p.curTokenIs(token.LeftParen) {
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.OpeningBracketIsNeeded)
@@ -1879,7 +1890,7 @@ func (p *Parser) parseReadblockStatement() *ast.ReadblockStatement {
 	stmt := &ast.ReadblockStatement{Token: p.curToken}
 	// Handle READBLOCK without args
 	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
-		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded)
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
 		p.ErrorTokenIndex = p.curToken.Index
 		return nil
 	}
@@ -1908,7 +1919,7 @@ func (p *Parser) parseReadblockStatement() *ast.ReadblockStatement {
 	} else {
 		return nil
 	}
-	if !p.requireComma() {
+	if !p.requireSemicolon() {
 		return nil
 	}
 	// Get X2,
@@ -1956,7 +1967,7 @@ func (p *Parser) parseCopyblockStatement() *ast.CopyblockStatement {
 	} else {
 		return nil
 	}
-	if !p.requireComma() {
+	if !p.requireSemicolon() {
 		return nil
 	}
 	// Get X2,
@@ -1974,7 +1985,7 @@ func (p *Parser) parseCopyblockStatement() *ast.CopyblockStatement {
 	} else {
 		return nil
 	}
-	if !p.requireComma() {
+	if !p.requireSemicolon() {
 		return nil
 	}
 	// Get Dx,
