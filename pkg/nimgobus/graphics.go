@@ -36,7 +36,7 @@ func (n *Nimbus) ValidateStyle(s int) bool {
 
 // PlonkLogo draws the RM Nimbus logo
 func (n *Nimbus) PlonkLogo(x, y int) {
-	n.drawSprite(Sprite{pixels: n.logoImage, x: x, y: y, colour: -1, over: true})
+	n.drawSprite(Sprite{pixels: n.logoImage, x: x + 1, y: y, colour: -1, over: true})
 }
 
 type PlotOptions struct {

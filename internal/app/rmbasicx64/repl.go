@@ -35,12 +35,12 @@ func welcomeScreen(g *game.Game) {
 		Over:  -1,
 	}
 	g.Area(areaOpts, []nimgobus.XyCoord{{0, 225}, {300, 225}, {300, 249}, {0, 249}, {0, 225}})
-	g.PlonkLogo(0, 227)
+	g.PlonkLogo(1, 227)
 	g.SetCurpos(1, 4)
 	g.Print("This is a tribute project and is in no way linked to or endorsed by RM plc.")
 	g.Put(13)
 	g.Put(13)
-	g.Print("RM BASICx64 Version 0.21 21st November 2021")
+	g.Print("RM BASICx64 Version 0.22 26th November 2021")
 	g.Put(13)
 	// Generate and print workspace available notification
 	workspaceAvailable := fmt.Sprintf("%dG bytes workspace available.", bToGb(memInfo.Available))
