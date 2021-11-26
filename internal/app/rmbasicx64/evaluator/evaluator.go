@@ -100,6 +100,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalSetRadStatement(g, node, env)
 	case *ast.SetCurposStatement:
 		return evalSetCurposStatement(g, node, env)
+	case *ast.SetWritingStatement:
+		return evalSetWritingStatement(g, node, env)
 	case *ast.SetPatternStatement:
 		return evalSetPatternStatement(g, node, env)
 	case *ast.SetConfigBootStatement:
@@ -1659,6 +1661,78 @@ func evalSetCurposStatement(g *game.Game, stmt *ast.SetCurposStatement, env *obj
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 	g.SetCurpos(colVal, rowVal)
+	return nil
+}
+
+func evalSetWritingStatement(g *game.Game, stmt *ast.SetWritingStatement, env *object.Environment) object.Object {
+	var slot, col1, row1, col2, row2 int
+	obj := Eval(g, stmt.Slot, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		slot = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	if slot < 1 || slot > 10 {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// SET WRITING e1
+	if stmt.Col1 == nil {
+		g.SetWriting(slot)
+		return nil
+	}
+	// SET WRITING e1 TO e2, e3; e4, e5
+	obj = Eval(g, stmt.Col1, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		col1 = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	if col1 < 1 || col1 > g.AskMode() {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	obj = Eval(g, stmt.Row1, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		row1 = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	if row1 < 1 || row2 > 25 {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	obj = Eval(g, stmt.Col2, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		col2 = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	if col2 < 1 || col2 > g.AskMode() {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	obj = Eval(g, stmt.Row2, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		row2 = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	if row2 < 1 || row2 > 25 {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	g.SetWriting(slot, col1, row1, col2, row2)
 	return nil
 }
 
