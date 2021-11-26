@@ -1675,7 +1675,12 @@ func evalSetWritingStatement(g *game.Game, stmt *ast.SetWritingStatement, env *o
 	} else {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
-	if slot < 1 || slot > 10 {
+	// activating slot 0 is allowed but you can't change it
+	minSlot := 1
+	if stmt.Col1 == nil {
+		minSlot = 0
+	}
+	if slot < minSlot || slot > 10 {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 	// SET WRITING e1
