@@ -62,13 +62,13 @@ func (n *Nimbus) AdvanceCursor(forceCarriageReturn bool) {
 		n.muDrawQueue.Lock()
 		n.muVideoMemory.Lock()
 		// Copy the textbox segment of videoMemory
-		textBoxImg := make2dArray(x2-x1, y1-y2)
+		textBoxImg := make2dArray((x2-x1)+1, y1-y2)
 		for y := y2; y < y1; y++ {
-			textBoxImg[y] = n.videoMemory[y][:]
+			textBoxImg[(len(textBoxImg)-1)-(y-y2)] = n.videoMemory[249-y][x1:x2]
 		}
 		// Empty paper on bottom row of textbox
-		paperImg := make2dArray(x2-x1, 10)
-		for x := x1; x < x2; x++ {
+		paperImg := make2dArray((x2-x1)+9, 10)
+		for x := x1; x <= x2; x++ {
 			for y := 0; y < 10; y++ {
 				paperImg[y][x] = n.paperColour
 			}
@@ -80,4 +80,65 @@ func (n *Nimbus) AdvanceCursor(forceCarriageReturn bool) {
 	}
 	// Set new cursor position
 	n.cursorPosition = relCurPos
+}
+
+// SetWriting selects a textbox if only 1 parameter is passed (index), or
+// defines a textbox if 5 parameters are passed (index, col1, row1, col2,
+// row2)
+func (n *Nimbus) SetWriting(p ...int) {
+	// Validate number of parameters
+	if len(p) != 1 && len(p) != 5 {
+		// invalid
+		panic("SetWriting accepts either 1 or 5 parameters")
+	}
+	if len(p) == 1 {
+		// Select textbox - validate choice first then set it
+		if p[0] < 0 || p[0] > 10 {
+			panic("SetWriting index out of range")
+		}
+		oldTextBox := n.selectedTextBox
+		n.selectedTextBox = p[0]
+		// Set cursor position to 1,1 if different textbox selected
+		if oldTextBox != n.selectedTextBox {
+			n.cursorPosition = colRow{1, 1}
+		}
+		return
+	}
+	// Otherwise define textbox if index is not 0
+	if p[0] == 0 {
+		panic("SetWriting cannot define index zero")
+	}
+	// Validate column and row values
+	for i := 1; i < 5; i++ {
+		if p[i] < 0 {
+			panic("Negative row or column values are not allowed")
+		}
+	}
+	if p[2] > 25 || p[4] > 25 {
+		panic("Row values above 25 are not allowed")
+	}
+	maxColumns := n.mode
+	if p[1] > maxColumns || p[3] > maxColumns {
+		panic("Column value out of range for this screen mode")
+	}
+	// Validate passed - set bottomLeft and topRight colrows
+	var upper, lower, left, right int
+	if p[1] < p[3] {
+		left = p[1]
+		right = p[3]
+	} else {
+		left = p[3]
+		right = p[1]
+	}
+	if p[2] < p[4] {
+		upper = p[2]
+		lower = p[4]
+	} else {
+		upper = p[4]
+		lower = p[2]
+	}
+	// Set textbox
+	n.textBoxes[p[0]] = textBox{left, upper, right, lower}
+
+	return
 }

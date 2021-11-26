@@ -509,6 +509,25 @@ func (s *SetCurposStatement) String() string {
 	return out.String()
 }
 
+type SetWritingStatement struct {
+	Token token.Token
+	Slot  Expression
+	Col1  Expression
+	Row1  Expression
+	Col2  Expression
+	Row2  Expression
+}
+
+func (s *SetWritingStatement) statementNode() {}
+func (s *SetWritingStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *SetWritingStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
 type SetPatternStatement struct {
 	Token token.Token
 	Slot  Expression

@@ -309,6 +309,16 @@ func (p *Parser) requireExpression() (val ast.Expression, ok bool) {
 	return val, true
 }
 
+func (p *Parser) requireEndOfInstruction() bool {
+	if p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF) {
+		return true
+	}
+	p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+	p.ErrorTokenIndex = p.curToken.Index
+	p.nextToken()
+	return false
+}
+
 func (p *Parser) onEndOfInstruction() bool {
 	if p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF) {
 		return true
@@ -2166,6 +2176,64 @@ func (p *Parser) parseSetCurposStatement() *ast.SetCurposStatement {
 	return nil
 }
 
+func (p *Parser) parseSetWritingStatement() *ast.SetWritingStatement {
+	stmt := &ast.SetWritingStatement{Token: p.curToken}
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index + 1
+		return nil
+	}
+	p.nextToken()
+	// Get required Slot
+	if val, ok := p.requireExpression(); ok {
+		stmt.Slot = val
+	} else {
+		return nil
+	}
+	// SET DRAWING e1
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// SET DRAWING e1 TO e2, e3; e4, e5
+	if !p.requireTo() {
+		return nil
+	}
+	if val, ok := p.requireExpression(); ok {
+		stmt.Col1 = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	if val, ok := p.requireExpression(); ok {
+		stmt.Row1 = val
+	} else {
+		return nil
+	}
+	if !p.requireSemicolon() {
+		return nil
+	}
+	if val, ok := p.requireExpression(); ok {
+		stmt.Col2 = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	if val, ok := p.requireExpression(); ok {
+		stmt.Row2 = val
+	} else {
+		return nil
+	}
+	if p.requireEndOfInstruction() {
+		return stmt
+	} else {
+		return nil
+	}
+}
+
 func (p *Parser) parseSetPatternStatement() *ast.SetPatternStatement {
 	stmt := &ast.SetPatternStatement{Token: p.curToken}
 	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
@@ -3049,6 +3117,8 @@ func (p *Parser) parseStatement() ast.Statement {
 			case token.STYLE:
 				return p.parseSetFillStyleStatement()
 			}
+		case token.WRITING:
+			return p.parseSetWritingStatement()
 		default:
 			p.errorMsg = syntaxerror.ErrorMessage((syntaxerror.WrongSetAskAttribute))
 			p.ErrorTokenIndex = p.curToken.Index
