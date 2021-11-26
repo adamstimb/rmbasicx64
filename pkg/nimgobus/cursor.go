@@ -93,11 +93,15 @@ func (n *Nimbus) SetWriting(p ...int) {
 	}
 	if len(p) == 1 {
 		// Select textbox - validate choice first then set it
-		// and return
-		if p[0] < 0 || p[0] > 9 {
+		if p[0] < 0 || p[0] > 10 {
 			panic("SetWriting index out of range")
 		}
+		oldTextBox := n.selectedTextBox
 		n.selectedTextBox = p[0]
+		// Set cursor position to 1,1 if different textbox selected
+		if oldTextBox != n.selectedTextBox {
+			n.cursorPosition = colRow{1, 1}
+		}
 		return
 	}
 	// Otherwise define textbox if index is not 0
@@ -133,6 +137,8 @@ func (n *Nimbus) SetWriting(p ...int) {
 		upper = p[4]
 		lower = p[2]
 	}
+	// Set textbox
 	n.textBoxes[p[0]] = textBox{left, upper, right, lower}
+
 	return
 }
