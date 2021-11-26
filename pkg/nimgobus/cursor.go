@@ -61,10 +61,10 @@ func (n *Nimbus) AdvanceCursor(forceCarriageReturn bool) {
 		n.ForceRedraw()
 		n.muDrawQueue.Lock()
 		n.muVideoMemory.Lock()
-		// Copy the textbox segment of videoMemory
+		// Copy the textbox segment of videoMemory which is flipped vertically
 		textBoxImg := make2dArray((x2-x1)+1, y1-y2)
 		for y := y2; y < y1; y++ {
-			textBoxImg[(y - y2)] = n.videoMemory[y][x1:x2]
+			textBoxImg[(y - y2)] = n.videoMemory[y][x1:x2] // but videoMemory is flipped so....?!
 		}
 		// Empty paper on bottom row of textbox
 		paperImg := make2dArray((x2-x1)+9, 10)
