@@ -309,6 +309,16 @@ func (p *Parser) requireExpression() (val ast.Expression, ok bool) {
 	return val, true
 }
 
+func (p *Parser) requireEndOfInstruction() bool {
+	if p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF) {
+		return true
+	}
+	p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.EndOfInstructionExpected)
+	p.ErrorTokenIndex = p.curToken.Index
+	p.nextToken()
+	return false
+}
+
 func (p *Parser) onEndOfInstruction() bool {
 	if p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF) {
 		return true
@@ -2185,56 +2195,43 @@ func (p *Parser) parseSetWritingStatement() *ast.SetWritingStatement {
 		return stmt
 	}
 	// SET DRAWING e1 TO e2, e3; e4, e5
-
-	if !p.requireComma() {
-		return nil
-	}
-	if val, ok := p.requireExpression(); ok {
-		stmt.Row = val
-	} else {
-		return nil
-	}
-	// Get TO
 	if !p.requireTo() {
 		return nil
 	}
-	// Get c1,
 	if val, ok := p.requireExpression(); ok {
-		stmt.C1 = val
+		stmt.Col1 = val
 	} else {
 		return nil
 	}
 	if !p.requireComma() {
 		return nil
 	}
-	// Get c2,
 	if val, ok := p.requireExpression(); ok {
-		stmt.C2 = val
+		stmt.Row1 = val
+	} else {
+		return nil
+	}
+	if !p.requireSemicolon() {
+		return nil
+	}
+	if val, ok := p.requireExpression(); ok {
+		stmt.Col2 = val
 	} else {
 		return nil
 	}
 	if !p.requireComma() {
 		return nil
 	}
-	// Get c3,
 	if val, ok := p.requireExpression(); ok {
-		stmt.C3 = val
+		stmt.Row2 = val
 	} else {
 		return nil
 	}
-	if !p.requireComma() {
-		return nil
-	}
-	// Get c4
-	if val, ok := p.requireExpression(); ok {
-		stmt.C4 = val
-	} else {
-		return nil
-	}
-	if p.endOfInstruction() {
+	if p.requireEndOfInstruction() {
 		return stmt
+	} else {
+		return nil
 	}
-	return nil
 }
 
 func (p *Parser) parseSetPatternStatement() *ast.SetPatternStatement {
