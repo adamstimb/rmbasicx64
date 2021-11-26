@@ -70,7 +70,6 @@ func (n *Nimbus) AdvanceCursor(forceCarriageReturn bool) {
 		paperImg := make2dArray((x2-x1)+9, 10)
 		for x := x1; x <= x2; x++ {
 			for y := 0; y < 10; y++ {
-				//log.Printf("x: %d, y: %d, x1: %d, y1: %d, x2: %d, y2: %d, x2-x1: %d", x2, y, x1, y1, x2, y2, x2-x1)
 				paperImg[y][x] = n.paperColour
 			}
 		}
