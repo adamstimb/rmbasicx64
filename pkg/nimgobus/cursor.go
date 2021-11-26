@@ -117,7 +117,22 @@ func (n *Nimbus) SetWriting(p ...int) {
 	if p[1] > maxColumns || p[3] > maxColumns {
 		panic("Column value out of range for this screen mode")
 	}
-	// Validate passed - set the textbox
-	n.textBoxes[p[0]] = textBox{p[1], p[2], p[3], p[4]}
+	// Validate passed - set bottomLeft and topRight colrows
+	var upper, lower, left, right int
+	if p[1] < p[3] {
+		left = p[1]
+		right = p[3]
+	} else {
+		left = p[3]
+		right = p[1]
+	}
+	if p[2] < p[4] {
+		upper = p[2]
+		lower = p[4]
+	} else {
+		upper = p[4]
+		lower = p[2]
+	}
+	n.textBoxes[p[0]] = textBox{left, upper, right, lower}
 	return
 }
