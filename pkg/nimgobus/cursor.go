@@ -81,3 +81,43 @@ func (n *Nimbus) AdvanceCursor(forceCarriageReturn bool) {
 	// Set new cursor position
 	n.cursorPosition = relCurPos
 }
+
+// SetWriting selects a textbox if only 1 parameter is passed (index), or
+// defines a textbox if 5 parameters are passed (index, col1, row1, col2,
+// row2)
+func (n *Nimbus) SetWriting(p ...int) {
+	// Validate number of parameters
+	if len(p) != 1 && len(p) != 5 {
+		// invalid
+		panic("SetWriting accepts either 1 or 5 parameters")
+	}
+	if len(p) == 1 {
+		// Select textbox - validate choice first then set it
+		// and return
+		if p[0] < 0 || p[0] > 9 {
+			panic("SetWriting index out of range")
+		}
+		n.selectedTextBox = p[0]
+		return
+	}
+	// Otherwise define textbox if index is not 0
+	if p[0] == 0 {
+		panic("SetWriting cannot define index zero")
+	}
+	// Validate column and row values
+	for i := 1; i < 5; i++ {
+		if p[i] < 0 {
+			panic("Negative row or column values are not allowed")
+		}
+	}
+	if p[2] > 25 || p[4] > 25 {
+		panic("Row values above 25 are not allowed")
+	}
+	maxColumns := n.mode
+	if p[1] > maxColumns || p[3] > maxColumns {
+		panic("Column value out of range for this screen mode")
+	}
+	// Validate passed - set the textbox
+	n.textBoxes[p[0]] = textBox{p[1], p[2], p[3], p[4]}
+	return
+}
