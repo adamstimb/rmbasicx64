@@ -1,5 +1,7 @@
 package nimgobus
 
+import "log"
+
 // drawCursor draws the cursor
 func (n *Nimbus) drawCursor() {
 	// Set up cursor
@@ -57,14 +59,15 @@ func (n *Nimbus) AdvanceCursor(forceCarriageReturn bool) {
 		x2, y2 := n.convertColRow(colRow{box.col2, box.row2})
 		y1 += 10
 		x2 += 8
+		log.Printf("Scroll up: x1: %d, y1: %d, x2: %d, y2: %d", x1, y1, x2, y2)
 		// We have to manipulate videoMemory itself next, so force redraw and get the drawQueue lock
 		n.ForceRedraw()
 		n.muDrawQueue.Lock()
 		n.muVideoMemory.Lock()
-		// Copy the textbox segment of videoMemory which is flipped vertically
+		// Copy the textbox segment of videoMemory
 		textBoxImg := make2dArray((x2-x1)+1, y1-y2)
 		for y := y2; y < y1; y++ {
-			textBoxImg[(y - y2)] = n.videoMemory[y][x1:x2] // but videoMemory is flipped so....?!
+			textBoxImg[(len(textBoxImg)-1)-(y-y2)] = n.videoMemory[249-y][x1:x2]
 		}
 		// Empty paper on bottom row of textbox
 		paperImg := make2dArray((x2-x1)+9, 10)
