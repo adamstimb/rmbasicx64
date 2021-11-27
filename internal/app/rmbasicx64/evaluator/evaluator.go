@@ -323,6 +323,23 @@ func unwrapReturnValue(obj object.Object) object.Object {
 
 func evalPrintStatement(g *game.Game, stmt *ast.PrintStatement, env *object.Environment) object.Object {
 	printStr := ""
+	oldTextBoxSlot, _, _, _, _ := g.AskWriting()
+	tempTextBoxSlot := oldTextBoxSlot
+	_, curY := g.AskCurpos()
+	// Evaluate and handle TextBoxSlot if set
+	if stmt.TextBoxSlot != nil {
+		obj := Eval(g, stmt.TextBoxSlot, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			tempTextBoxSlot = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	g.SetWriting(tempTextBoxSlot)
+
 	for _, val := range stmt.PrintList {
 		// Handle seperator type
 		if s, ok := val.(string); ok {
@@ -340,6 +357,10 @@ func evalPrintStatement(g *game.Game, stmt *ast.PrintStatement, env *object.Envi
 		}
 		obj := Eval(g, val.(ast.Node), env)
 		if isError(obj) {
+			if oldTextBoxSlot != tempTextBoxSlot {
+				g.SetWriting(oldTextBoxSlot)
+				g.SetCurpos(1, curY)
+			}
 			return obj
 		}
 		if numericVal, ok := obj.(*object.Numeric); ok {
@@ -358,6 +379,10 @@ func evalPrintStatement(g *game.Game, stmt *ast.PrintStatement, env *object.Envi
 	}
 	g.Print(printStr)
 	g.Put(13)
+	if oldTextBoxSlot != tempTextBoxSlot {
+		g.SetWriting(oldTextBoxSlot)
+		g.SetCurpos(1, curY)
+	}
 	return nil
 }
 
