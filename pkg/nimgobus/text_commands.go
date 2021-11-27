@@ -18,6 +18,20 @@ func (n *Nimbus) AskMode() int {
 	return 0 // this never happens
 }
 
+// AskWriting returns the current textbox slot and it's boundaries
+func (n *Nimbus) AskWriting(p ...int) (slot, col1, row1, col2, row2 int) {
+	slot = n.selectedTextBox
+	if len(p) == 1 {
+		slot = p[0]
+	}
+	box := n.textBoxes[slot]
+	col1 = box.col1
+	row1 = box.row1
+	col2 = box.col2
+	row2 = box.row2
+	return
+}
+
 // make2dArray initializes an empty 2d array and returns it
 func make2dArray(width, height int) [][]int {
 	a := make([][]int, height)
@@ -35,15 +49,35 @@ func (n *Nimbus) Cls(p ...int) {
 		// invalid
 		panic("Cls accepts either 0 or 1 parameters")
 	}
+	//// Create one big sprite with every pixel set to paperColour and draw it
+	//width, height := n.videoImage.Size()
+	//blankPaper := make2dArray(width, height)
+	//for x := 0; x < width; x++ {
+	//	for y := 0; y < height; y++ {
+	//		blankPaper[y][x] = 1
+	//	}
+	//}
+	//n.drawSprite(Sprite{pixels: blankPaper, x: 0, y: 0, colour: n.paperColour, over: true})
+
 	// Create one big sprite with every pixel set to paperColour and draw it
-	width, height := n.videoImage.Size()
+	_, col1, row1, col2, row2 := n.AskWriting()
+	if len(p) == 1 {
+		// Clear a specific textbox instead
+		_, col1, row1, col2, row2 = n.AskWriting(p[0])
+	}
+	topLeft := colRow{col1, row1}
+	bottomRight := colRow{col2, row2}
+	x1, y1 := n.convertColRow(topLeft)
+	x2, y2 := n.convertColRow(bottomRight)
+	width := (x2 - x1) + 8
+	height := (y1 - y2) + 10
 	blankPaper := make2dArray(width, height)
 	for x := 0; x < width; x++ {
 		for y := 0; y < height; y++ {
 			blankPaper[y][x] = 1
 		}
 	}
-	n.drawSprite(Sprite{pixels: blankPaper, x: 0, y: 0, colour: n.paperColour, over: true})
+	n.drawSprite(Sprite{pixels: blankPaper, x: x1, y: y2, colour: n.paperColour, over: true})
 }
 
 // SetColour assigns one of the basic colours to a slot in the current palette

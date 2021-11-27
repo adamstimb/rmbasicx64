@@ -286,6 +286,7 @@ func (bs *ByeStatement) String() string {
 
 type ListStatement struct {
 	Token          token.Token
+	TextBoxSlot    Expression
 	FromLinenumber token.Token
 	ToLinenumber   token.Token
 	FromLineOnly   bool
@@ -390,7 +391,8 @@ func (s *RenumberStatement) String() string {
 }
 
 type ClsStatement struct {
-	Token token.Token
+	Token       token.Token
+	TextBoxSlot Expression
 }
 
 func (s *ClsStatement) statementNode() {}
@@ -579,8 +581,9 @@ func (s *HomeStatement) String() string {
 }
 
 type DirStatement struct {
-	Token token.Token
-	Value Expression
+	Token       token.Token
+	TextBoxSlot Expression
+	Value       Expression
 }
 
 func (s *DirStatement) statementNode() {}
@@ -748,9 +751,10 @@ func (s *RemStatement) String() string {
 }
 
 type PrintStatement struct {
-	Token     token.Token
-	Value     Expression
-	PrintList []interface{}
+	Token       token.Token
+	Value       Expression
+	TextBoxSlot Expression
+	PrintList   []interface{}
 }
 
 func (ps *PrintStatement) statementNode() {}

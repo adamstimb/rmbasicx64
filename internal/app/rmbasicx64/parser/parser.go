@@ -422,6 +422,24 @@ func (p *Parser) parseListStatement() *ast.ListStatement {
 		// LIST
 		return stmt
 	}
+
+	// Handle optional ~e1, for TextBoxSlot
+	if p.curTokenIs(token.Tilde) {
+		p.nextToken()
+		val, ok := p.requireExpression()
+		if ok {
+			stmt.TextBoxSlot = val
+		} else {
+			return nil
+		}
+		if p.onEndOfInstruction() {
+			return stmt
+		}
+		if !p.requireComma() {
+			return nil
+		}
+	}
+
 	if p.curTokenIs(token.TO) {
 		// LIST TO lineNumber
 		p.nextToken() // consume TO
@@ -517,10 +535,24 @@ func (p *Parser) parseRenumberStatement() *ast.RenumberStatement {
 
 func (p *Parser) parseClsStatement() *ast.ClsStatement {
 	stmt := &ast.ClsStatement{Token: p.curToken}
-	if p.endOfInstruction() {
+	p.nextToken()
+	if p.onEndOfInstruction() {
 		return stmt
 	}
-	return nil
+	// Handle optional ~e1, for TextBoxSlot
+	if p.curTokenIs(token.Tilde) {
+		p.nextToken()
+		val, ok := p.requireExpression()
+		if ok {
+			stmt.TextBoxSlot = val
+		} else {
+			return nil
+		}
+	}
+	if !p.requireEndOfInstruction() {
+		return nil
+	}
+	return stmt
 }
 
 func (p *Parser) parseHomeStatement() *ast.HomeStatement {
@@ -537,6 +569,22 @@ func (p *Parser) parseDirStatement() *ast.DirStatement {
 	// DIR
 	if p.onEndOfInstruction() {
 		return stmt
+	}
+	// Handle optional ~e1, for TextBoxSlot
+	if p.curTokenIs(token.Tilde) {
+		p.nextToken()
+		val, ok := p.requireExpression()
+		if ok {
+			stmt.TextBoxSlot = val
+		} else {
+			return nil
+		}
+		if p.onEndOfInstruction() {
+			return stmt
+		}
+		if !p.requireComma() {
+			return nil
+		}
 	}
 	// DIR e$
 	val, ok := p.requireExpression()
@@ -690,6 +738,20 @@ func (p *Parser) parsePrintStatement() *ast.PrintStatement {
 		return stmt
 	}
 	p.nextToken()
+	// Handle optional ~e1, for TextBoxSlot
+	if p.curTokenIs(token.Tilde) {
+		p.nextToken()
+		val, ok := p.requireExpression()
+		if ok {
+			stmt.TextBoxSlot = val
+		} else {
+			return nil
+		}
+		if !p.requireComma() {
+			return nil
+		}
+	}
+	// Handle print list
 	for !(p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF)) {
 		// ; -> noSpace
 		if p.curTokenIs(token.Semicolon) {

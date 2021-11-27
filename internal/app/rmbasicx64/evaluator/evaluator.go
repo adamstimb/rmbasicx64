@@ -323,6 +323,23 @@ func unwrapReturnValue(obj object.Object) object.Object {
 
 func evalPrintStatement(g *game.Game, stmt *ast.PrintStatement, env *object.Environment) object.Object {
 	printStr := ""
+	oldTextBoxSlot, _, _, _, _ := g.AskWriting()
+	tempTextBoxSlot := oldTextBoxSlot
+	_, curY := g.AskCurpos()
+	// Evaluate and handle TextBoxSlot if set
+	if stmt.TextBoxSlot != nil {
+		obj := Eval(g, stmt.TextBoxSlot, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			tempTextBoxSlot = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	g.SetWriting(tempTextBoxSlot)
+
 	for _, val := range stmt.PrintList {
 		// Handle seperator type
 		if s, ok := val.(string); ok {
@@ -340,6 +357,10 @@ func evalPrintStatement(g *game.Game, stmt *ast.PrintStatement, env *object.Envi
 		}
 		obj := Eval(g, val.(ast.Node), env)
 		if isError(obj) {
+			if oldTextBoxSlot != tempTextBoxSlot {
+				g.SetWriting(oldTextBoxSlot)
+				g.SetCurpos(1, curY)
+			}
 			return obj
 		}
 		if numericVal, ok := obj.(*object.Numeric); ok {
@@ -358,6 +379,10 @@ func evalPrintStatement(g *game.Game, stmt *ast.PrintStatement, env *object.Envi
 	}
 	g.Print(printStr)
 	g.Put(13)
+	if oldTextBoxSlot != tempTextBoxSlot {
+		g.SetWriting(oldTextBoxSlot)
+		g.SetCurpos(1, curY)
+	}
 	return nil
 }
 
@@ -2469,6 +2494,23 @@ func evalSetRadStatement(g *game.Game, stmt *ast.SetRadStatement, env *object.En
 }
 
 func evalListStatement(g *game.Game, stmt *ast.ListStatement, env *object.Environment) object.Object {
+	oldTextBoxSlot, _, _, _, _ := g.AskWriting()
+	tempTextBoxSlot := oldTextBoxSlot
+	_, curY := g.AskCurpos()
+	// Evaluate and handle TextBoxSlot if set
+	if stmt.TextBoxSlot != nil {
+		obj := Eval(g, stmt.TextBoxSlot, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			tempTextBoxSlot = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	g.SetWriting(tempTextBoxSlot)
+
 	fromLinenumber := 0
 	toLinenumber := 0
 	if stmt.FromLinenumber.Literal != "" {
@@ -2481,11 +2523,19 @@ func evalListStatement(g *game.Game, stmt *ast.ListStatement, env *object.Enviro
 	}
 	listing := env.Program.List(fromLinenumber, toLinenumber, stmt.FromLineOnly)
 	if listing == nil {
+		if oldTextBoxSlot != tempTextBoxSlot {
+			g.SetWriting(oldTextBoxSlot)
+			g.SetCurpos(1, curY)
+		}
 		return nil
 	}
 	for _, listString := range listing {
 		g.Print(listString)
 		g.Put(13)
+	}
+	if oldTextBoxSlot != tempTextBoxSlot {
+		g.SetWriting(oldTextBoxSlot)
+		g.SetCurpos(1, curY)
 	}
 	return nil
 }
@@ -2629,7 +2679,21 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 }
 
 func evalClsStatement(g *game.Game, stmt *ast.ClsStatement, env *object.Environment) object.Object {
-	g.Cls()
+	// Evaluate and handle TextBoxSlot if set
+	var TextBoxSlot int
+	if stmt.TextBoxSlot != nil {
+		obj := Eval(g, stmt.TextBoxSlot, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			TextBoxSlot = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+
+	g.Cls(TextBoxSlot)
 	g.SetCurpos(1, 1)
 	return nil
 }
@@ -2658,16 +2722,41 @@ func getAbsPath(p string) string {
 }
 
 func evalDirStatement(g *game.Game, stmt *ast.DirStatement, env *object.Environment) object.Object {
+	oldTextBoxSlot, _, _, _, _ := g.AskWriting()
+	tempTextBoxSlot := oldTextBoxSlot
+	_, curY := g.AskCurpos()
+	// Evaluate and handle TextBoxSlot if set
+	if stmt.TextBoxSlot != nil {
+		obj := Eval(g, stmt.TextBoxSlot, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			tempTextBoxSlot = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	g.SetWriting(tempTextBoxSlot)
+
 	// evaluate path if given
 	val := ""
 	if stmt.Value != nil {
 		obj := Eval(g, stmt.Value, env)
 		if isError(obj) {
+			if oldTextBoxSlot != tempTextBoxSlot {
+				g.SetWriting(oldTextBoxSlot)
+				g.SetCurpos(1, curY)
+			}
 			return obj
 		}
 		if stringVal, ok := obj.(*object.String); ok {
 			val = stringVal.Value
 		} else {
+			if oldTextBoxSlot != tempTextBoxSlot {
+				g.SetWriting(oldTextBoxSlot)
+				g.SetCurpos(1, curY)
+			}
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
 	}
@@ -2683,6 +2772,10 @@ func evalDirStatement(g *game.Game, stmt *ast.DirStatement, env *object.Environm
 	nimbusPath := strings.ReplaceAll(systemPath[len(g.WorkspacePath):], "/", "\\")
 	files, err := filepath.Glob(systemPath)
 	if err != nil {
+		if oldTextBoxSlot != tempTextBoxSlot {
+			g.SetWriting(oldTextBoxSlot)
+			g.SetCurpos(1, curY)
+		}
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.DirectoryCannotBeFound), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 	g.Print(fmt.Sprintf("Directory of %s", nimbusPath))
@@ -2700,6 +2793,10 @@ func evalDirStatement(g *game.Game, stmt *ast.DirStatement, env *object.Environm
 	}
 	dirs, err := ioutil.ReadDir(subdirsSystemPath)
 	if err != nil {
+		if oldTextBoxSlot != tempTextBoxSlot {
+			g.SetWriting(oldTextBoxSlot)
+			g.SetCurpos(1, curY)
+		}
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 	for _, d := range dirs {
@@ -2715,6 +2812,10 @@ func evalDirStatement(g *game.Game, stmt *ast.DirStatement, env *object.Environm
 	for _, f := range files {
 		fileInfo, err := os.Stat(f)
 		if err != nil {
+			if oldTextBoxSlot != tempTextBoxSlot {
+				g.SetWriting(oldTextBoxSlot)
+				g.SetCurpos(1, curY)
+			}
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
 		fileSize := fileInfo.Size()
@@ -2728,6 +2829,10 @@ func evalDirStatement(g *game.Game, stmt *ast.DirStatement, env *object.Environm
 		}
 	}
 	g.Put(13)
+	if oldTextBoxSlot != tempTextBoxSlot {
+		g.SetWriting(oldTextBoxSlot)
+		g.SetCurpos(1, curY)
+	}
 	return nil
 }
 
