@@ -538,6 +538,22 @@ func (p *Parser) parseDirStatement() *ast.DirStatement {
 	if p.onEndOfInstruction() {
 		return stmt
 	}
+	// Handle optional ~e1, for TextBoxSlot
+	if p.curTokenIs(token.Tilde) {
+		p.nextToken()
+		val, ok := p.requireExpression()
+		if ok {
+			stmt.TextBoxSlot = val
+		} else {
+			return nil
+		}
+		if p.onEndOfInstruction() {
+			return stmt
+		}
+		if !p.requireComma() {
+			return nil
+		}
+	}
 	// DIR e$
 	val, ok := p.requireExpression()
 	if !ok {
