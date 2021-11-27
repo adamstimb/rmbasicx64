@@ -102,7 +102,7 @@ func (n *Nimbus) Plot(opt PlotOptions, text string, x, y int) {
 	}
 	resizedSprite := n.resizeSprite(Sprite{pixels: img, x: x, y: y, colour: opt.Brush, over: over}, imgWidth*opt.SizeX, imgHeight*opt.SizeY)
 	rotatedSprite := n.rotateSprite(Sprite{pixels: resizedSprite.pixels, x: x, y: y, colour: opt.Brush, over: over}, opt.Direction)
-	if newSprite, ok := n.applyDrawingbox(rotatedSprite, 0); ok {
+	if newSprite, ok := n.applyDrawingbox(rotatedSprite, n.selectedDrawingBox); ok {
 		n.drawSprite(newSprite)
 	}
 }
@@ -284,7 +284,7 @@ func (n *Nimbus) Line(opt LineOptions, coordList []XyCoord) {
 		//log.Printf("i=%d minXY=(%d, %d) line=(%d, %d)-(%d-%d)", i, minX, minY, coordList[i].X, coordList[i].Y, coordList[i+1].X, coordList[i+1].Y)
 		img = n.drawLine(img, coordList[i].X-minX, coordList[i].Y-minY, coordList[i+1].X-minX, coordList[i+1].Y-minY)
 	}
-	if newSprite, ok := n.applyDrawingbox(Sprite{pixels: img, x: minX, y: minY, colour: opt.Brush, over: over}, 0); ok {
+	if newSprite, ok := n.applyDrawingbox(Sprite{pixels: img, x: minX, y: minY, colour: opt.Brush, over: over}, n.selectedDrawingBox); ok {
 		n.drawSprite(newSprite)
 	}
 	//n.drawSprite(n.applyDrawingbox(Sprite{img, minX, minY, opt.Brush, over}, 0))
@@ -415,7 +415,7 @@ func (n *Nimbus) Circle(opt CircleOptions, r, x, y int) {
 			}
 		}
 	}
-	if newSprite, ok := n.applyDrawingbox(Sprite{pixels: img, x: sx, y: sy, colour: opt.Brush, over: over, fillStyle: fillStyle}, 0); ok {
+	if newSprite, ok := n.applyDrawingbox(Sprite{pixels: img, x: sx, y: sy, colour: opt.Brush, over: over, fillStyle: fillStyle}, n.selectedDrawingBox); ok {
 		n.drawSprite(newSprite)
 	}
 }
@@ -534,7 +534,7 @@ func (n *Nimbus) Area(opt AreaOptions, coordList []XyCoord) {
 			}
 		}
 	}
-	if newSprite, ok := n.applyDrawingbox(Sprite{pixels: img, x: minX, y: minY, colour: opt.Brush, over: over, fillStyle: fillStyle}, 0); ok {
+	if newSprite, ok := n.applyDrawingbox(Sprite{pixels: img, x: minX, y: minY, colour: opt.Brush, over: over, fillStyle: fillStyle}, n.selectedDrawingBox); ok {
 		n.drawSprite(newSprite)
 	}
 }
@@ -565,7 +565,7 @@ func (n *Nimbus) Points(opt PointsOptions, coordList []XyCoord) {
 	}
 	// Draw sprites
 	for _, coord := range coordList {
-		if newSprite, ok := n.applyDrawingbox(Sprite{pixels: n.pointsStyles[opt.Style-1], x: coord.X - 4, y: coord.Y - 4, colour: opt.Brush, over: over}, 0); ok {
+		if newSprite, ok := n.applyDrawingbox(Sprite{pixels: n.pointsStyles[opt.Style-1], x: coord.X - 4, y: coord.Y - 4, colour: opt.Brush, over: over}, n.selectedDrawingBox); ok {
 			n.drawSprite(newSprite)
 		}
 	}

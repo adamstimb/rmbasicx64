@@ -1829,7 +1829,7 @@ func evalSetDrawingStatement(g *game.Game, stmt *ast.SetDrawingStatement, env *o
 	} else {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
-	g.SetWriting(slot, x1, y1, x2, y2)
+	g.SetDrawing(slot, x1, y1, x2, y2)
 	return nil
 }
 
