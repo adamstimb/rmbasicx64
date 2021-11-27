@@ -68,6 +68,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalListStatement(g, node, env)
 	case *ast.ClsStatement:
 		return evalClsStatement(g, node, env)
+	case *ast.ClgStatement:
+		return evalClgStatement(g, node, env)
 	case *ast.HomeStatement:
 		return evalHomeStatement(g, node, env)
 	case *ast.DirStatement:
@@ -102,6 +104,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalSetCurposStatement(g, node, env)
 	case *ast.SetWritingStatement:
 		return evalSetWritingStatement(g, node, env)
+	case *ast.SetDrawingStatement:
+		return evalSetDrawingStatement(g, node, env)
 	case *ast.SetPatternStatement:
 		return evalSetPatternStatement(g, node, env)
 	case *ast.SetConfigBootStatement:
@@ -1766,6 +1770,71 @@ func evalSetWritingStatement(g *game.Game, stmt *ast.SetWritingStatement, env *o
 	return nil
 }
 
+func evalSetDrawingStatement(g *game.Game, stmt *ast.SetDrawingStatement, env *object.Environment) object.Object {
+	var slot, x1, y1, x2, y2 int
+	obj := Eval(g, stmt.Slot, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		slot = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// activating slot 0 is allowed but you can't change it
+	minSlot := 1
+	if stmt.X1 == nil {
+		minSlot = 0
+	}
+	if slot < minSlot || slot > 10 {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// SET DRAWING e1
+	if stmt.X1 == nil {
+		g.SetDrawing(slot)
+		return nil
+	}
+	// SET DRAWING e1 TO e2, e3; e4, e5
+	obj = Eval(g, stmt.X1, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		x1 = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	obj = Eval(g, stmt.Y1, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		y1 = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	obj = Eval(g, stmt.X2, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		x2 = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	obj = Eval(g, stmt.Y2, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		y2 = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	g.SetDrawing(slot, x1, y1, x2, y2)
+	return nil
+}
+
 func evalSetPatternStatement(g *game.Game, stmt *ast.SetPatternStatement, env *object.Environment) object.Object {
 	var slot, row, c1, c2, c3, c4 int
 	obj := Eval(g, stmt.Slot, env)
@@ -2695,6 +2764,11 @@ func evalClsStatement(g *game.Game, stmt *ast.ClsStatement, env *object.Environm
 
 	g.Cls(TextBoxSlot)
 	g.SetCurpos(1, 1)
+	return nil
+}
+
+func evalClgStatement(g *game.Game, stmt *ast.ClgStatement, env *object.Environment) object.Object {
+	g.Clg()
 	return nil
 }
 

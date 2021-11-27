@@ -102,7 +102,7 @@ func (n *Nimbus) Plot(opt PlotOptions, text string, x, y int) {
 	}
 	resizedSprite := n.resizeSprite(Sprite{pixels: img, x: x, y: y, colour: opt.Brush, over: over}, imgWidth*opt.SizeX, imgHeight*opt.SizeY)
 	rotatedSprite := n.rotateSprite(Sprite{pixels: resizedSprite.pixels, x: x, y: y, colour: opt.Brush, over: over}, opt.Direction)
-	if newSprite, ok := n.applyDrawingbox(rotatedSprite, 0); ok {
+	if newSprite, ok := n.applyDrawingbox(rotatedSprite, n.selectedDrawingBox); ok {
 		n.drawSprite(newSprite)
 	}
 }
@@ -284,7 +284,7 @@ func (n *Nimbus) Line(opt LineOptions, coordList []XyCoord) {
 		//log.Printf("i=%d minXY=(%d, %d) line=(%d, %d)-(%d-%d)", i, minX, minY, coordList[i].X, coordList[i].Y, coordList[i+1].X, coordList[i+1].Y)
 		img = n.drawLine(img, coordList[i].X-minX, coordList[i].Y-minY, coordList[i+1].X-minX, coordList[i+1].Y-minY)
 	}
-	if newSprite, ok := n.applyDrawingbox(Sprite{pixels: img, x: minX, y: minY, colour: opt.Brush, over: over}, 0); ok {
+	if newSprite, ok := n.applyDrawingbox(Sprite{pixels: img, x: minX, y: minY, colour: opt.Brush, over: over}, n.selectedDrawingBox); ok {
 		n.drawSprite(newSprite)
 	}
 	//n.drawSprite(n.applyDrawingbox(Sprite{img, minX, minY, opt.Brush, over}, 0))
@@ -415,7 +415,7 @@ func (n *Nimbus) Circle(opt CircleOptions, r, x, y int) {
 			}
 		}
 	}
-	if newSprite, ok := n.applyDrawingbox(Sprite{pixels: img, x: sx, y: sy, colour: opt.Brush, over: over, fillStyle: fillStyle}, 0); ok {
+	if newSprite, ok := n.applyDrawingbox(Sprite{pixels: img, x: sx, y: sy, colour: opt.Brush, over: over, fillStyle: fillStyle}, n.selectedDrawingBox); ok {
 		n.drawSprite(newSprite)
 	}
 }
@@ -534,7 +534,7 @@ func (n *Nimbus) Area(opt AreaOptions, coordList []XyCoord) {
 			}
 		}
 	}
-	if newSprite, ok := n.applyDrawingbox(Sprite{pixels: img, x: minX, y: minY, colour: opt.Brush, over: over, fillStyle: fillStyle}, 0); ok {
+	if newSprite, ok := n.applyDrawingbox(Sprite{pixels: img, x: minX, y: minY, colour: opt.Brush, over: over, fillStyle: fillStyle}, n.selectedDrawingBox); ok {
 		n.drawSprite(newSprite)
 	}
 }
@@ -565,7 +565,7 @@ func (n *Nimbus) Points(opt PointsOptions, coordList []XyCoord) {
 	}
 	// Draw sprites
 	for _, coord := range coordList {
-		if newSprite, ok := n.applyDrawingbox(Sprite{pixels: n.pointsStyles[opt.Style-1], x: coord.X - 4, y: coord.Y - 4, colour: opt.Brush, over: over}, 0); ok {
+		if newSprite, ok := n.applyDrawingbox(Sprite{pixels: n.pointsStyles[opt.Style-1], x: coord.X - 4, y: coord.Y - 4, colour: opt.Brush, over: over}, n.selectedDrawingBox); ok {
 			n.drawSprite(newSprite)
 		}
 	}
@@ -853,4 +853,104 @@ func (n *Nimbus) SetFillStyle(style, hatching, colour2 int) {
 // AskFillStyle gets the current fill style
 func (n *Nimbus) AskFillStyle() FillStyle {
 	return n.fillStyle
+}
+
+// SetDrawing selects a drawingbox if only 1 parameter is passed (index), or
+// defines a drawingbox if 5 parameters are passed (index, col1, row1, col2,
+// row2)
+func (n *Nimbus) SetDrawing(p ...int) {
+	// Validate number of parameters
+	if len(p) != 1 && len(p) != 5 {
+		// invalid
+		panic("SetDrawing accepts either 1 or 5 parameters")
+	}
+	if len(p) == 1 {
+		// Select drawingbox - validate choice first then set it
+		if p[0] < 0 || p[0] > 10 {
+			panic("SetDrawing index out of range")
+		}
+		n.selectedDrawingBox = p[0]
+		return
+	}
+	// Otherwise define textbox if index is not 0
+	if p[0] == 0 {
+		panic("SetDrawing cannot define index zero")
+	}
+	// Clamp x and y values (x > 0, x < screenwidth, y > 0, y < 250)
+	screenWidth := 320
+	if n.AskMode() == 80 {
+		screenWidth = 640
+	}
+	// x values
+	for i := 1; i < 5; i += 2 {
+		if p[i] < 0 {
+			p[i] = 0
+			continue
+		}
+		if p[i] >= screenWidth {
+			p[i] = screenWidth - 1
+			continue
+		}
+	}
+	// y values
+	for i := 2; i < 5; i += 2 {
+		if p[i] < 0 {
+			p[i] = 0
+			continue
+		}
+		if p[i] >= 250 {
+			p[i] = 250 - 1
+			continue
+		}
+	}
+	// Set bottomLeft and topRight colrows
+	var upper, lower, left, right int
+	if p[1] < p[3] {
+		left = p[1]
+		right = p[3]
+	} else {
+		left = p[3]
+		right = p[1]
+	}
+	if p[2] < p[4] {
+		lower = p[2]
+		upper = p[4]
+	} else {
+		lower = p[4]
+		upper = p[2]
+	}
+	// Set drawingbox
+	n.drawingBoxes[p[0]] = drawingBox{left, lower, right, upper}
+
+	return
+}
+
+// AskDrawing returns the current drawingbox slot and it's boundaries
+func (n *Nimbus) AskDrawing(p ...int) (slot, x1, y1, x2, y2 int) {
+	slot = n.selectedDrawingBox
+	if len(p) == 1 {
+		slot = p[0]
+	}
+	box := n.drawingBoxes[slot]
+	x1 = box.x1
+	y1 = box.y1
+	x2 = box.x2
+	y2 = box.y2
+	return
+}
+
+// Clg clears the selected drawingbox
+func (n *Nimbus) Clg() {
+	// Create one big sprite with every pixel set to paperColour and draw it
+	_, x1, y1, x2, y2 := n.AskDrawing()
+	log.Printf("Clg: %d, %d, %d, %d, %d", x1, y1, x2, y2, n.paperColour)
+	width := (x2 - x1) + 1
+	height := (y2 - y1) + 1
+	blankPaper := make2dArray(width, height)
+	for x := 0; x < width; x++ {
+		for y := 0; y < height; y++ {
+			blankPaper[y][x] = 1
+		}
+	}
+	n.drawSprite(Sprite{pixels: blankPaper, x: x1, y: y1, colour: n.paperColour, over: true})
 }

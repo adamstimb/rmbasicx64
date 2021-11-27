@@ -284,6 +284,20 @@ func (bs *ByeStatement) String() string {
 	return out.String()
 }
 
+type ClgStatement struct {
+	Token token.Token
+}
+
+func (bs *ClgStatement) statementNode() {}
+func (bs *ClgStatement) TokenLiteral() string {
+	return bs.Token.Literal
+}
+func (bs *ClgStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(bs.TokenLiteral())
+	return out.String()
+}
+
 type ListStatement struct {
 	Token          token.Token
 	TextBoxSlot    Expression
@@ -525,6 +539,25 @@ func (s *SetWritingStatement) TokenLiteral() string {
 	return s.Token.Literal
 }
 func (s *SetWritingStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type SetDrawingStatement struct {
+	Token token.Token
+	Slot  Expression
+	X1    Expression
+	Y1    Expression
+	X2    Expression
+	Y2    Expression
+}
+
+func (s *SetDrawingStatement) statementNode() {}
+func (s *SetDrawingStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *SetDrawingStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(s.TokenLiteral())
 	return out.String()

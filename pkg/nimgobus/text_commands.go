@@ -49,15 +49,6 @@ func (n *Nimbus) Cls(p ...int) {
 		// invalid
 		panic("Cls accepts either 0 or 1 parameters")
 	}
-	//// Create one big sprite with every pixel set to paperColour and draw it
-	//width, height := n.videoImage.Size()
-	//blankPaper := make2dArray(width, height)
-	//for x := 0; x < width; x++ {
-	//	for y := 0; y < height; y++ {
-	//		blankPaper[y][x] = 1
-	//	}
-	//}
-	//n.drawSprite(Sprite{pixels: blankPaper, x: 0, y: 0, colour: n.paperColour, over: true})
 
 	// Create one big sprite with every pixel set to paperColour and draw it
 	_, col1, row1, col2, row2 := n.AskWriting()
