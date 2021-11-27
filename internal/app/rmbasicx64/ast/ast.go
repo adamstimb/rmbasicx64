@@ -748,9 +748,10 @@ func (s *RemStatement) String() string {
 }
 
 type PrintStatement struct {
-	Token     token.Token
-	Value     Expression
-	PrintList []interface{}
+	Token       token.Token
+	Value       Expression
+	TextBoxSlot Expression
+	PrintList   []interface{}
 }
 
 func (ps *PrintStatement) statementNode() {}

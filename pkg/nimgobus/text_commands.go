@@ -18,6 +18,17 @@ func (n *Nimbus) AskMode() int {
 	return 0 // this never happens
 }
 
+// AskWriting returns the current textbox slot and it's boundaries
+func (n *Nimbus) AskWriting() (slot, col1, row1, col2, row2 int) {
+	slot = n.selectedTextBox
+	box := n.textBoxes[slot]
+	col1 = box.col1
+	row1 = box.row1
+	col2 = box.col2
+	row2 = box.row2
+	return
+}
+
 // make2dArray initializes an empty 2d array and returns it
 func make2dArray(width, height int) [][]int {
 	a := make([][]int, height)
