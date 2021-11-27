@@ -407,6 +407,14 @@ func (p *Parser) parseByeStatement() *ast.ByeStatement {
 	return nil
 }
 
+func (p *Parser) parseClgStatement() *ast.ClgStatement {
+	stmt := &ast.ClgStatement{Token: p.curToken}
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parseEndStatement() *ast.EndStatement {
 	stmt := &ast.EndStatement{Token: p.curToken}
 	if p.endOfInstruction() {
@@ -3134,6 +3142,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseRemStatement()
 	case token.BYE:
 		return p.parseByeStatement()
+	case token.CLG:
+		return p.parseClgStatement()
 	case token.END:
 		return p.parseEndStatement()
 	case token.LIST:
