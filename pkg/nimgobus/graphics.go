@@ -924,3 +924,17 @@ func (n *Nimbus) SetDrawing(p ...int) {
 
 	return
 }
+
+// AskDrawing returns the current drawingbox slot and it's boundaries
+func (n *Nimbus) AskDrawing(p ...int) (slot, x1, y1, x2, y2 int) {
+	slot = n.selectedDrawingBox
+	if len(p) == 1 {
+		slot = p[0]
+	}
+	box := n.drawingBoxes[slot]
+	x1 = box.x1
+	y1 = box.y1
+	x2 = box.x1
+	y2 = box.y2
+	return
+}
