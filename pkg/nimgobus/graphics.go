@@ -854,3 +854,73 @@ func (n *Nimbus) SetFillStyle(style, hatching, colour2 int) {
 func (n *Nimbus) AskFillStyle() FillStyle {
 	return n.fillStyle
 }
+
+// SetDrawing selects a drawingbox if only 1 parameter is passed (index), or
+// defines a drawingbox if 5 parameters are passed (index, col1, row1, col2,
+// row2)
+func (n *Nimbus) SetDrawing(p ...int) {
+	// Validate number of parameters
+	if len(p) != 1 && len(p) != 5 {
+		// invalid
+		panic("SetDrawing accepts either 1 or 5 parameters")
+	}
+	if len(p) == 1 {
+		// Select drawingbox - validate choice first then set it
+		if p[0] < 0 || p[0] > 10 {
+			panic("SetDrawing index out of range")
+		}
+		n.selectedDrawingBox = p[0]
+		return
+	}
+	// Otherwise define textbox if index is not 0
+	if p[0] == 0 {
+		panic("SetDrawing cannot define index zero")
+	}
+	// Clamp x and y values (x > 0, x < screenwidth, y > 0, y < 250)
+	screenWidth := 320
+	if n.AskMode() == 80 {
+		screenWidth = 640
+	}
+	// x values
+	for i := 1; i < 5; i += 2 {
+		if p[i] < 0 {
+			p[i] = 0
+			continue
+		}
+		if p[i] >= screenWidth {
+			p[i] = screenWidth - 1
+			continue
+		}
+	}
+	// y values
+	for i := 2; i < 5; i += 2 {
+		if p[i] < 0 {
+			p[i] = 0
+			continue
+		}
+		if p[i] >= 250 {
+			p[i] = 250 - 1
+			continue
+		}
+	}
+	// Set bottomLeft and topRight colrows
+	var upper, lower, left, right int
+	if p[1] < p[3] {
+		left = p[1]
+		right = p[3]
+	} else {
+		left = p[3]
+		right = p[1]
+	}
+	if p[2] < p[4] {
+		lower = p[2]
+		upper = p[4]
+	} else {
+		lower = p[4]
+		upper = p[2]
+	}
+	// Set drawingbox
+	n.drawingBoxes[p[0]] = drawingBox{left, upper, right, lower}
+
+	return
+}
