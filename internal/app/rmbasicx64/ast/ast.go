@@ -391,7 +391,8 @@ func (s *RenumberStatement) String() string {
 }
 
 type ClsStatement struct {
-	Token token.Token
+	Token       token.Token
+	TextBoxSlot Expression
 }
 
 func (s *ClsStatement) statementNode() {}

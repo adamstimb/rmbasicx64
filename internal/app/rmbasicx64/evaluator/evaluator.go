@@ -2679,7 +2679,21 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 }
 
 func evalClsStatement(g *game.Game, stmt *ast.ClsStatement, env *object.Environment) object.Object {
-	g.Cls()
+	// Evaluate and handle TextBoxSlot if set
+	var TextBoxSlot int
+	if stmt.TextBoxSlot != nil {
+		obj := Eval(g, stmt.TextBoxSlot, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			TextBoxSlot = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+
+	g.Cls(TextBoxSlot)
 	g.SetCurpos(1, 1)
 	return nil
 }
