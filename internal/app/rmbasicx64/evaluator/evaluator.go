@@ -2683,16 +2683,41 @@ func getAbsPath(p string) string {
 }
 
 func evalDirStatement(g *game.Game, stmt *ast.DirStatement, env *object.Environment) object.Object {
+	oldTextBoxSlot, _, _, _, _ := g.AskWriting()
+	tempTextBoxSlot := oldTextBoxSlot
+	_, curY := g.AskCurpos()
+	// Evaluate and handle TextBoxSlot if set
+	if stmt.TextBoxSlot != nil {
+		obj := Eval(g, stmt.TextBoxSlot, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			tempTextBoxSlot = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	g.SetWriting(tempTextBoxSlot)
+
 	// evaluate path if given
 	val := ""
 	if stmt.Value != nil {
 		obj := Eval(g, stmt.Value, env)
 		if isError(obj) {
+			if oldTextBoxSlot != tempTextBoxSlot {
+				g.SetWriting(oldTextBoxSlot)
+				g.SetCurpos(1, curY)
+			}
 			return obj
 		}
 		if stringVal, ok := obj.(*object.String); ok {
 			val = stringVal.Value
 		} else {
+			if oldTextBoxSlot != tempTextBoxSlot {
+				g.SetWriting(oldTextBoxSlot)
+				g.SetCurpos(1, curY)
+			}
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
 	}
@@ -2708,6 +2733,10 @@ func evalDirStatement(g *game.Game, stmt *ast.DirStatement, env *object.Environm
 	nimbusPath := strings.ReplaceAll(systemPath[len(g.WorkspacePath):], "/", "\\")
 	files, err := filepath.Glob(systemPath)
 	if err != nil {
+		if oldTextBoxSlot != tempTextBoxSlot {
+			g.SetWriting(oldTextBoxSlot)
+			g.SetCurpos(1, curY)
+		}
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.DirectoryCannotBeFound), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 	g.Print(fmt.Sprintf("Directory of %s", nimbusPath))
@@ -2725,6 +2754,10 @@ func evalDirStatement(g *game.Game, stmt *ast.DirStatement, env *object.Environm
 	}
 	dirs, err := ioutil.ReadDir(subdirsSystemPath)
 	if err != nil {
+		if oldTextBoxSlot != tempTextBoxSlot {
+			g.SetWriting(oldTextBoxSlot)
+			g.SetCurpos(1, curY)
+		}
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 	for _, d := range dirs {
@@ -2740,6 +2773,10 @@ func evalDirStatement(g *game.Game, stmt *ast.DirStatement, env *object.Environm
 	for _, f := range files {
 		fileInfo, err := os.Stat(f)
 		if err != nil {
+			if oldTextBoxSlot != tempTextBoxSlot {
+				g.SetWriting(oldTextBoxSlot)
+				g.SetCurpos(1, curY)
+			}
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
 		fileSize := fileInfo.Size()
@@ -2753,6 +2790,10 @@ func evalDirStatement(g *game.Game, stmt *ast.DirStatement, env *object.Environm
 		}
 	}
 	g.Put(13)
+	if oldTextBoxSlot != tempTextBoxSlot {
+		g.SetWriting(oldTextBoxSlot)
+		g.SetCurpos(1, curY)
+	}
 	return nil
 }
 
