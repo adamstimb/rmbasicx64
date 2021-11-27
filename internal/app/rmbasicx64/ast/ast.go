@@ -286,6 +286,7 @@ func (bs *ByeStatement) String() string {
 
 type ListStatement struct {
 	Token          token.Token
+	TextBoxSlot    Expression
 	FromLinenumber token.Token
 	ToLinenumber   token.Token
 	FromLineOnly   bool

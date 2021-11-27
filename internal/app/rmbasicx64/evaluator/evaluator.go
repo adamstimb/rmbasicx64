@@ -2494,6 +2494,23 @@ func evalSetRadStatement(g *game.Game, stmt *ast.SetRadStatement, env *object.En
 }
 
 func evalListStatement(g *game.Game, stmt *ast.ListStatement, env *object.Environment) object.Object {
+	oldTextBoxSlot, _, _, _, _ := g.AskWriting()
+	tempTextBoxSlot := oldTextBoxSlot
+	_, curY := g.AskCurpos()
+	// Evaluate and handle TextBoxSlot if set
+	if stmt.TextBoxSlot != nil {
+		obj := Eval(g, stmt.TextBoxSlot, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			tempTextBoxSlot = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	g.SetWriting(tempTextBoxSlot)
+
 	fromLinenumber := 0
 	toLinenumber := 0
 	if stmt.FromLinenumber.Literal != "" {
@@ -2506,11 +2523,19 @@ func evalListStatement(g *game.Game, stmt *ast.ListStatement, env *object.Enviro
 	}
 	listing := env.Program.List(fromLinenumber, toLinenumber, stmt.FromLineOnly)
 	if listing == nil {
+		if oldTextBoxSlot != tempTextBoxSlot {
+			g.SetWriting(oldTextBoxSlot)
+			g.SetCurpos(1, curY)
+		}
 		return nil
 	}
 	for _, listString := range listing {
 		g.Print(listString)
 		g.Put(13)
+	}
+	if oldTextBoxSlot != tempTextBoxSlot {
+		g.SetWriting(oldTextBoxSlot)
+		g.SetCurpos(1, curY)
 	}
 	return nil
 }

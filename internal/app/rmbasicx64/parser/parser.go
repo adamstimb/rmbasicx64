@@ -422,6 +422,24 @@ func (p *Parser) parseListStatement() *ast.ListStatement {
 		// LIST
 		return stmt
 	}
+
+	// Handle optional ~e1, for TextBoxSlot
+	if p.curTokenIs(token.Tilde) {
+		p.nextToken()
+		val, ok := p.requireExpression()
+		if ok {
+			stmt.TextBoxSlot = val
+		} else {
+			return nil
+		}
+		if p.onEndOfInstruction() {
+			return stmt
+		}
+		if !p.requireComma() {
+			return nil
+		}
+	}
+
 	if p.curTokenIs(token.TO) {
 		// LIST TO lineNumber
 		p.nextToken() // consume TO
