@@ -68,6 +68,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalListStatement(g, node, env)
 	case *ast.ClsStatement:
 		return evalClsStatement(g, node, env)
+	case *ast.ClgStatement:
+		return evalClgStatement(g, node, env)
 	case *ast.HomeStatement:
 		return evalHomeStatement(g, node, env)
 	case *ast.DirStatement:
@@ -2762,6 +2764,11 @@ func evalClsStatement(g *game.Game, stmt *ast.ClsStatement, env *object.Environm
 
 	g.Cls(TextBoxSlot)
 	g.SetCurpos(1, 1)
+	return nil
+}
+
+func evalClgStatement(g *game.Game, stmt *ast.ClgStatement, env *object.Environment) object.Object {
+	g.Clg()
 	return nil
 }
 

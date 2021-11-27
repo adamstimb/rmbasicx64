@@ -920,7 +920,7 @@ func (n *Nimbus) SetDrawing(p ...int) {
 		upper = p[2]
 	}
 	// Set drawingbox
-	n.drawingBoxes[p[0]] = drawingBox{left, upper, right, lower}
+	n.drawingBoxes[p[0]] = drawingBox{left, lower, right, upper}
 
 	return
 }
@@ -934,7 +934,23 @@ func (n *Nimbus) AskDrawing(p ...int) (slot, x1, y1, x2, y2 int) {
 	box := n.drawingBoxes[slot]
 	x1 = box.x1
 	y1 = box.y1
-	x2 = box.x1
+	x2 = box.x2
 	y2 = box.y2
 	return
+}
+
+// Clg clears the selected drawingbox
+func (n *Nimbus) Clg() {
+	// Create one big sprite with every pixel set to paperColour and draw it
+	_, x1, y1, x2, y2 := n.AskDrawing()
+	log.Printf("Clg: %d, %d, %d, %d, %d", x1, y1, x2, y2, n.paperColour)
+	width := (x2 - x1) + 1
+	height := (y2 - y1) + 1
+	blankPaper := make2dArray(width, height)
+	for x := 0; x < width; x++ {
+		for y := 0; y < height; y++ {
+			blankPaper[y][x] = 1
+		}
+	}
+	n.drawSprite(Sprite{pixels: blankPaper, x: x1, y: y1, colour: n.paperColour, over: true})
 }
