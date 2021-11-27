@@ -530,6 +530,25 @@ func (s *SetWritingStatement) String() string {
 	return out.String()
 }
 
+type SetDrawingStatement struct {
+	Token token.Token
+	Slot  Expression
+	X1    Expression
+	Y1    Expression
+	X2    Expression
+	Y2    Expression
+}
+
+func (s *SetDrawingStatement) statementNode() {}
+func (s *SetDrawingStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *SetDrawingStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
 type SetPatternStatement struct {
 	Token token.Token
 	Slot  Expression
