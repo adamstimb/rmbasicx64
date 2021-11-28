@@ -784,10 +784,11 @@ func (s *RemStatement) String() string {
 }
 
 type InputStatement struct {
-	Token       token.Token
-	TextBoxSlot Expression
-	Prompt      Expression
-	ReceiveVar  *Identifier
+	Token           token.Token
+	TextBoxSlot     Expression
+	Prompt          string
+	AddQuestionMark bool
+	ReceiveVar      *Identifier
 }
 
 func (s *InputStatement) statementNode() {}

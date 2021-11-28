@@ -761,6 +761,18 @@ func (p *Parser) parseInputStatement() *ast.InputStatement {
 		}
 	}
 
+	// Get optional prompt string followed by required ; or ,
+	if p.curTokenIs(token.StringLiteral) {
+		stmt.Prompt = p.curToken.Literal
+		p.nextToken()
+		if !p.curTokenIs(token.Semicolon) && !p.curTokenIs(token.Comma) {
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.CommaSeparatorIsNeeded)
+			return nil
+		}
+		p.nextToken()
+	}
+
 	// Get required identifier
 	if !p.curTokenIs(token.IdentifierLiteral) {
 		p.ErrorTokenIndex = p.curToken.Index
@@ -768,6 +780,7 @@ func (p *Parser) parseInputStatement() *ast.InputStatement {
 		return nil
 	}
 	stmt.ReceiveVar = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	p.nextToken()
 
 	if !p.requireEndOfInstruction() {
 		return nil
