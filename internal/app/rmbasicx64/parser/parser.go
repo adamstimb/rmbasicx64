@@ -789,6 +789,51 @@ func (p *Parser) parsePrintStatement() *ast.PrintStatement {
 	return stmt
 }
 
+func (p *Parser) parsePutStatement() *ast.PutStatement {
+	stmt := &ast.PutStatement{Token: p.curToken}
+	stmt.PrintList = make([]interface{}, 0)
+	// Handle PUT without args
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+		stmt.PrintList = append(stmt.PrintList, &ast.NumericLiteral{Value: 0})
+		return stmt
+	}
+	p.nextToken()
+	// Handle optional ~e1, for TextBoxSlot
+	if p.curTokenIs(token.Tilde) {
+		p.nextToken()
+		val, ok := p.requireExpression()
+		if ok {
+			stmt.TextBoxSlot = val
+		} else {
+			return nil
+		}
+		if !p.requireComma() {
+			return nil
+		}
+	}
+	// Handle print list
+	for !(p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF)) {
+		val, ok := p.requireExpression()
+		if ok {
+			stmt.Value = val
+		} else {
+			return nil
+		}
+		stmt.PrintList = append(stmt.PrintList, val)
+		if p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF) {
+			break
+		}
+		if !p.requireComma() {
+			return nil
+		}
+	}
+	if p.requireEndOfInstruction() {
+		return stmt
+	} else {
+		return nil
+	}
+}
+
 func (p *Parser) parsePlotStatement() *ast.PlotStatement {
 	stmt := &ast.PlotStatement{Token: p.curToken}
 	// Handle PLOT without args
@@ -3262,6 +3307,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseReadStatement()
 	case token.PRINT:
 		return p.parsePrintStatement()
+	case token.PUT:
+		return p.parsePutStatement()
 	case token.PLOT:
 		return p.parsePlotStatement()
 	case token.LINE:
