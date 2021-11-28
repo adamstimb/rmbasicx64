@@ -801,6 +801,24 @@ func (ps *PrintStatement) String() string {
 	return out.String()
 }
 
+type PutStatement struct {
+	Token       token.Token
+	Value       Expression
+	TextBoxSlot Expression
+	PrintList   []interface{}
+}
+
+func (ps *PutStatement) statementNode() {}
+func (ps *PutStatement) TokenLiteral() string {
+	return ps.Token.Literal
+}
+func (ps *PutStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(ps.TokenLiteral() + " ")
+	out.WriteString(ps.Value.String())
+	return out.String()
+}
+
 type PlotStatement struct {
 	Token     token.Token
 	Value     Expression
