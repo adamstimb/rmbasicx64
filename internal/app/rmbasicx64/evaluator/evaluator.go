@@ -114,8 +114,10 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalMoveStatement(g, node, env)
 	case *ast.PrintStatement:
 		return evalPrintStatement(g, node, env)
+	case *ast.InputStatement:
+		return evalInputStatement(g, node, env)
 	case *ast.PutStatement:
-		return evalPuttStatement(g, node, env)
+		return evalPutStatement(g, node, env)
 	case *ast.PlotStatement:
 		return evalPlotStatement(g, node, env)
 	case *ast.LineStatement:
@@ -392,7 +394,85 @@ func evalPrintStatement(g *game.Game, stmt *ast.PrintStatement, env *object.Envi
 	return nil
 }
 
-func evalPuttStatement(g *game.Game, stmt *ast.PutStatement, env *object.Environment) object.Object {
+func evalInputStatement(g *game.Game, stmt *ast.InputStatement, env *object.Environment) object.Object {
+
+	oldTextBoxSlot, _, _, _, _ := g.AskWriting()
+	tempTextBoxSlot := oldTextBoxSlot
+	_, curY := g.AskCurpos()
+	// Evaluate and handle TextBoxSlot if set
+	if stmt.TextBoxSlot != nil {
+		obj := Eval(g, stmt.TextBoxSlot, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			tempTextBoxSlot = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	g.SetWriting(tempTextBoxSlot)
+
+	g.Print(stmt.Prompt)
+	if stmt.AddQuestionMark {
+		g.Print("?")
+	}
+	raw := g.Input("")
+
+	// Parse the raw input
+	suffix := stmt.ReceiveVar.Token.Literal[len(stmt.ReceiveVar.Token.Literal)-1:]
+	var obj object.Object
+	switch suffix {
+	case "$":
+		// String var:
+		obj = &object.String{Value: raw}
+	case "%":
+		// Integer var:
+		if num, err := strconv.ParseFloat(raw, 64); err == nil {
+			obj = &object.Numeric{Value: float64(int(num))}
+		} else {
+			obj = &object.Numeric{Value: 0.0}
+		}
+	default:
+		// Float var:
+		if num, err := strconv.ParseFloat(raw, 64); err == nil {
+			obj = &object.Numeric{Value: num}
+		} else {
+			obj = &object.Numeric{Value: 0.0}
+		}
+	}
+
+	// Set the return variable
+	var ok bool
+	// evaluate array subscripts, if any
+	var subscripts []int
+	if subs, obj, ok := evalArraySubscripts(g, env, stmt.ReceiveVar.Subscripts); ok {
+		// all good
+		subscripts = subs
+	} else {
+		return obj
+	}
+	if len(subscripts) > 0 {
+		// is array
+		if obj, ok = env.SetArray(stmt.ReceiveVar.Token.Literal, subscripts, obj); ok {
+			// all good
+		} else {
+			// failed
+			return obj
+		}
+	} else {
+		// is var
+		env.Set(stmt.ReceiveVar.Token.Literal, obj)
+	}
+
+	if oldTextBoxSlot != tempTextBoxSlot {
+		g.SetWriting(oldTextBoxSlot)
+		g.SetCurpos(1, curY)
+	}
+	return nil
+}
+
+func evalPutStatement(g *game.Game, stmt *ast.PutStatement, env *object.Environment) object.Object {
 	printList := []int{}
 	oldTextBoxSlot, _, _, _, _ := g.AskWriting()
 	tempTextBoxSlot := oldTextBoxSlot
