@@ -296,6 +296,21 @@ var builtins = map[string]*object.Builtin{
 			return &object.String{Value: nimbusPath}
 		},
 	},
+	"CHR$": &object.Builtin{
+		Fn: func(env *object.Environment, g *game.Game, args []object.Object) object.Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments, got %d, want %d", len(args), 0)
+			}
+			switch arg := args[0].(type) {
+			case *object.Numeric:
+				return &object.String{
+					Value: string(int32(arg.Value)),
+				}
+			default:
+				return newError("argument to `GET$` not supported, got %s", args[0].Type())
+			}
+		},
+	},
 	"GET": &object.Builtin{
 		Fn: func(env *object.Environment, g *game.Game, args []object.Object) object.Object {
 			if len(args) > 1 {

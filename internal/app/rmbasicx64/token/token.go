@@ -77,7 +77,7 @@ const (
 	CHAROVER   = "CHAROVER"
 	CHARSET    = "CHARSET"
 	CHDIR      = "CHDIR"
-	CHRstr     = "CHR"
+	CHRstr     = "CHR$"
 	CIRCLE     = "CIRCLE"
 	CLEAR      = "CLEAR"
 	CLG        = "CLG"
