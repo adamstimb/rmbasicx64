@@ -783,6 +783,23 @@ func (s *RemStatement) String() string {
 	return out.String()
 }
 
+type InputStatement struct {
+	Token       token.Token
+	TextBoxSlot Expression
+	Prompt      Expression
+	ReceiveVar  *Identifier
+}
+
+func (s *InputStatement) statementNode() {}
+func (s *InputStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *InputStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	return out.String()
+}
+
 type PrintStatement struct {
 	Token       token.Token
 	Value       Expression
