@@ -737,6 +737,44 @@ func (p *Parser) parseRenameStatement() *ast.RenameStatement {
 	}
 }
 
+func (p *Parser) parseInputStatement() *ast.InputStatement {
+	stmt := &ast.InputStatement{Token: p.curToken}
+	p.nextToken()
+	// Handle INPUT without args (return variable name is needed error)
+	if p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+		return nil
+	}
+
+	// Handle optional ~e1, for TextBoxSlot
+	if p.curTokenIs(token.Tilde) {
+		p.nextToken()
+		val, ok := p.requireExpression()
+		if ok {
+			stmt.TextBoxSlot = val
+		} else {
+			return nil
+		}
+		if !p.requireComma() {
+			return nil
+		}
+	}
+
+	// Get required identifier
+	if !p.curTokenIs(token.IdentifierLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+		return nil
+	}
+	stmt.ReceiveVar = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+
+	if !p.requireEndOfInstruction() {
+		return nil
+	}
+	return stmt
+}
+
 func (p *Parser) parsePrintStatement() *ast.PrintStatement {
 	stmt := &ast.PrintStatement{Token: p.curToken}
 	stmt.PrintList = make([]interface{}, 0)
@@ -3307,6 +3345,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseReadStatement()
 	case token.PRINT:
 		return p.parsePrintStatement()
+	case token.INPUT:
+		return p.parseInputStatement()
 	case token.PUT:
 		return p.parsePutStatement()
 	case token.PLOT:
