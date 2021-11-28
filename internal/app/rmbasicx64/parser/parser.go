@@ -770,6 +770,12 @@ func (p *Parser) parseInputStatement() *ast.InputStatement {
 			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.CommaSeparatorIsNeeded)
 			return nil
 		}
+		// Set question mark flag if ;
+		if p.curTokenIs(token.Semicolon) {
+			stmt.AddQuestionMark = true
+		} else {
+			stmt.AddQuestionMark = false
+		}
 		p.nextToken()
 	}
 

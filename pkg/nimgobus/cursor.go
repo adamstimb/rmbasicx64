@@ -68,7 +68,7 @@ func (n *Nimbus) AdvanceCursor(forceCarriageReturn bool) {
 		}
 		// Empty paper on bottom row of textbox
 		paperImg := make2dArray((x2-x1)+9, 10)
-		for x := x1; x <= x2; x++ {
+		for x := 0; x < (x2-x1)+9; x++ {
 			for y := 0; y < 10; y++ {
 				paperImg[y][x] = n.paperColour
 			}
