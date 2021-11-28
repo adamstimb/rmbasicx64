@@ -3135,6 +3135,12 @@ func (p *Parser) PrettyPrint() string {
 			p.nextToken()
 			continue
 		}
+		// Never a space after ~
+		if p.curToken.TokenType == token.Tilde {
+			lineString += "~"
+			p.nextToken()
+			continue
+		}
 		// Remove trailing space if )
 		if len(lineString) > 0 {
 			if lineString[len(lineString)-1] == ' ' && (p.curToken.TokenType == token.RightParen) {
