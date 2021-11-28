@@ -114,6 +114,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalMoveStatement(g, node, env)
 	case *ast.PrintStatement:
 		return evalPrintStatement(g, node, env)
+	case *ast.PutStatement:
+		return evalPuttStatement(g, node, env)
 	case *ast.PlotStatement:
 		return evalPlotStatement(g, node, env)
 	case *ast.LineStatement:
@@ -383,6 +385,50 @@ func evalPrintStatement(g *game.Game, stmt *ast.PrintStatement, env *object.Envi
 	}
 	g.Print(printStr)
 	g.Put(13)
+	if oldTextBoxSlot != tempTextBoxSlot {
+		g.SetWriting(oldTextBoxSlot)
+		g.SetCurpos(1, curY)
+	}
+	return nil
+}
+
+func evalPuttStatement(g *game.Game, stmt *ast.PutStatement, env *object.Environment) object.Object {
+	printList := []int{}
+	oldTextBoxSlot, _, _, _, _ := g.AskWriting()
+	tempTextBoxSlot := oldTextBoxSlot
+	_, curY := g.AskCurpos()
+	// Evaluate and handle TextBoxSlot if set
+	if stmt.TextBoxSlot != nil {
+		obj := Eval(g, stmt.TextBoxSlot, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			tempTextBoxSlot = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	g.SetWriting(tempTextBoxSlot)
+
+	for _, val := range stmt.PrintList {
+		obj := Eval(g, val.(ast.Node), env)
+		if isError(obj) {
+			if oldTextBoxSlot != tempTextBoxSlot {
+				g.SetWriting(oldTextBoxSlot)
+				g.SetCurpos(1, curY)
+			}
+			return obj
+		}
+		if numericVal, ok := obj.(*object.Numeric); ok {
+			printList = append(printList, int(numericVal.Value))
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	for _, val := range printList {
+		g.Put(val)
+	}
 	if oldTextBoxSlot != tempTextBoxSlot {
 		g.SetWriting(oldTextBoxSlot)
 		g.SetCurpos(1, curY)
