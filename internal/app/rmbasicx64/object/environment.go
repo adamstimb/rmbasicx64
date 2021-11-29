@@ -2,7 +2,6 @@ package object
 
 import (
 	"fmt"
-	"log"
 	"sort"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
@@ -465,7 +464,6 @@ func (e *Environment) GetArray(name string, subscripts []int) (Object, bool) {
 }
 
 func (e *Environment) SetArray(name string, subscripts []int, val Object) (Object, bool) {
-	//objArray, ok := e.store[storeKey{Name: name, Scope: e.scope}]
 	objArray, ok := e.store[storeKey{Name: name, Scope: 0}]
 	if !ok && e.outer != nil {
 		objArray, ok = e.outer.Get(name)
@@ -506,24 +504,13 @@ func (e *Environment) SetArray(name string, subscripts []int, val Object) (Objec
 
 func (e *Environment) Get(name string) (Object, bool) {
 
-	// list all globals
-	log.Printf("%d globals in local env: %v", len(e.globals), e.globals)
-	log.Printf("%d globals in global env: %v", len(e.GlobalEnv.globals), e.GlobalEnv.globals)
-
 	// Use current scope if local or global scope if global
-	//key := storeKey{Name: name, Scope: e.scope}
 	key := storeKey{Name: name, Scope: 0}
 	if e.IsGlobal(name) {
 		obj, ok := e.GlobalEnv.store[key]
-		//if !ok && e.outer != nil {
-		//	obj, ok = e.outer.Get(name)
-		//}
 		return obj, ok
 	} else {
 		obj, ok := e.store[key]
-		//if !ok && e.outer != nil {
-		//	obj, ok = e.outer.Get(name)
-		//}
 		return obj, ok
 	}
 }
@@ -542,7 +529,6 @@ func (e *Environment) Set(name string, val Object) Object {
 		val = &Numeric{Value: float64(int64(val.(*Numeric).Value))}
 	}
 	// Use current scope if local or global scope if global
-	//key := storeKey{Name: name, Scope: e.scope}
 	key := storeKey{Name: name, Scope: 0}
 	if e.IsGlobal(name) {
 		e.GlobalEnv.store[key] = val
