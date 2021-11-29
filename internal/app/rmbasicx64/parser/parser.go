@@ -1550,6 +1550,23 @@ func (p *Parser) parseNextStatement() *ast.NextStatement {
 	return nil
 }
 
+func (p *Parser) parseGlobalStatement() *ast.GlobalStatement {
+	stmt := &ast.GlobalStatement{Token: p.curToken}
+	p.nextToken() // consume GLOBAL
+	// Require variable name
+	if !p.curTokenIs(token.IdentifierLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+		return nil
+	}
+	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	// Require end of instruction
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parseSubroutineStatement() *ast.SubroutineStatement {
 	stmt := &ast.SubroutineStatement{Token: p.curToken}
 	p.nextToken() // consume SUBROUTINE
@@ -3294,6 +3311,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseForStatement()
 	case token.NEXT:
 		return p.parseNextStatement()
+	case token.GLOBAL:
+		return p.parseGlobalStatement()
 	case token.SUBROUTINE:
 		return p.parseSubroutineStatement()
 	case token.GOSUB:

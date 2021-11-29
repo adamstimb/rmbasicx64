@@ -160,6 +160,24 @@ func WriteExamples(workspacePath string) {
 200 ENDPROC
 `,
 		},
+		{
+			filename: "globals.BAS",
+			program: `10 GLOBAL Is_Global_Var% : GLOBAL A% : GLOBAL B% : GLOBAL C%
+20 Is_Global_Var% := 10
+30 Is_Local_Var% := 20
+40 PRINT "Main: Is_Global_Var% = "; Is_Global_Var%
+50 PRINT "Main: Is_Local_Var% = "; Is_Local_Var%
+60 Test_Globals
+70 PRINT "Main: Is_Global_Var% = "; Is_Global_Var%
+80 END
+90 PROCEDURE Test_Globals
+100   GLOBAL Is_Global_Var%
+110   PRINT "  Test_Globals: Is_Global_Var% = "; Is_Global_Var%
+120   Is_Global_Var% := 1000
+130   PRINT "  Test_Globals: Is_Global_Var% = "; Is_Global_Var%
+140 ENDPROC
+`,
+		},
 	}
 
 	for _, example := range examples {

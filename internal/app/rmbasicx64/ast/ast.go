@@ -1417,6 +1417,22 @@ func (s *NextStatement) String() string {
 	return out.String()
 }
 
+type GlobalStatement struct {
+	Token token.Token
+	Name  *Identifier
+}
+
+func (s *GlobalStatement) statementNode() {}
+func (s *GlobalStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *GlobalStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	out.WriteString(s.Name.String())
+	return out.String()
+}
+
 type DimStatement struct {
 	Token      token.Token
 	Name       *Identifier

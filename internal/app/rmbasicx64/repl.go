@@ -51,7 +51,8 @@ func welcomeScreen(g *game.Game) {
 // repl is the REPL that handles input
 func repl(g *game.Game) {
 	l := &lexer.Lexer{}
-	env := object.NewEnvironment()
+	globalEnv := object.NewEnvironment(nil)
+	env := object.NewEnvironment(globalEnv)
 	for {
 		g.Print(":")
 		rawInput := g.Input("")

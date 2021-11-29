@@ -66,6 +66,7 @@ const (
 	UnableToRemoveDirectory
 	UnableToEraseTheFile
 	UnableToRenameTheFile
+	VariableUsedAsLocal
 )
 
 // ErrorMessage returns the template error message for a given error code
@@ -135,6 +136,7 @@ func ErrorMessage(errorCode int) string {
 		UnableToRemoveDirectory:                      "Unable to remove directory",
 		UnableToEraseTheFile:                         "Unable to erase the file",
 		UnableToRenameTheFile:                        "Unable to rename the file",
+		VariableUsedAsLocal:                          "Variable used as local",
 	}
 	return errorMessages[errorCode]
 }
