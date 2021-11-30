@@ -1847,6 +1847,7 @@ func (p *Parser) parseProcedureDeclaration() *ast.ProcedureDeclaration {
 }
 
 func (p *Parser) parseProcedureCallStatement() *ast.ProcedureCallStatement {
+	log.Printf("parseProcedureCallStatement: %s", p.curToken.Literal)
 	// Require name
 	if !p.curTokenIs(token.IdentifierLiteral) {
 		p.ErrorTokenIndex = p.curToken.Index
@@ -1862,11 +1863,31 @@ func (p *Parser) parseProcedureCallStatement() *ast.ProcedureCallStatement {
 	}
 	// Optional args
 	for !p.onEndOfInstruction() && !p.curTokenIs(token.RECEIVE) {
-		// Require expression
-		if val, ok := p.requireExpression(); ok {
-			stmt.Args = append(stmt.Args, val)
+		// Catch array reference ...
+		if p.curTokenIs(token.IdentifierLiteral) && p.peekTokenIs(token.LeftParen) {
+			log.Printf("Might have array ref, curToken.Literal: %s", p.curToken.Literal)
+			ident := ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+			oldTokenPos := p.l.GetTokenPosition()
+			p.nextToken()
+			p.nextToken()
+			if p.curTokenIs(token.RightParen) {
+				// is array reference without subscripts
+				log.Printf("got array ref in proc call: %s", p.curToken.Literal)
+				ident.IsArrayReference = true
+				stmt.ArrayRefs = append(stmt.ArrayRefs, &ident)
+				p.nextToken()
+			} else {
+				// back up the lexer to the old position
+				p.l.SetTokenPosition(oldTokenPos)
+				p.nextToken()
+			}
 		} else {
-			return nil
+			// ... or require expression
+			if val, ok := p.requireExpression(); ok {
+				stmt.Args = append(stmt.Args, val)
+			} else {
+				return nil
+			}
 		}
 		// Require comma, end of instruction or return
 		if p.curTokenIs(token.Comma) {
