@@ -172,6 +172,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalForStatement(g, node, env)
 	case *ast.NextStatement:
 		return evalNextStatement(g, node, env)
+	case *ast.GlobalStatement:
+		return evalGlobalStatement(g, node, env)
 	case *ast.DimStatement:
 		return evalDimStatement(g, node, env)
 	case *ast.AskMouseStatement:
@@ -2595,6 +2597,13 @@ func evalNextStatement(g *game.Game, stmt *ast.NextStatement, env *object.Enviro
 	return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.UntilWithoutAnyRepeat), ErrorTokenIndex: stmt.Token.Index}
 }
 
+func evalGlobalStatement(g *game.Game, stmt *ast.GlobalStatement, env *object.Environment) object.Object {
+	if !env.Global(stmt.Name.Value) {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.VariableUsedAsLocal), ErrorTokenIndex: stmt.Token.Index}
+	}
+	return nil
+}
+
 func evalDimStatement(g *game.Game, stmt *ast.DimStatement, env *object.Environment) object.Object {
 	subscripts := make([]int, len(stmt.Subscripts))
 	for i := 0; i < len(stmt.Subscripts); i++ {
@@ -2604,6 +2613,9 @@ func evalDimStatement(g *game.Game, stmt *ast.DimStatement, env *object.Environm
 		} else {
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index}
 		}
+	}
+	if len(subscripts) == 0 {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.WrongNumberOfSubscripts), ErrorTokenIndex: stmt.Token.Index}
 	}
 	obj, _ := env.NewArray(stmt.Name.Value, subscripts)
 	return obj
@@ -3350,7 +3362,7 @@ func evalProcedureCallStatement(g *game.Game, stmt *ast.ProcedureCallStatement, 
 				return args[i]
 			}
 		}
-		newEnv := object.NewEnvironment()
+		newEnv := object.NewEnvironment(env.GlobalEnv)
 		newEnv.Copy(env.Dump())
 		newEnv.NewScope()
 		for i := 0; i < len(proc.ReceiveArgs); i++ {
@@ -3393,7 +3405,7 @@ func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment)
 					return subscripts[i]
 				}
 			}
-			newEnv := object.NewEnvironment()
+			newEnv := object.NewEnvironment(env.GlobalEnv)
 			newEnv.Copy(env.Dump())
 			newEnv.NewScope()
 			for i := 0; i < len(node.Subscripts); i++ {

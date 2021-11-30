@@ -40,7 +40,7 @@ func welcomeScreen(g *game.Game) {
 	g.Print("This is a tribute project and is in no way linked to or endorsed by RM plc.")
 	g.Put(13)
 	g.Put(13)
-	g.Print("RM BASICx64 Version 0.22 26th November 2021")
+	g.Print("RM BASICx64 Version 0.22 3rd December 2021")
 	g.Put(13)
 	// Generate and print workspace available notification
 	workspaceAvailable := fmt.Sprintf("%dG bytes workspace available.", bToGb(memInfo.Available))
@@ -51,7 +51,8 @@ func welcomeScreen(g *game.Game) {
 // repl is the REPL that handles input
 func repl(g *game.Game) {
 	l := &lexer.Lexer{}
-	env := object.NewEnvironment()
+	globalEnv := object.NewEnvironment(nil)
+	env := object.NewEnvironment(globalEnv)
 	for {
 		g.Print(":")
 		rawInput := g.Input("")

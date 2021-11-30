@@ -44,7 +44,7 @@ func testEval(input string) object.Object {
 	l.Scan(input)
 	p := parser.New(l, &game.Game{})
 	program := p.ParseProgram()
-	env := object.NewEnvironment()
+	env := object.NewEnvironment(nil)
 	g := &game.Game{}
 	return Eval(g, program, env)
 }

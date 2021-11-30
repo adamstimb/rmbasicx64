@@ -201,9 +201,10 @@ func (il *NumericLiteral) String() string {
 }
 
 type Identifier struct {
-	Token      token.Token // the token.IdentifierLiteral token
-	Value      string
-	Subscripts []Expression
+	Token            token.Token // the token.IdentifierLiteral token
+	Value            string
+	Subscripts       []Expression
+	IsArrayReference bool
 }
 
 func (i *Identifier) expressionNode() {}
@@ -1411,6 +1412,22 @@ func (s *NextStatement) TokenLiteral() string {
 	return s.Token.Literal
 }
 func (s *NextStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral() + " ")
+	out.WriteString(s.Name.String())
+	return out.String()
+}
+
+type GlobalStatement struct {
+	Token token.Token
+	Name  *Identifier
+}
+
+func (s *GlobalStatement) statementNode() {}
+func (s *GlobalStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *GlobalStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(s.TokenLiteral() + " ")
 	out.WriteString(s.Name.String())

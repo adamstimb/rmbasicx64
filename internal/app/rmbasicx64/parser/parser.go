@@ -1550,6 +1550,35 @@ func (p *Parser) parseNextStatement() *ast.NextStatement {
 	return nil
 }
 
+func (p *Parser) parseGlobalStatement() *ast.GlobalStatement {
+	stmt := &ast.GlobalStatement{Token: p.curToken}
+	p.nextToken() // consume GLOBAL
+	// Require variable name
+	if !p.curTokenIs(token.IdentifierLiteral) {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+		return nil
+	}
+	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	// Catch array reference
+	p.nextToken()
+	if p.curTokenIs(token.LeftParen) {
+		p.nextToken()
+		if p.curTokenIs(token.RightParen) {
+			// is array reference without subscripts
+			stmt.Name.IsArrayReference = true
+			if !p.requireClosingBracket() {
+				return nil
+			}
+		}
+	}
+	// Require end of instruction
+	if p.requireEndOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parseSubroutineStatement() *ast.SubroutineStatement {
 	stmt := &ast.SubroutineStatement{Token: p.curToken}
 	p.nextToken() // consume SUBROUTINE
@@ -1664,12 +1693,22 @@ func (p *Parser) parseDimStatement() *ast.DimStatement {
 		return nil
 	}
 	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-	// Require at least one subscript
+	// Require at least one subscript or zero if array reference
 	p.nextToken()
 	if !p.requireOpenBracket() {
 		return nil
 	}
 	for {
+		// Catch array reference
+		if p.curTokenIs(token.RightParen) {
+			// is array reference without subscripts
+			stmt.Name.IsArrayReference = true
+			if !p.requireClosingBracket() {
+				return nil
+			} else {
+				break
+			}
+		}
 		val, ok := p.requireExpression()
 		if !ok {
 			return nil
@@ -3294,6 +3333,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseForStatement()
 	case token.NEXT:
 		return p.parseNextStatement()
+	case token.GLOBAL:
+		return p.parseGlobalStatement()
 	case token.SUBROUTINE:
 		return p.parseSubroutineStatement()
 	case token.GOSUB:

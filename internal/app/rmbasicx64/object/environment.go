@@ -2,41 +2,12 @@ package object
 
 import (
 	"fmt"
+	"log"
 	"sort"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
 )
-
-//type path struct {
-//	WorkingDir string
-//	rootDir    string
-//}
-//
-//func (p *path) SetRootDir(dir string) {
-//	p.rootDir = dir
-//}
-//
-//func (p *path) GetSystemPath(suffix string) string {
-//	wd, err := os.Getwd()
-//	if err != nil {
-//		log.Fatalf("Error getting working directory: %s", err)
-//	}
-//	return path.Join(wd, suffix)
-//	//// flip the slashes if not running on Windows
-//	//rootDir := p.rootDir
-//	//workingDir := filepath.FromSlash(p.WorkingDir)
-//	//if filepath.Separator != '\\' {
-//	//	suffix = strings.ReplaceAll(suffix, "\\", "/")
-//	//	rootDir = filepath.FromSlash(rootDir)
-//	//	workingDir = strings.ReplaceAll(workingDir, "\\", "/")
-//	//}
-//	//if suffix == "" {
-//	//	return filepath.Join(p.rootDir, workingDir)
-//	//} else {
-//	//	return filepath.Join(p.rootDir, workingDir, suffix)
-//	//}
-//}
 
 type program struct {
 	lines                  map[int]string
@@ -236,6 +207,7 @@ type storeKey struct {
 type Environment struct {
 	store               map[storeKey]Object
 	globals             []string
+	GlobalEnv           *Environment
 	scope               int
 	Degrees             bool
 	outer               *Environment
@@ -249,13 +221,10 @@ type Environment struct {
 	LeaveFunctionSignal bool
 	EndProgramSignal    bool
 	ReturnVals          []Object
-	//Path                path
 }
 
-// Dump and Copy are used to transfer global data, including the program itself, from one env to another
-func (e *Environment) Dump() (store map[storeKey]Object, globals []string, scope int, degrees bool, outer *Environment, program program, jumpStack jumpStack, prerun bool, dataItems []Object, subroutines []*ast.SubroutineStatement, functions []*ast.FunctionDeclaration, procedures []*ast.ProcedureDeclaration, leaveFunctionSignal bool, endProgramSignal bool, returnVals []Object) {
-	store = e.store
-	globals = e.globals
+// Dump and Copy are used to transfer global data, including the program itself, from a parent env to a child env
+func (e *Environment) Dump() (scope int, degrees bool, outer *Environment, program program, jumpStack jumpStack, prerun bool, dataItems []Object, subroutines []*ast.SubroutineStatement, functions []*ast.FunctionDeclaration, procedures []*ast.ProcedureDeclaration, leaveFunctionSignal bool, endProgramSignal bool, returnVals []Object) {
 	scope = e.scope
 	degrees = e.Degrees
 	outer = e.outer
@@ -266,9 +235,7 @@ func (e *Environment) Dump() (store map[storeKey]Object, globals []string, scope
 	procedures = e.procedures
 	return
 }
-func (e *Environment) Copy(store map[storeKey]Object, globals []string, scope int, degrees bool, outer *Environment, program program, jumpStack jumpStack, prerun bool, dataItems []Object, subroutines []*ast.SubroutineStatement, functions []*ast.FunctionDeclaration, procedures []*ast.ProcedureDeclaration, leaveFunctionSignal bool, endProgramSignal bool, returnVals []Object) {
-	e.store = store
-	e.globals = globals
+func (e *Environment) Copy(scope int, degrees bool, outer *Environment, program program, jumpStack jumpStack, prerun bool, dataItems []Object, subroutines []*ast.SubroutineStatement, functions []*ast.FunctionDeclaration, procedures []*ast.ProcedureDeclaration, leaveFunctionSignal bool, endProgramSignal bool, returnVals []Object) {
 	e.scope = scope
 	e.Degrees = degrees
 	e.outer = outer
@@ -317,14 +284,12 @@ func (e *Environment) KillScope() {
 func (e *Environment) Global(name string) bool {
 	key := storeKey{Scope: e.scope, Name: name}
 	if _, ok := e.store[key]; ok {
-		// variable used as local error
+		log.Printf("e.Global already declared: %s", name)
+		// variable already defined in this scope
 		return false
 	} else {
-		// add variable to global scope (-1) and to list of globals
-		currentScope := e.scope
-		e.scope = -1
-		e.Set(name, nil)
-		e.scope = currentScope
+		// Register variable in globals list
+		log.Printf("e.Global Registered %s as global variable", name)
 		e.globals = append(e.globals, name)
 		return true
 	}
@@ -438,10 +403,22 @@ func calculateAddressFromArraySubscripts(bounds []int, subscripts []int) int {
 }
 
 func (e *Environment) NewArray(name string, subscripts []int) (Object, bool) {
-	_, ok := e.store[storeKey{Name: name, Scope: e.scope}]
-	if ok {
-		return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.ArrayAlreadyDimensioned), ErrorTokenIndex: 0}, false
+	//_, ok := e.store[storeKey{Name: name, Scope: e.scope}]
+	//if ok {
+	//	return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.ArrayAlreadyDimensioned), ErrorTokenIndex: 0}, false
+	//}
+	key := storeKey{Scope: 0, Name: name}
+	// Don't redimension existing arrays
+	if e.IsGlobal(name) {
+		if _, ok := e.GlobalEnv.store[key]; ok {
+			return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.ArrayAlreadyDimensioned), ErrorTokenIndex: 0}, false
+		}
+	} else {
+		if _, ok := e.store[key]; ok {
+			return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.ArrayAlreadyDimensioned), ErrorTokenIndex: 0}, false
+		}
 	}
+	// Go ahead and dimension the array
 	maxIndex := calculateAddressFromArraySubscripts(subscripts, subscripts)
 	// initialize items according to type
 	items := make([]Object, maxIndex)
@@ -454,22 +431,41 @@ func (e *Environment) NewArray(name string, subscripts []int) (Object, bool) {
 			items[i] = &String{Value: ""}
 		}
 	}
-	e.store[storeKey{Name: name, Scope: e.scope}] = &Array{Items: items, Subscripts: subscripts}
-	return e.store[storeKey{Name: name, Scope: e.scope}], true
+	//e.store[storeKey{Name: name, Scope: e.scope}] = &Array{Items: items, Subscripts: subscripts}
+	//return e.store[storeKey{Name: name, Scope: e.scope}], true
+	var newArray Array
+	if e.IsGlobal(name) {
+		log.Printf("e.NewArray created global array %s", name)
+		newArray = Array{Items: items, Subscripts: subscripts}
+		e.GlobalEnv.store[key] = &newArray
+	} else {
+		log.Printf("e.NewArray created local array %s", name)
+		newArray = Array{Items: items, Subscripts: subscripts}
+		e.store[key] = &newArray
+	}
+	return &newArray, true
 }
 
 func (e *Environment) GetArray(name string, subscripts []int) (Object, bool) {
-	objArray, ok := e.store[storeKey{Name: name, Scope: e.scope}]
-	if !ok && e.outer != nil {
-		objArray, ok = e.outer.GetArray(name, subscripts)
+	//objArray, ok := e.store[storeKey{Name: name, Scope: e.scope}]
+	//if !ok && e.outer != nil {
+	//	objArray, ok = e.outer.GetArray(name, subscripts)
+	//}
+	key := storeKey{Scope: 0, Name: name}
+	var arr *Array
+	var ok bool
+	if e.IsGlobal(name) {
+		arr, ok = e.GlobalEnv.store[key].(*Array)
+	} else {
+		arr, ok = e.store[key].(*Array)
 	}
 	if !ok {
 		return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.FunctionArrayNotFound), ErrorTokenIndex: 0}, false
 	}
-	arr, ok := objArray.(*Array)
-	if !ok {
-		return arr, ok
-	}
+	//arr, ok := objArray.(*Array)
+	//if !ok {
+	//	return arr, ok
+	//}
 	// Validate subscripts
 	if len(subscripts) != len(arr.Subscripts) {
 		// Wrong number of subscripts error
@@ -487,10 +483,18 @@ func (e *Environment) GetArray(name string, subscripts []int) (Object, bool) {
 }
 
 func (e *Environment) SetArray(name string, subscripts []int, val Object) (Object, bool) {
-	objArray, ok := e.store[storeKey{Name: name, Scope: e.scope}]
-	if !ok && e.outer != nil {
-		objArray, ok = e.outer.Get(name)
+	key := storeKey{Scope: 0, Name: name}
+	var arr *Array
+	var ok bool
+	if e.IsGlobal(name) {
+		arr, ok = e.GlobalEnv.store[key].(*Array)
+	} else {
+		arr, ok = e.store[key].(*Array)
 	}
+	//objArray, ok := e.store[storeKey{Name: name, Scope: 0}]
+	//if !ok && e.outer != nil {
+	//	objArray, ok = e.outer.Get(name)
+	//}
 	if !ok {
 		return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.FunctionArrayNotFound), ErrorTokenIndex: 0}, false
 	}
@@ -506,7 +510,7 @@ func (e *Environment) SetArray(name string, subscripts []int, val Object) (Objec
 	if val.Type() == NUMERIC_OBJ && name[len(name)-1:] == "%" {
 		val = &Numeric{Value: float64(int64(val.(*Numeric).Value))}
 	}
-	arr, _ := objArray.(*Array)
+	//arr, _ := objArray.(*Array)
 	// Validate subscripts
 	if len(subscripts) != len(arr.Subscripts) {
 		// Wrong number of subscripts error
@@ -521,21 +525,26 @@ func (e *Environment) SetArray(name string, subscripts []int, val Object) (Objec
 	index := calculateAddressFromArraySubscripts(arr.Subscripts, subscripts)
 	// Set item obj
 	arr.Items[index] = val
-	e.store[storeKey{Name: name, Scope: e.scope}] = arr
+	if e.IsGlobal(name) {
+		e.GlobalEnv.store[key] = arr
+	} else {
+		e.store[key] = arr
+	}
+	//e.store[storeKey{Name: name, Scope: e.scope}] = arr
 	return arr, true
 }
 
 func (e *Environment) Get(name string) (Object, bool) {
+
 	// Use current scope if local or global scope if global
-	key := storeKey{Name: name, Scope: e.scope}
+	key := storeKey{Name: name, Scope: 0}
 	if e.IsGlobal(name) {
-		key.Scope = -1
+		obj, ok := e.GlobalEnv.store[key]
+		return obj, ok
+	} else {
+		obj, ok := e.store[key]
+		return obj, ok
 	}
-	obj, ok := e.store[key]
-	if !ok && e.outer != nil {
-		obj, ok = e.outer.Get(name)
-	}
-	return obj, ok
 }
 
 func (e *Environment) Set(name string, val Object) Object {
@@ -552,11 +561,12 @@ func (e *Environment) Set(name string, val Object) Object {
 		val = &Numeric{Value: float64(int64(val.(*Numeric).Value))}
 	}
 	// Use current scope if local or global scope if global
-	key := storeKey{Name: name, Scope: e.scope}
+	key := storeKey{Name: name, Scope: 0}
 	if e.IsGlobal(name) {
-		key.Scope = -1
+		e.GlobalEnv.store[key] = val
+	} else {
+		e.store[key] = val
 	}
-	e.store[key] = val
 	return val
 }
 func (e *Environment) Wipe() {
@@ -568,7 +578,7 @@ func (e *Environment) Wipe() {
 	e.scope = 0
 }
 
-func NewEnvironment() *Environment {
+func NewEnvironment(GlobalEnv *Environment) *Environment {
 	s := make(map[storeKey]Object)
 	p := &program{}
 	j := &jumpStack{}
@@ -576,6 +586,7 @@ func NewEnvironment() *Environment {
 	j.New()
 	return &Environment{
 		store:     s,
+		GlobalEnv: GlobalEnv,
 		Degrees:   true,
 		outer:     nil,
 		Program:   *p,
@@ -586,7 +597,7 @@ func NewEnvironment() *Environment {
 }
 
 func NewEnclosedEnvironment(outer *Environment) *Environment {
-	env := NewEnvironment()
+	env := NewEnvironment(nil)
 	env.outer = outer
 	return env
 }
