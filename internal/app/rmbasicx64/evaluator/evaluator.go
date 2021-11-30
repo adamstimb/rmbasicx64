@@ -2614,6 +2614,9 @@ func evalDimStatement(g *game.Game, stmt *ast.DimStatement, env *object.Environm
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index}
 		}
 	}
+	if len(subscripts) == 0 {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.WrongNumberOfSubscripts), ErrorTokenIndex: stmt.Token.Index}
+	}
 	obj, _ := env.NewArray(stmt.Name.Value, subscripts)
 	return obj
 }

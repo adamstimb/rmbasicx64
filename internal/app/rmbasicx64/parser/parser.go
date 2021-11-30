@@ -1560,8 +1560,20 @@ func (p *Parser) parseGlobalStatement() *ast.GlobalStatement {
 		return nil
 	}
 	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	// Catch array reference
+	p.nextToken()
+	if p.curTokenIs(token.LeftParen) {
+		p.nextToken()
+		if p.curTokenIs(token.RightParen) {
+			// is array reference without subscripts
+			stmt.Name.IsArrayReference = true
+			if !p.requireClosingBracket() {
+				return nil
+			}
+		}
+	}
 	// Require end of instruction
-	if p.endOfInstruction() {
+	if p.requireEndOfInstruction() {
 		return stmt
 	}
 	return nil
@@ -1681,12 +1693,22 @@ func (p *Parser) parseDimStatement() *ast.DimStatement {
 		return nil
 	}
 	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-	// Require at least one subscript
+	// Require at least one subscript or zero if array reference
 	p.nextToken()
 	if !p.requireOpenBracket() {
 		return nil
 	}
 	for {
+		// Catch array reference
+		if p.curTokenIs(token.RightParen) {
+			// is array reference without subscripts
+			stmt.Name.IsArrayReference = true
+			if !p.requireClosingBracket() {
+				return nil
+			} else {
+				break
+			}
+		}
 		val, ok := p.requireExpression()
 		if !ok {
 			return nil

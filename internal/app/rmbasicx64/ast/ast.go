@@ -201,9 +201,10 @@ func (il *NumericLiteral) String() string {
 }
 
 type Identifier struct {
-	Token      token.Token // the token.IdentifierLiteral token
-	Value      string
-	Subscripts []Expression
+	Token            token.Token // the token.IdentifierLiteral token
+	Value            string
+	Subscripts       []Expression
+	IsArrayReference bool
 }
 
 func (i *Identifier) expressionNode() {}
