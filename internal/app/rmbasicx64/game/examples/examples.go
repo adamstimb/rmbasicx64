@@ -181,6 +181,18 @@ func WriteExamples(workspacePath string) {
 180 ENDPROC
 `,
 		},
+		{
+			filename: "procrefs.BAS",
+			program: `10 DIM Test%(10)
+20 END
+30 PROCEDURE Do_Stuff Stuff%()
+40   PRINT "Do_Stuff: Stuff%(0) = "; Stuff%(0)
+50 ENDPROC
+60 FUNCTION Get_Stuff(Stuff%())
+70   RETURN Stuff%(0) + 1000
+80 ENDFUN
+`,
+		},
 	}
 
 	for _, example := range examples {

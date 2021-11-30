@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 
@@ -1652,8 +1653,24 @@ func (p *Parser) parseFunctionDeclaration() *ast.FunctionDeclaration {
 			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
 			return nil
 		} else {
-			stmt.ReceiveArgs = append(stmt.ReceiveArgs, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+			ident := ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 			p.nextToken()
+			// Catch array reference
+			if p.curTokenIs(token.LeftParen) {
+				p.nextToken()
+				if p.curTokenIs(token.RightParen) {
+					// is array reference without subscripts
+					ident.IsArrayReference = true
+					if !p.requireClosingBracket() {
+						return nil
+					}
+				}
+				log.Printf("got array ref: %s", ident.Value)
+				log.Printf("curToken.Literal: %s", p.curToken.Literal)
+			}
+			stmt.ReceiveArgs = append(stmt.ReceiveArgs, &ident)
+			//stmt.ReceiveArgs = append(stmt.ReceiveArgs, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+			//p.nextToken()
 		}
 		if p.curTokenIs(token.RightParen) {
 			p.nextToken()
@@ -1760,8 +1777,24 @@ func (p *Parser) parseProcedureDeclaration() *ast.ProcedureDeclaration {
 			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
 			return nil
 		} else {
-			stmt.ReceiveArgs = append(stmt.ReceiveArgs, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+			ident := ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 			p.nextToken()
+			// Catch array reference
+			if p.curTokenIs(token.LeftParen) {
+				p.nextToken()
+				if p.curTokenIs(token.RightParen) {
+					// is array reference without subscripts
+					ident.IsArrayReference = true
+					if !p.requireClosingBracket() {
+						return nil
+					}
+				}
+				p.nextToken()
+				log.Printf("got array ref: %s", ident.Value)
+			}
+			stmt.ReceiveArgs = append(stmt.ReceiveArgs, &ident)
+			//stmt.ReceiveArgs = append(stmt.ReceiveArgs, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+			//p.nextToken()
 		}
 		// Require comma, end of instruction or return
 		if p.curTokenIs(token.Comma) {
