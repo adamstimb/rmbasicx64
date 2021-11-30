@@ -3405,6 +3405,7 @@ func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment)
 					return subscripts[i]
 				}
 			}
+			// Handle refs
 			newEnv := object.NewEnvironment(env.GlobalEnv)
 			newEnv.Copy(env.Dump())
 			newEnv.NewScope()
