@@ -171,11 +171,16 @@ func (p *Parser) parseBoolean() ast.Expression {
 
 func (p *Parser) parseIdentifier() ast.Expression {
 	ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-	// If immediately followed by ( then it's an array or function
+	// If immediately followed by ( then it's an array, array reference, or function
 	if p.peekTokenIs(token.LeftParen) {
 		p.nextToken()
 		p.nextToken()
 		for {
+			// If we see a right paren now, it's an array reference
+			if p.curTokenIs(token.RightParen) {
+				ident.IsArrayReference = true
+				return ident
+			}
 			val, ok := p.requireExpression()
 			if !ok {
 				return nil
@@ -1863,31 +1868,12 @@ func (p *Parser) parseProcedureCallStatement() *ast.ProcedureCallStatement {
 	}
 	// Optional args
 	for !p.onEndOfInstruction() && !p.curTokenIs(token.RECEIVE) {
-		// Catch array reference ...
-		if p.curTokenIs(token.IdentifierLiteral) && p.peekTokenIs(token.LeftParen) {
-			log.Printf("Might have array ref, curToken.Literal: %s", p.curToken.Literal)
-			ident := ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-			oldTokenPos := p.l.GetTokenPosition()
-			p.nextToken()
-			p.nextToken()
-			if p.curTokenIs(token.RightParen) {
-				// is array reference without subscripts
-				log.Printf("got array ref in proc call: %s", p.curToken.Literal)
-				ident.IsArrayReference = true
-				stmt.ArrayRefs = append(stmt.ArrayRefs, &ident)
-				p.nextToken()
-			} else {
-				// back up the lexer to the old position
-				p.l.SetTokenPosition(oldTokenPos)
-				p.nextToken()
-			}
+		// require expression
+		if val, ok := p.requireExpression(); ok {
+
+			stmt.Args = append(stmt.Args, val)
 		} else {
-			// ... or require expression
-			if val, ok := p.requireExpression(); ok {
-				stmt.Args = append(stmt.Args, val)
-			} else {
-				return nil
-			}
+			return nil
 		}
 		// Require comma, end of instruction or return
 		if p.curTokenIs(token.Comma) {
