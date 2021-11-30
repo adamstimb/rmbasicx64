@@ -1870,7 +1870,16 @@ func (p *Parser) parseProcedureCallStatement() *ast.ProcedureCallStatement {
 	for !p.onEndOfInstruction() && !p.curTokenIs(token.RECEIVE) {
 		// require expression
 		if val, ok := p.requireExpression(); ok {
-
+			// Catch array reference
+			if arrObj, ok := val.(*ast.Identifier); ok {
+				log.Printf("got *ast.Identifier from requireExpression: %s", arrObj.Value)
+				if arrObj.IsArrayReference {
+					log.Printf("IsArrayReference: %t", arrObj.IsArrayReference)
+					stmt.ArrayRefs = append(stmt.ArrayRefs, arrObj.Token.Literal)
+				}
+			} else {
+				stmt.Args = append(stmt.Args, val)
+			}
 			stmt.Args = append(stmt.Args, val)
 		} else {
 			return nil
