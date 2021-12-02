@@ -184,13 +184,27 @@ func WriteExamples(workspacePath string) {
 		{
 			filename: "procrefs.BAS",
 			program: `10 DIM Test%(10)
-			15 Do_Stuff Test%()
+11 Test%(1) := 1000
+15 Do_Stuff Test%()
+16 PRINT "Main: Test%(2) = "; Test%(2)
+17 PRINT "Get_Stuff(Test%()) = "; Get_Stuff(Test%())
 20 END
 30 PROCEDURE Do_Stuff Stuff%()
-40   PRINT "Do_Stuff: Stuff%(0) = "; Stuff%(0)
+40   PRINT "Do_Stuff: Stuff%(1) = "; Stuff%(1)
+45   Stuff%(2) = 2000
 50 ENDPROC
 60 FUNCTION Get_Stuff(Stuff%())
 70   RESULT Stuff%(0) + 1000
+80 ENDFUN
+`,
+		},
+		{
+			filename: "funcrefs.BAS",
+			program: `10 DIM Test%(10)
+15 PRINT "Get_Stuff(Test%()) = "; Get_Stuff(Test%())
+20 END
+60 FUNCTION Get_Stuff(Stuff%())
+70   RESULT Stuff%(5) + 1000
 80 ENDFUN
 `,
 		},

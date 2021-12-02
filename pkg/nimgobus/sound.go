@@ -264,7 +264,7 @@ func (n *Nimbus) Bell() {
 	oldreleaseTime := n.voice1.envelope.releaseTime
 
 	// Ring da bell
-	n.voice1.note = 18
+	n.voice1.note = 9
 	n.voice1.envelope.attackTime = 0
 	n.voice1.envelope.attackLevel = 15
 	n.voice1.envelope.decayTime = 0

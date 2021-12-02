@@ -2,7 +2,6 @@ package object
 
 import (
 	"fmt"
-	"log"
 	"sort"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
@@ -224,7 +223,11 @@ type Environment struct {
 }
 
 // Dump and Copy are used to transfer global data, including the program itself, from a parent env to a child env
-func (e *Environment) Dump() (scope int, degrees bool, outer *Environment, program program, jumpStack jumpStack, prerun bool, dataItems []Object, subroutines []*ast.SubroutineStatement, functions []*ast.FunctionDeclaration, procedures []*ast.ProcedureDeclaration, leaveFunctionSignal bool, endProgramSignal bool, returnVals []Object) {
+func (e *Environment) Dump() (scope int, degrees bool, outer *Environment,
+	program program, jumpStack jumpStack, prerun bool,
+	dataItems []Object, subroutines []*ast.SubroutineStatement, functions []*ast.FunctionDeclaration,
+	procedures []*ast.ProcedureDeclaration, leaveFunctionSignal bool, endProgramSignal bool,
+	returnVals []Object) {
 	scope = e.scope
 	degrees = e.Degrees
 	outer = e.outer
@@ -235,7 +238,11 @@ func (e *Environment) Dump() (scope int, degrees bool, outer *Environment, progr
 	procedures = e.procedures
 	return
 }
-func (e *Environment) Copy(scope int, degrees bool, outer *Environment, program program, jumpStack jumpStack, prerun bool, dataItems []Object, subroutines []*ast.SubroutineStatement, functions []*ast.FunctionDeclaration, procedures []*ast.ProcedureDeclaration, leaveFunctionSignal bool, endProgramSignal bool, returnVals []Object) {
+func (e *Environment) Copy(scope int, degrees bool, outer *Environment,
+	program program, jumpStack jumpStack, prerun bool,
+	dataItems []Object, subroutines []*ast.SubroutineStatement, functions []*ast.FunctionDeclaration,
+	procedures []*ast.ProcedureDeclaration, leaveFunctionSignal bool, endProgramSignal bool,
+	returnVals []Object) {
 	e.scope = scope
 	e.Degrees = degrees
 	e.outer = outer
@@ -284,12 +291,10 @@ func (e *Environment) KillScope() {
 func (e *Environment) Global(name string) bool {
 	key := storeKey{Scope: e.scope, Name: name}
 	if _, ok := e.store[key]; ok {
-		log.Printf("e.Global already declared: %s", name)
 		// variable already defined in this scope
 		return false
 	} else {
 		// Register variable in globals list
-		log.Printf("e.Global Registered %s as global variable", name)
 		e.globals = append(e.globals, name)
 		return true
 	}
@@ -322,6 +327,12 @@ func (e *Environment) PopData() Object {
 
 func (e *Environment) DeleteData() {
 	e.dataItems = []Object{}
+}
+
+func (e *Environment) DeleteStore() {
+	e.store = make(map[storeKey]Object)
+	e.globals = []string{}
+	e.GlobalEnv.store = make(map[storeKey]Object)
 }
 
 func (e *Environment) PushSubroutine(sub *ast.SubroutineStatement) {
@@ -435,11 +446,9 @@ func (e *Environment) NewArray(name string, subscripts []int) (Object, bool) {
 	//return e.store[storeKey{Name: name, Scope: e.scope}], true
 	var newArray Array
 	if e.IsGlobal(name) {
-		log.Printf("e.NewArray created global array %s", name)
 		newArray = Array{Items: items, Subscripts: subscripts}
 		e.GlobalEnv.store[key] = &newArray
 	} else {
-		log.Printf("e.NewArray created local array %s", name)
 		newArray = Array{Items: items, Subscripts: subscripts}
 		e.store[key] = &newArray
 	}
@@ -491,10 +500,6 @@ func (e *Environment) SetArray(name string, subscripts []int, val Object) (Objec
 	} else {
 		arr, ok = e.store[key].(*Array)
 	}
-	//objArray, ok := e.store[storeKey{Name: name, Scope: 0}]
-	//if !ok && e.outer != nil {
-	//	objArray, ok = e.outer.Get(name)
-	//}
 	if !ok {
 		return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.FunctionArrayNotFound), ErrorTokenIndex: 0}, false
 	}
