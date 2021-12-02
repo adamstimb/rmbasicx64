@@ -437,3 +437,13 @@ func (s *Lexer) NextToken() token.Token {
 	s.currentTokenPosition++
 	return s.Tokens[s.currentTokenPosition-1]
 }
+
+// GetTokenPosition returns the current token position
+func (s *Lexer) GetTokenPosition() int {
+	return s.currentTokenPosition
+}
+
+// SetTokenPosition sets the current token position
+func (s *Lexer) SetTokenPosition(position int) {
+	s.currentTokenPosition = position
+}

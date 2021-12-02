@@ -203,6 +203,7 @@ func (il *NumericLiteral) String() string {
 type Identifier struct {
 	Token            token.Token // the token.IdentifierLiteral token
 	Value            string
+	ArrayRefs        []string
 	Subscripts       []Expression
 	IsArrayReference bool
 }
@@ -1345,6 +1346,7 @@ type ProcedureCallStatement struct {
 	Name            *Identifier
 	LineNumber      int
 	StatementNumber int
+	ArrayRefs       []string
 	Args            []Expression
 	ReceiveArgs     []*Identifier
 }

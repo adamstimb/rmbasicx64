@@ -170,11 +170,16 @@ func (p *Parser) parseBoolean() ast.Expression {
 
 func (p *Parser) parseIdentifier() ast.Expression {
 	ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-	// If immediately followed by ( then it's an array or function
+	// If immediately followed by ( then it's an array, array reference, or function
 	if p.peekTokenIs(token.LeftParen) {
 		p.nextToken()
 		p.nextToken()
 		for {
+			// If we see a right paren now, it's an array reference
+			if p.curTokenIs(token.RightParen) {
+				ident.IsArrayReference = true
+				return ident
+			}
 			val, ok := p.requireExpression()
 			if !ok {
 				return nil
@@ -182,7 +187,6 @@ func (p *Parser) parseIdentifier() ast.Expression {
 				ident.Subscripts = append(ident.Subscripts, val)
 			}
 			if p.curTokenIs(token.RightParen) {
-				//p.nextToken()
 				break
 			}
 			if !p.requireComma() {
@@ -1652,8 +1656,20 @@ func (p *Parser) parseFunctionDeclaration() *ast.FunctionDeclaration {
 			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
 			return nil
 		} else {
-			stmt.ReceiveArgs = append(stmt.ReceiveArgs, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+			ident := ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 			p.nextToken()
+			// Catch array reference
+			if p.curTokenIs(token.LeftParen) {
+				p.nextToken()
+				if p.curTokenIs(token.RightParen) {
+					// is array reference without subscripts
+					ident.IsArrayReference = true
+					if !p.requireClosingBracket() {
+						return nil
+					}
+				}
+			}
+			stmt.ReceiveArgs = append(stmt.ReceiveArgs, &ident)
 		}
 		if p.curTokenIs(token.RightParen) {
 			p.nextToken()
@@ -1760,8 +1776,21 @@ func (p *Parser) parseProcedureDeclaration() *ast.ProcedureDeclaration {
 			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
 			return nil
 		} else {
-			stmt.ReceiveArgs = append(stmt.ReceiveArgs, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+			ident := ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 			p.nextToken()
+			// Catch array reference
+			if p.curTokenIs(token.LeftParen) {
+				p.nextToken()
+				if p.curTokenIs(token.RightParen) {
+					// is array reference without subscripts
+					ident.IsArrayReference = true
+					if !p.requireClosingBracket() {
+						return nil
+					}
+				}
+				p.nextToken()
+			}
+			stmt.ReceiveArgs = append(stmt.ReceiveArgs, &ident)
 		}
 		// Require comma, end of instruction or return
 		if p.curTokenIs(token.Comma) {
@@ -1829,7 +1858,7 @@ func (p *Parser) parseProcedureCallStatement() *ast.ProcedureCallStatement {
 	}
 	// Optional args
 	for !p.onEndOfInstruction() && !p.curTokenIs(token.RECEIVE) {
-		// Require expression
+		// require expression
 		if val, ok := p.requireExpression(); ok {
 			stmt.Args = append(stmt.Args, val)
 		} else {

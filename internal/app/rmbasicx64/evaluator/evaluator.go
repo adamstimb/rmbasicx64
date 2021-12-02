@@ -2752,13 +2752,13 @@ func prerun(g *game.Game, env *object.Environment) bool {
 	// register all functions, procedures, subroutines and collect data.
 	l := &lexer.Lexer{}
 	env.Program.Start()
+	env.DeleteStore()
 	env.DeleteData()
 	env.DeleteSubroutines()
 	env.DeleteFunctions()
 	env.DeleteProcedures()
 	env.Prerun = true
 	for !env.Program.EndOfProgram() {
-		//log.Printf("%s", env.Program.GetLine())
 		l.Scan(env.Program.GetLine())
 		p := parser.New(l, g)
 		line := p.ParseLine()
@@ -2808,6 +2808,7 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 	l := &lexer.Lexer{}
 	env.Prerun = false
 	env.Program.Start()
+	env.DeleteStore()
 	env.EndProgramSignal = false
 	env.LeaveFunctionSignal = false
 	// If a line number was passed, attempt to jump to it and return error if this fails
@@ -2825,7 +2826,6 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 	}
 	// And away we go
 	for !env.Program.EndOfProgram() && !g.BreakInterruptDetected && !env.EndProgramSignal {
-		//log.Printf("%s", env.Program.GetLine())
 		l.Scan(env.Program.GetLine())
 		p := parser.New(l, g)
 		line := p.ParseLine()
@@ -3395,9 +3395,12 @@ func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment)
 	if builtin, ok := builtins[node.Value]; ok {
 		return builtin
 	}
-	if len(node.Subscripts) > 0 {
+	if len(node.Subscripts) > 0 || len(node.ArrayRefs) > 0 {
 		if fun, ok := env.GetFunction(node.Value); ok {
 			// Handle function
+			newEnv := object.NewEnvironment(env.GlobalEnv)
+			newEnv.Copy(env.Dump())
+			newEnv.NewScope()
 			subscripts := make([]object.Object, len(node.Subscripts))
 			for i := 0; i < len(node.Subscripts); i++ {
 				subscripts[i] = Eval(g, node.Subscripts[i], env)
@@ -3405,9 +3408,6 @@ func evalIdentifier(g *game.Game, node *ast.Identifier, env *object.Environment)
 					return subscripts[i]
 				}
 			}
-			newEnv := object.NewEnvironment(env.GlobalEnv)
-			newEnv.Copy(env.Dump())
-			newEnv.NewScope()
 			for i := 0; i < len(node.Subscripts); i++ {
 				obj := newEnv.Set(fun.ReceiveArgs[i].Value, subscripts[i])
 				if isError(obj) {

@@ -292,7 +292,8 @@ func (n *Nimbus) Put(c int) {
 	curX, curY := n.convertColRow(absCurPos)
 	// Handle bell char (doesn't print anything, just does a BEEEP!)
 	if c == 7 {
-		n.Bell()
+		n.SetSound(true)
+		go n.Bell()
 		return
 	}
 	// Draw the char (unless CR) and advance the cursor
