@@ -112,6 +112,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalSetConfigBootStatement(g, node, env)
 	case *ast.SetSoundStatement:
 		return evalSetSoundStatement(g, node, env)
+	case *ast.SetToneStatement:
+		return evalSetToneStatement(g, node, env)
 	case *ast.SetVoiceStatement:
 		return evalSetVoiceStatement(g, node, env)
 	case *ast.SetEnvelopeStatement:
@@ -2267,6 +2269,21 @@ func evalSetSoundStatement(g *game.Game, stmt *ast.SetSoundStatement, env *objec
 	}
 	if val, ok := obj.(*object.Numeric); ok {
 		g.SetSound(isTruthy(val))
+		return val
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+}
+
+func evalSetToneStatement(g *game.Game, stmt *ast.SetToneStatement, env *object.Environment) object.Object {
+	obj := Eval(g, stmt.Value, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		if g.AskSound() {
+			g.SetTone(isTruthy(val))
+		}
 		return val
 	} else {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}

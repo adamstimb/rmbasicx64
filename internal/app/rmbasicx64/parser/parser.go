@@ -3000,6 +3000,21 @@ func (p *Parser) parseSetSoundStatement() *ast.SetSoundStatement {
 	return nil
 }
 
+func (p *Parser) parseSetToneStatement() *ast.SetToneStatement {
+	stmt := &ast.SetToneStatement{Token: p.curToken}
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index
+		return nil
+	}
+	stmt.Value = p.parseExpression(LOWEST)
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parseSetVoiceStatement() *ast.SetVoiceStatement {
 	stmt := &ast.SetVoiceStatement{Token: p.curToken}
 	p.nextToken()
@@ -3662,6 +3677,8 @@ func (p *Parser) parseStatement() ast.Statement {
 			return p.parseSetPatternStatement()
 		case token.SOUND:
 			return p.parseSetSoundStatement()
+		case token.TONE:
+			return p.parseSetToneStatement()
 		case token.VOICE:
 			return p.parseSetVoiceStatement()
 		case token.ENVELOPE:
