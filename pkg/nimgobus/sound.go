@@ -326,6 +326,7 @@ func (n *Nimbus) Note(pitch1, pitch2, duration, volume, envelope int) bool {
 		note.envelope = n.envelopes[10+n.selectedVoice]
 	} else {
 		note.envelope = n.envelopes[n.voices[n.selectedVoice].selectedEnvelope]
+		note.envelope.sustainTime = 5
 	}
 	// Handle volume
 	if volume > 0 {

@@ -1259,17 +1259,21 @@ func evalNoteStatement(g *game.Game, stmt *ast.NoteStatement, env *object.Enviro
 		}
 	}
 	// Get duration
-	obj = Eval(g, stmt.Duration, env)
-	if isError(obj) {
-		return obj
-	}
-	if val, ok := obj.(*object.Numeric); ok {
-		if val.Value < 0.0 {
-			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+	if stmt.Duration != nil {
+		obj = Eval(g, stmt.Duration, env)
+		if isError(obj) {
+			return obj
 		}
-		duration = int(val.Value)
+		if val, ok := obj.(*object.Numeric); ok {
+			if val.Value < 0.0 {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
+			duration = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
 	} else {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		duration = -1
 	}
 	// Get volume
 	if stmt.Volume != nil {

@@ -235,6 +235,16 @@ func WriteExamples(workspacePath string) {
 230 NEXT K%
 `,
 		},
+		{
+			filename: "music2.BAS",
+			program: `10 SET SOUND TRUE
+20 SET ENVELOPE 5 TO 10, 15; 0, 15; 0, 15; 10 
+30 SET ENVELOPE 5
+40 FOR I% = 1 TO 30
+50   NOTE PITCH (RND(3), RND(11))
+60 NEXT I%
+`,
+		},
 	}
 
 	for _, example := range examples {
