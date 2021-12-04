@@ -389,7 +389,7 @@ func (e *Environment) DeleteProcedures() {
 func calculateAddressFromArraySubscripts(bounds []int, subscripts []int) int {
 	// Special case of 1D array
 	if len(bounds) == 1 {
-		return subscripts[0] + 1
+		return subscripts[0] //+ 1
 	}
 	// Use method for row-major calculation: https://www.geeksforgeeks.org/calculating-the-address-of-an-element-in-an-n-dimensional-array/
 	internalSequence := []int{}
@@ -430,7 +430,7 @@ func (e *Environment) NewArray(name string, subscripts []int) (Object, bool) {
 		}
 	}
 	// Go ahead and dimension the array
-	maxIndex := calculateAddressFromArraySubscripts(subscripts, subscripts)
+	maxIndex := calculateAddressFromArraySubscripts(subscripts, subscripts) + 1
 	// initialize items according to type
 	items := make([]Object, maxIndex)
 	if name[len(name)-1:] != "$" {
@@ -481,7 +481,7 @@ func (e *Environment) GetArray(name string, subscripts []int) (Object, bool) {
 		return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.WrongNumberOfSubscripts), ErrorTokenIndex: 0}, false
 	}
 	for i := 0; i < len(subscripts); i++ {
-		if subscripts[i] >= arr.Subscripts[i] || subscripts[i] < 0 {
+		if subscripts[i] > arr.Subscripts[i] || subscripts[i] < 0 {
 			// Subscript out of range error
 			return &Error{Message: syntaxerror.ErrorMessage(syntaxerror.ArraySubscriptIsWrong), ErrorTokenIndex: 0}, false
 		}
@@ -528,6 +528,7 @@ func (e *Environment) SetArray(name string, subscripts []int, val Object) (Objec
 		}
 	}
 	index := calculateAddressFromArraySubscripts(arr.Subscripts, subscripts)
+	//log.Printf("Setting array %s[%v] with index %v to %v", name, subscripts, index, val)
 	// Set item obj
 	arr.Items[index] = val
 	if e.IsGlobal(name) {

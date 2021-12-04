@@ -110,6 +110,10 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalSetPatternStatement(g, node, env)
 	case *ast.SetConfigBootStatement:
 		return evalSetConfigBootStatement(g, node, env)
+	case *ast.SetSoundStatement:
+		return evalSetSoundStatement(g, node, env)
+	case *ast.SetVoiceStatement:
+		return evalSetVoiceStatement(g, node, env)
 	case *ast.MoveStatement:
 		return evalMoveStatement(g, node, env)
 	case *ast.PrintStatement:
@@ -132,6 +136,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalPointsStatement(g, node, env)
 	case *ast.FloodStatement:
 		return evalFloodStatement(g, node, env)
+	case *ast.NoteStatement:
+		return evalNoteStatement(g, node, env)
 	case *ast.GotoStatement:
 		return evalGotoStatement(g, node, env)
 	case *ast.EditStatement:
@@ -1215,6 +1221,97 @@ func evalSetFillStyleStatement(g *game.Game, stmt *ast.SetFillStyleStatement, en
 	return nil
 }
 
+func evalNoteStatement(g *game.Game, stmt *ast.NoteStatement, env *object.Environment) object.Object {
+	var pitch1 int
+	var pitch2 int
+	var duration int
+	var volume int
+	var envelope int
+	// Get pitch1
+	obj := Eval(g, stmt.Pitch1, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		if val.Value < 1.0 || val.Value > 388.0 {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+		pitch1 = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Get pitch2
+	if stmt.Pitch2 != nil {
+		obj = Eval(g, stmt.Pitch2, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			if val.Value < 1.0 || val.Value > 388.0 {
+
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
+			pitch2 = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	// Get duration
+	obj = Eval(g, stmt.Duration, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		if val.Value < 0.0 {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+		duration = int(val.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Get volume
+	if stmt.Volume != nil {
+		obj = Eval(g, stmt.Volume, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			if val.Value < 0.0 || val.Value > 15.0 {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
+			volume = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	} else {
+		volume = -1
+	}
+	// Get envelope
+	if stmt.Envelope != nil {
+		obj = Eval(g, stmt.Volume, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			if val.Value < 1.0 || val.Value > 10.0 {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
+			volume = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	} else {
+		envelope = -1
+	}
+	// Execute
+	if g.AskSound() {
+		for !g.Note(pitch1, pitch2, duration, volume, envelope) {
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+	return nil
+}
+
 func evalSaveStatement(g *game.Game, stmt *ast.SaveStatement, env *object.Environment) object.Object {
 	obj := Eval(g, stmt.Value, env)
 	if isError(obj) {
@@ -2157,6 +2254,37 @@ func evalSetConfigBootStatement(g *game.Game, stmt *ast.SetConfigBootStatement, 
 	}
 }
 
+func evalSetSoundStatement(g *game.Game, stmt *ast.SetSoundStatement, env *object.Environment) object.Object {
+	obj := Eval(g, stmt.Value, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		g.SetSound(isTruthy(val))
+		return val
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+}
+
+func evalSetVoiceStatement(g *game.Game, stmt *ast.SetVoiceStatement, env *object.Environment) object.Object {
+	obj := Eval(g, stmt.Value, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		if val.Value < 1.0 || val.Value > 3.0 {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+		if g.AskSound() {
+			g.SetVoice(int(val.Value) - 1)
+		}
+		return val
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+}
+
 func evalGotoStatement(g *game.Game, stmt *ast.GotoStatement, env *object.Environment) object.Object {
 	// Get line number direct from literal
 	val, _ := strconv.ParseFloat(stmt.Linenumber.Literal, 64)
@@ -2402,6 +2530,7 @@ func evalRepeatStatement(g *game.Game, stmt *ast.RepeatStatement, env *object.En
 }
 
 func evalArraySubscripts(g *game.Game, env *object.Environment, subscripts []ast.Expression) (evaluatedSubscripts []int, obj object.Object, ok bool) {
+	evaluatedSubscripts = make([]int, len(subscripts))
 	for i := 0; i < len(subscripts); i++ {
 		obj := Eval(g, subscripts[i], env)
 		if val, ok := obj.(*object.Numeric); ok {
@@ -2605,20 +2734,26 @@ func evalGlobalStatement(g *game.Game, stmt *ast.GlobalStatement, env *object.En
 }
 
 func evalDimStatement(g *game.Game, stmt *ast.DimStatement, env *object.Environment) object.Object {
-	subscripts := make([]int, len(stmt.Subscripts))
-	for i := 0; i < len(stmt.Subscripts); i++ {
-		obj := Eval(g, stmt.Subscripts[i], env)
-		if val, ok := obj.(*object.Numeric); ok {
-			subscripts[i] = int(val.Value)
-		} else {
-			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index}
+	for _, item := range stmt.Payload {
+		subscripts := make([]int, len(item.Subscripts))
+		for i := 0; i < len(item.Subscripts); i++ {
+			obj := Eval(g, item.Subscripts[i], env)
+			if val, ok := obj.(*object.Numeric); ok {
+				subscripts[i] = int(val.Value)
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index}
+			}
+		}
+		if len(subscripts) == 0 {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.WrongNumberOfSubscripts), ErrorTokenIndex: stmt.Token.Index}
+		}
+		obj, _ := env.NewArray(item.Name.Value, subscripts)
+		// return if object is error
+		if _, ok := obj.(*object.Error); ok {
+			return obj
 		}
 	}
-	if len(subscripts) == 0 {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.WrongNumberOfSubscripts), ErrorTokenIndex: stmt.Token.Index}
-	}
-	obj, _ := env.NewArray(stmt.Name.Value, subscripts)
-	return obj
+	return nil
 }
 
 func evalAskMouseStatement(g *game.Game, stmt *ast.AskMouseStatement, env *object.Environment) object.Object {
@@ -2809,6 +2944,7 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 	env.Prerun = false
 	env.Program.Start()
 	env.DeleteStore()
+	env.JumpStack.New()
 	env.EndProgramSignal = false
 	env.LeaveFunctionSignal = false
 	// If a line number was passed, attempt to jump to it and return error if this fails
@@ -2829,6 +2965,7 @@ func evalRunStatement(g *game.Game, stmt *ast.RunStatement, env *object.Environm
 		l.Scan(env.Program.GetLine())
 		p := parser.New(l, g)
 		line := p.ParseLine()
+		//log.Printf("%s", env.Program.GetLine())
 		// Check of parser errors here.  Parser errors are handled just like evaluation errors but
 		// obviously we'll skip evaluation if parsing already failed.
 		if errorMsg, hasError := p.GetError(); hasError {
@@ -3506,21 +3643,12 @@ func evalIfStatement(g *game.Game, ie *ast.IfStatement, env *object.Environment)
 
 func isTruthy(obj object.Object) bool {
 	val := obj.(*object.Numeric).Value
+	// In RM Basic -1 was true, any other value was false
 	if val == -1.0 {
 		return true
 	} else {
 		return false
 	}
-	//switch obj {
-	//case NULL:
-	//	return false
-	//case TRUE:
-	//	return true
-	//case FALSE:
-	//	return false
-	//default:
-	//	return true
-	//}
 }
 
 func evalInfixExpression(operator string, left, right object.Object) object.Object {

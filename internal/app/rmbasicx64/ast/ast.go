@@ -318,6 +318,26 @@ func (s *ListStatement) String() string {
 	return out.String()
 }
 
+type NoteStatement struct {
+	Token    token.Token
+	Pitch1   Expression
+	Pitch2   Expression
+	Duration Expression
+	Volume   Expression
+	Envelope Expression
+	Voice    Expression
+}
+
+func (s *NoteStatement) statementNode() {}
+func (s *NoteStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *NoteStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
 type RunStatement struct {
 	Token      token.Token
 	Linenumber token.Token
@@ -717,6 +737,36 @@ func (s *SetConfigBootStatement) TokenLiteral() string {
 	return s.Token.Literal
 }
 func (s *SetConfigBootStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type SetSoundStatement struct {
+	Token token.Token
+	Value Expression
+}
+
+func (s *SetSoundStatement) statementNode() {}
+func (s *SetSoundStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *SetSoundStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type SetVoiceStatement struct {
+	Token token.Token
+	Value Expression
+}
+
+func (s *SetVoiceStatement) statementNode() {}
+func (s *SetVoiceStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *SetVoiceStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(s.TokenLiteral())
 	return out.String()
@@ -1436,10 +1486,16 @@ func (s *GlobalStatement) String() string {
 	return out.String()
 }
 
-type DimStatement struct {
-	Token      token.Token
+type DimStatementPayloadItem struct {
 	Name       *Identifier
 	Subscripts []Expression
+}
+
+type DimStatement struct {
+	Token   token.Token
+	Payload []DimStatementPayloadItem
+	//Name       *Identifier
+	//Subscripts []Expression
 }
 
 func (s *DimStatement) statementNode() {}
@@ -1449,7 +1505,6 @@ func (s *DimStatement) TokenLiteral() string {
 func (s *DimStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(s.TokenLiteral() + " ")
-	out.WriteString(s.Name.String())
 	return out.String()
 }
 

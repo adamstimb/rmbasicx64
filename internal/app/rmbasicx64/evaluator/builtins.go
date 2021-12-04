@@ -375,4 +375,29 @@ var builtins = map[string]*object.Builtin{
 			}
 		},
 	},
+	"PITCH": &object.Builtin{
+		Fn: func(env *object.Environment, g *game.Game, args []object.Object) object.Object {
+			if len(args) != 2 {
+				return newError("wrong number of arguments, got %d, want %d", len(args), 1)
+			}
+			var octave, note int
+			switch arg := args[0].(type) {
+			case *object.Numeric:
+				octave = int(arg.Value)
+			default:
+				return newError("argument to `PITCH` not supported, got %s", args[0].Type())
+			}
+			switch arg := args[1].(type) {
+			case *object.Numeric:
+				note = int(arg.Value)
+			default:
+				return newError("argument to `PITCH` not supported, got %s", args[1].Type())
+			}
+			retval := 148 + ((octave)*12 + note)
+			return &object.Numeric{
+				Value: float64(retval),
+			}
+
+		},
+	},
 }

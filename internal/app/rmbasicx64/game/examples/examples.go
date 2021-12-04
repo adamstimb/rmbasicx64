@@ -208,6 +208,33 @@ func WriteExamples(workspacePath string) {
 80 ENDFUN
 `,
 		},
+		{
+			filename: "music1.BAS",
+			program: `10 SET SOUND TRUE
+20 DIM First%(53), Second%(53)
+30 FOR I% = 0 TO 53
+40   READ First%(I%)
+50   DATA 0,100,15,4,50,15,2,100,15,7,50,15
+60   DATA 4,50,15,2,50,15,0,50,15,2,100,15,7,50,15 
+70   DATA 4,50,15,2,50,15,0,50,15,2,50,15
+80   DATA 4,50,15,5,50,15,4,100,15,2,50,15
+90   DATA 0,150,15
+100 NEXT I%
+110 FOR J% = 0 TO 53
+120   READ Second%(J%)
+130   DATA 4,100,15,0,50,15,7,150,15,0,100,15
+140   DATA 4,50,15,0,2,0,7,150,15,0,100,15,4,50,15 
+150   DATA 5,100,15,2,50,15,7,100,15,0,2,0,5,50,15 
+160   DATA 0,2,0,4,150,15,0,0,0,0,0,0
+170 NEXT J%
+180 FOR K% = 0 TO 51 STEP 3
+190   SET VOICE 1
+200   NOTE PITCH(1, First%(K%)), First%(K% + 1), First%(K% + 2)
+210   SET VOICE 2
+220   NOTE PITCH (0, Second%(K%)), Second%(K% + 1), Second%(K% + 2)
+230 NEXT K%
+`,
+		},
 	}
 
 	for _, example := range examples {

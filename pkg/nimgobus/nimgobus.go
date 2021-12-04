@@ -144,11 +144,10 @@ type Nimbus struct {
 	MouseButton            int                  //
 	MouseOn                bool                 //
 	sound                  bool                 // 3-channel Nimbus synth chip goodness
-	voice1                 voice                //
-	voice2                 voice                //
-	voice3                 voice                //
+	voices                 []voice              //
 	envelopes              []envelope           //
 	selectedVoice          int                  //
+	selectedEnvelope       int                  //
 	BreakInterruptDetected bool                 // Flag is set to true if user makes a <BREAK>
 }
 
@@ -244,34 +243,18 @@ func (n *Nimbus) Update(PaddingX, PaddingY int, Scale float64) {
 	// sound
 	if n.sound {
 		// NewContext only needs to come from one voice
-		if n.voice1.audioContext == nil {
-			n.voice1.audioContext = audio.NewContext(sampleRate)
+		if n.voices[0].audioContext == nil {
+			n.voices[0].audioContext = audio.NewContext(sampleRate)
 		}
-		if n.voice1.player == nil {
-			var err error
-			n.voice1.player, err = audio.NewPlayer(n.voice1.audioContext, &stream{voice: &n.voice1})
-			if err != nil {
-				log.Printf("Could not start voice1 audio: %e", err)
-			} else {
-				n.voice1.player.Play()
-			}
-		}
-		if n.voice2.player == nil {
-			var err error
-			n.voice2.player, err = audio.NewPlayer(n.voice1.audioContext, &stream{voice: &n.voice2})
-			if err != nil {
-				log.Printf("Could not start voice2 audio: %e", err)
-			} else {
-				n.voice2.player.Play()
-			}
-		}
-		if n.voice3.player == nil {
-			var err error
-			n.voice3.player, err = audio.NewPlayer(n.voice1.audioContext, &stream{voice: &n.voice3})
-			if err != nil {
-				log.Printf("Could not start voice3 audio: %e", err)
-			} else {
-				n.voice2.player.Play()
+		for v := 0; v < len(n.voices); v++ {
+			if n.voices[v].player == nil {
+				var err error
+				n.voices[v].player, err = audio.NewPlayer(n.voices[0].audioContext, &stream{voice: &n.voices[v]})
+				if err != nil {
+					log.Printf("Could not start voice %d audio: %e", v, err)
+				} else {
+					n.voices[v].player.Play()
+				}
 			}
 		}
 	}
