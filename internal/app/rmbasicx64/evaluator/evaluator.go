@@ -1294,7 +1294,7 @@ func evalNoteStatement(g *game.Game, stmt *ast.NoteStatement, env *object.Enviro
 	}
 	// Get envelope
 	if stmt.Envelope != nil {
-		obj = Eval(g, stmt.Volume, env)
+		obj = Eval(g, stmt.Envelope, env)
 		if isError(obj) {
 			return obj
 		}

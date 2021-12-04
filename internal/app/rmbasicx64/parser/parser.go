@@ -555,21 +555,33 @@ func (p *Parser) parseNoteStatement() *ast.NoteStatement {
 		}
 	}
 	// Handle options list
-	for !p.onEndOfInstruction() {
+	for {
+		if p.onEndOfInstruction() {
+			break
+		}
 		tokenType := p.curToken.TokenType
 		switch tokenType {
 		case token.VOICE:
 			p.nextToken()
-			stmt.Voice = p.parseExpression(LOWEST)
+			if val, ok := p.requireExpression(); ok {
+				stmt.Voice = val
+			} else {
+				return nil
+			}
 		case token.ENVELOPE:
 			p.nextToken()
-			stmt.Envelope = p.parseExpression(LOWEST)
+			if val, ok := p.requireExpression(); ok {
+				stmt.Envelope = val
+			} else {
+				return nil
+			}
 		default:
 			p.ErrorTokenIndex = p.curToken.Index
 			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.UnknownSetAskAttribute)
 			return nil
+
 		}
-		p.nextToken()
+		//p.nextToken()
 	}
 	return stmt
 }

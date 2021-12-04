@@ -245,6 +245,33 @@ func WriteExamples(workspacePath string) {
 60 NEXT I%
 `,
 		},
+		{
+			filename: "music3.BAS",
+			program: `10 SET SOUND TRUE
+20 SET SOUND TRUE
+30 DIM First%(35), Second%(35)
+40 FOR I% = 0 TO 35
+50   READ First%(I%)
+60   DATA 0,3,4,2,2,3,7,2,4,2,2,2,0,2,2,3,7,2,4,2,2,2,0,2,2,2
+70   DATA 4,2,5,2,4,3,2,2,0,4
+80 NEXT I%
+90 FOR J% = 0 TO 35
+100   READ Second%(J%)
+110   DATA 4,3,0,2,7,4,0,3,4,1,1,7,4,1,3,4,2,5,3,2,2,7,3
+120   DATA 1,1,5,2,1,1,4,4,1,0,1,0,1
+130 NEXT J%
+140 SET ENVELOPE 1 TO 0, 0; 2, 0; 0, 0; 0
+150 SET ENVELOPE 2 TO 5, 15; 10, 15; 0, 15; 70 
+160 SET ENVELOPE 3 TO 10, 15; 20, 15; 0, 15; 70 
+170 SET ENVELOPE 4 TO 15, 15; 30, 15; 0, 15; 105 
+180 FOR K% = 0 TO 34 STEP 2
+190   SET VOICE 1
+200   NOTE PITCH(1, First%(K%)) ENVELOPE First%(K% + 1)
+210   SET VOICE 2
+220   NOTE PITCH(0, Second%(K%)) ENVELOPE Second%(K% + 1)
+230 NEXT K%
+`,
+		},
 	}
 
 	for _, example := range examples {
