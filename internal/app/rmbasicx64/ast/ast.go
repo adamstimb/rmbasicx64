@@ -338,6 +338,28 @@ func (s *NoteStatement) String() string {
 	return out.String()
 }
 
+type SetEnvelopeStatement struct {
+	Token        token.Token
+	Slot         Expression
+	AttackTime   Expression
+	AttackeLevel Expression
+	DecayTime    Expression
+	DecayLevel   Expression
+	SustainTime  Expression
+	SustainLevel Expression
+	ReleaseTime  Expression
+}
+
+func (s *SetEnvelopeStatement) statementNode() {}
+func (s *SetEnvelopeStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *SetEnvelopeStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
 type RunStatement struct {
 	Token      token.Token
 	Linenumber token.Token

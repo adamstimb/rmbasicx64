@@ -574,6 +574,75 @@ func (p *Parser) parseNoteStatement() *ast.NoteStatement {
 	return stmt
 }
 
+func (p *Parser) parseSetEnvelopeStatement() *ast.SetEnvelopeStatement {
+	stmt := &ast.SetEnvelopeStatement{Token: p.curToken}
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index + 1
+		return nil
+	}
+	p.nextToken()
+	// Get Slot, Row
+	if val, ok := p.requireExpression(); ok {
+		stmt.Slot = val
+	} else {
+		return nil
+	}
+	if p.onEndOfInstruction() {
+		// SET ENVELOPE e1
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	if val, ok := p.requireExpression(); ok {
+		stmt.Row = val
+	} else {
+		return nil
+	}
+	// Get TO
+	if !p.requireTo() {
+		return nil
+	}
+	// Get c1,
+	if val, ok := p.requireExpression(); ok {
+		stmt.C1 = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	// Get c2,
+	if val, ok := p.requireExpression(); ok {
+		stmt.C2 = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	// Get c3,
+	if val, ok := p.requireExpression(); ok {
+		stmt.C3 = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	// Get c4
+	if val, ok := p.requireExpression(); ok {
+		stmt.C4 = val
+	} else {
+		return nil
+	}
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parseRunStatement() *ast.RunStatement {
 	stmt := &ast.RunStatement{Token: p.curToken}
 	p.nextToken()
@@ -3565,6 +3634,8 @@ func (p *Parser) parseStatement() ast.Statement {
 			return p.parseSetSoundStatement()
 		case token.VOICE:
 			return p.parseSetVoiceStatement()
+		case token.ENVELOPE:
+			return p.parseSetEnvelopeStatement()
 		case token.CONFIG:
 			p.nextToken()
 			switch p.curToken.TokenType {
