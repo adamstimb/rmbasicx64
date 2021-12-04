@@ -270,7 +270,7 @@ func (n *Nimbus) SetSound(v bool) {
 		}
 		n.sound = true
 		n.selectedVoice = 0
-		n.selectedEnvelope = 0
+		//n.selectedEnvelope = 0
 		go n.PlayQueues()
 	} else {
 		n.sound = false
@@ -281,8 +281,21 @@ func (n *Nimbus) SetVoice(v int) {
 	n.selectedVoice = v
 }
 
-func (n *Nimbus) SetEnvelope(e int) {
-	n.selectedEnvelope = e
+func (n *Nimbus) SetEnvelope(slot, attackTime, attackLevel, decayTime, decayLevel,
+	sustainTime, sustainLevel, releaseTime int) {
+	if attackTime < 0 {
+		// Select envelope
+		n.voices[n.selectedVoice].selectedEnvelope = slot
+	} else {
+		// Define envelope
+		n.envelopes[slot].attackTime = attackTime
+		n.envelopes[slot].attackLevel = attackLevel
+		n.envelopes[slot].decayTime = decayTime
+		n.envelopes[slot].decayLevel = decayLevel
+		n.envelopes[slot].sustainTime = sustainTime
+		n.envelopes[slot].sustainLevel = sustainLevel
+		n.envelopes[slot].releaseTime = releaseTime
+	}
 }
 
 func (n *Nimbus) Note(pitch1, pitch2, duration, volume, envelope int) bool {
@@ -312,7 +325,7 @@ func (n *Nimbus) Note(pitch1, pitch2, duration, volume, envelope int) bool {
 		n.envelopes[10+n.selectedVoice].sustainLevel = 15
 		note.envelope = n.envelopes[10+n.selectedVoice]
 	} else {
-		note.envelope = n.envelopes[n.selectedEnvelope]
+		note.envelope = n.envelopes[n.voices[n.selectedVoice].selectedEnvelope]
 	}
 	// Handle volume
 	if volume > 0 {

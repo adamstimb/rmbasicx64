@@ -80,75 +80,75 @@ type FillStyle struct {
 // Nimbus acts as a container for all the components of the Nimbus monitor.  You
 // only need to call the Init() method after declaring a new Nimbus.
 type Nimbus struct {
-	PaddingX               int
-	PaddingY               int
-	Scale                  float64
-	Monitor                *ebiten.Image        // The Monitor image including background
-	muVideoMemory          sync.Mutex           //
-	videoMemory            [250][640]int        // Represents the video memory, basically a 640x250 array of integers represents the Nimbus colour index of each pixel
-	muVideoMemoryOverlay   sync.Mutex           //
-	videoMemoryOverlay     [250][640]int        // A copy of the video memory where temporal things like cursors can be drawn
-	videoImage             *ebiten.Image        // An ebiten image derived from videoMemoryOverlay
-	muDrawQueue            sync.Mutex           //
-	drawQueue              []Sprite             // A queue of sprites to be written to videoMemory
-	redrawComplete         bool                 // Flag to indicate if nimgobus is working on the drawQueue
-	muBorderImage          sync.Mutex           //
-	borderImage            *ebiten.Image        // An ebiten image representing the Nimbus monitor's background
-	mode                   int                  // The current screen mode as set by SET MODE
-	basicColours           []color.RGBA         // An array of the Nimbus's 16 built-in colours
-	textBoxes              [10]textBox          // All defined textboxes
-	drawingBoxes           [10]drawingBox       // All define drawing boxes
-	imageBlocks            [100]imageBlock      // Images loaded into memory as "blocks"
-	logoImage              [][]int              // The "RM Nimbus" branding image
-	charImages0            [256][][]int         // An array of 2d arrays for each char in this charset
-	charImages1            [256][][]int         // as above
-	pointsStyles           [][][]int            // An array of 2d arrays representing the built-in points styles
-	pointsStyle            int                  // The current points style
-	patterns               [][4][4]int          // The brush patterns
-	hatchings              [][16][16]int        // The fill hatchings
-	fillStyle              FillStyle            // The current fill style
-	useFillStyle           bool                 // Set to true to render with fill style
-	borderSize             int                  // The width of the border in pixels
-	borderColour           int                  // The current border colour
-	paperColour            int                  // The current paper colour
-	penColour              int                  // The current pen colour
-	charset                int                  // The current char set (0 or 1)
-	cursorCharset          int                  // The current cursor char set (0 or 1)
-	cursorChar             int                  // The current cursor char
-	brush                  int                  // The current drawing/plot brush
-	plotDirection          int                  // The current plot direction
-	plotFont               int                  // The current plot font
-	plotSizeX              int                  // The current plot size x
-	plotSizeY              int                  // The current plot size y
-	over                   bool                 // The drawing mode (XOR)
-	selectedTextBox        int                  // The current textbox
-	selectedDrawingBox     int                  // The current drawing box
-	defaultHighResPalette  []int                // The default palette for high-res (mode 80)
-	defaultLowResPalette   []int                // The default palette for low-res (mode 40)
-	palette                []int                // The current palette
-	muColourFlashSettings  sync.Mutex           //
-	colourFlashSettings    []colourFlashSetting // Colour flash settings for each palette slot
-	cursorPosition         colRow               // The current cursor position
-	cursorMode             int                  // The current cursor mode
-	muCursorFlash          sync.Mutex           //
-	cursorFlash            bool                 // Cursor flash flag: Everytime this changes the cursor with flash if enabled
-	cursorFlashEnabled     bool                 // Flag to indicate if cursor flash is enabled
-	colourFlash            int                  // The colour flash counter
-	deleteMode             bool                 // true if delete mode selected
-	deleteModeCursorImage  [][]int              // The special cursor for delete mode
-	muKeyBuffer            sync.Mutex           //
-	keyBuffer              []int                // Nimgobus needs it's own key buffer since ebiten's only deals with printable chars
-	charRepeat             repeatingChar        // Used by the keyBuffer to dynamically limit key presses
-	MouseX                 int                  // Mouse position and button press
-	MouseY                 int                  //
-	MouseButton            int                  //
-	MouseOn                bool                 //
-	sound                  bool                 // 3-channel Nimbus synth chip goodness
-	voices                 []voice              //
-	envelopes              []envelope           //
-	selectedVoice          int                  //
-	selectedEnvelope       int                  //
-	BreakInterruptDetected bool                 // Flag is set to true if user makes a <BREAK>
+	PaddingX              int
+	PaddingY              int
+	Scale                 float64
+	Monitor               *ebiten.Image        // The Monitor image including background
+	muVideoMemory         sync.Mutex           //
+	videoMemory           [250][640]int        // Represents the video memory, basically a 640x250 array of integers represents the Nimbus colour index of each pixel
+	muVideoMemoryOverlay  sync.Mutex           //
+	videoMemoryOverlay    [250][640]int        // A copy of the video memory where temporal things like cursors can be drawn
+	videoImage            *ebiten.Image        // An ebiten image derived from videoMemoryOverlay
+	muDrawQueue           sync.Mutex           //
+	drawQueue             []Sprite             // A queue of sprites to be written to videoMemory
+	redrawComplete        bool                 // Flag to indicate if nimgobus is working on the drawQueue
+	muBorderImage         sync.Mutex           //
+	borderImage           *ebiten.Image        // An ebiten image representing the Nimbus monitor's background
+	mode                  int                  // The current screen mode as set by SET MODE
+	basicColours          []color.RGBA         // An array of the Nimbus's 16 built-in colours
+	textBoxes             [10]textBox          // All defined textboxes
+	drawingBoxes          [10]drawingBox       // All define drawing boxes
+	imageBlocks           [100]imageBlock      // Images loaded into memory as "blocks"
+	logoImage             [][]int              // The "RM Nimbus" branding image
+	charImages0           [256][][]int         // An array of 2d arrays for each char in this charset
+	charImages1           [256][][]int         // as above
+	pointsStyles          [][][]int            // An array of 2d arrays representing the built-in points styles
+	pointsStyle           int                  // The current points style
+	patterns              [][4][4]int          // The brush patterns
+	hatchings             [][16][16]int        // The fill hatchings
+	fillStyle             FillStyle            // The current fill style
+	useFillStyle          bool                 // Set to true to render with fill style
+	borderSize            int                  // The width of the border in pixels
+	borderColour          int                  // The current border colour
+	paperColour           int                  // The current paper colour
+	penColour             int                  // The current pen colour
+	charset               int                  // The current char set (0 or 1)
+	cursorCharset         int                  // The current cursor char set (0 or 1)
+	cursorChar            int                  // The current cursor char
+	brush                 int                  // The current drawing/plot brush
+	plotDirection         int                  // The current plot direction
+	plotFont              int                  // The current plot font
+	plotSizeX             int                  // The current plot size x
+	plotSizeY             int                  // The current plot size y
+	over                  bool                 // The drawing mode (XOR)
+	selectedTextBox       int                  // The current textbox
+	selectedDrawingBox    int                  // The current drawing box
+	defaultHighResPalette []int                // The default palette for high-res (mode 80)
+	defaultLowResPalette  []int                // The default palette for low-res (mode 40)
+	palette               []int                // The current palette
+	muColourFlashSettings sync.Mutex           //
+	colourFlashSettings   []colourFlashSetting // Colour flash settings for each palette slot
+	cursorPosition        colRow               // The current cursor position
+	cursorMode            int                  // The current cursor mode
+	muCursorFlash         sync.Mutex           //
+	cursorFlash           bool                 // Cursor flash flag: Everytime this changes the cursor with flash if enabled
+	cursorFlashEnabled    bool                 // Flag to indicate if cursor flash is enabled
+	colourFlash           int                  // The colour flash counter
+	deleteMode            bool                 // true if delete mode selected
+	deleteModeCursorImage [][]int              // The special cursor for delete mode
+	muKeyBuffer           sync.Mutex           //
+	keyBuffer             []int                // Nimgobus needs it's own key buffer since ebiten's only deals with printable chars
+	charRepeat            repeatingChar        // Used by the keyBuffer to dynamically limit key presses
+	MouseX                int                  // Mouse position and button press
+	MouseY                int                  //
+	MouseButton           int                  //
+	MouseOn               bool                 //
+	sound                 bool                 // 3-channel Nimbus synth chip goodness
+	voices                []voice              //
+	envelopes             []envelope           //
+	selectedVoice         int                  //
+	//selectedEnvelope       int                  //
+	BreakInterruptDetected bool // Flag is set to true if user makes a <BREAK>
 }
 
 // Init initializes a new Nimbus.  You must call this method after declaring a
