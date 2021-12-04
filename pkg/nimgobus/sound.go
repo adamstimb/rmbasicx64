@@ -47,6 +47,7 @@ type voice struct {
 	released         bool
 	muQueue          sync.Mutex
 	queue            []noteItem
+	tone             bool
 }
 
 // Add a note to the queue if the queue is not full
@@ -267,6 +268,7 @@ func (n *Nimbus) SetSound(v bool) {
 			n.voices[i].envelope.releaseTime = 0
 			n.voices[i].envelopePosition = -1
 			n.voices[i].selectedEnvelope = 1
+			n.voices[i].tone = true
 		}
 		n.sound = true
 		n.selectedVoice = 0
@@ -275,6 +277,10 @@ func (n *Nimbus) SetSound(v bool) {
 	} else {
 		n.sound = false
 	}
+}
+
+func (n *Nimbus) SetTone(t bool) {
+	n.voices[n.selectedVoice].tone = t
 }
 
 func (n *Nimbus) SetVoice(v int) {
