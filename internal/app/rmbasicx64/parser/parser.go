@@ -590,7 +590,7 @@ func (p *Parser) parseSetEnvelopeStatement() *ast.SetEnvelopeStatement {
 	}
 	if p.onEndOfInstruction() {
 		// SET ENVELOPE e1
-		return nil
+		return stmt
 	}
 	// SET ENVELOPE e1 TO e2, e3; e4, e5; e6, e7; e7
 	// Get TO
