@@ -592,55 +592,73 @@ func (p *Parser) parseSetEnvelopeStatement() *ast.SetEnvelopeStatement {
 		// SET ENVELOPE e1
 		return nil
 	}
-	if !p.requireComma() {
-		return nil
-	}
-	if val, ok := p.requireExpression(); ok {
-		stmt.Row = val
-	} else {
-		return nil
-	}
+	// SET ENVELOPE e1 TO e2, e3; e4, e5; e6, e7; e7
 	// Get TO
 	if !p.requireTo() {
 		return nil
 	}
-	// Get c1,
+	// Get AttackTime, AttackLevel;
 	if val, ok := p.requireExpression(); ok {
-		stmt.C1 = val
+		stmt.AttackTime = val
 	} else {
 		return nil
 	}
 	if !p.requireComma() {
 		return nil
 	}
-	// Get c2,
 	if val, ok := p.requireExpression(); ok {
-		stmt.C2 = val
+		stmt.AttackLevel = val
+	} else {
+		return nil
+	}
+	if !p.requireSemicolon() {
+		return nil
+	}
+	// Get DecayTime, DecayLevel;
+	if val, ok := p.requireExpression(); ok {
+		stmt.DecayTime = val
 	} else {
 		return nil
 	}
 	if !p.requireComma() {
 		return nil
 	}
-	// Get c3,
 	if val, ok := p.requireExpression(); ok {
-		stmt.C3 = val
+		stmt.DecayLevel = val
+	} else {
+		return nil
+	}
+	if !p.requireSemicolon() {
+		return nil
+	}
+	// Get SustainTime, SustainLevel;
+	if val, ok := p.requireExpression(); ok {
+		stmt.SustainTime = val
 	} else {
 		return nil
 	}
 	if !p.requireComma() {
 		return nil
 	}
-	// Get c4
 	if val, ok := p.requireExpression(); ok {
-		stmt.C4 = val
+		stmt.SustainLevel = val
 	} else {
 		return nil
 	}
-	if p.endOfInstruction() {
+	if !p.requireSemicolon() {
+		return nil
+	}
+	// Get ReleaseTime and finish
+	if val, ok := p.requireExpression(); ok {
+		stmt.ReleaseTime = val
+	} else {
+		return nil
+	}
+	if !p.requireEndOfInstruction() {
+		return nil
+	} else {
 		return stmt
 	}
-	return nil
 }
 
 func (p *Parser) parseRunStatement() *ast.RunStatement {

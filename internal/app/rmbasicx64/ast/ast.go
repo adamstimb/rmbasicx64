@@ -342,7 +342,7 @@ type SetEnvelopeStatement struct {
 	Token        token.Token
 	Slot         Expression
 	AttackTime   Expression
-	AttackeLevel Expression
+	AttackLevel  Expression
 	DecayTime    Expression
 	DecayLevel   Expression
 	SustainTime  Expression
