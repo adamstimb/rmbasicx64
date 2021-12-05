@@ -2,6 +2,7 @@ package nimgobus
 
 import (
 	"math"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -145,10 +146,16 @@ func (s *stream) Read(buf []byte) (int, error) {
 		w := math.Sin(2 * math.Pi * float64(p) / length)
 		// Convert sine wave to square
 		if w > 0 {
-			w = 1
+			w = 1.0
 		} else {
-			w = -1
+			w = -1.0
 		}
+		// Convert to pink noise if tone is false
+		if !s.voice.tone {
+			// multiply w by random float between 0 and 1
+			w = w * (rand.Float64() - 0.5)
+		}
+
 		// Apply glissando
 		if s.voice.glissando != nil {
 			t := 100 * s.voice.envelopePosition / int(sampleRate)

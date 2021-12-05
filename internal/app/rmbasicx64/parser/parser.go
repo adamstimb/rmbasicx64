@@ -586,6 +586,39 @@ func (p *Parser) parseNoteStatement() *ast.NoteStatement {
 	return stmt
 }
 
+func (p *Parser) parseNoiseStatement() *ast.NoiseStatement {
+	stmt := &ast.NoiseStatement{Token: p.curToken}
+	p.nextToken() // consume NOISE
+	if p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		return nil
+	}
+	// NOISE e1
+	if val, ok := p.requireExpression(); ok {
+		stmt.Values = append(stmt.Values, val)
+	} else {
+		return nil
+	}
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// NOISE e1[, e2...]
+	for {
+		if !p.requireComma() {
+			return nil
+		}
+		if val, ok := p.requireExpression(); ok {
+			stmt.Values = append(stmt.Values, val)
+		} else {
+			return nil
+		}
+		if p.onEndOfInstruction() {
+			return stmt
+		}
+	}
+}
+
 func (p *Parser) parseSetEnvelopeStatement() *ast.SetEnvelopeStatement {
 	stmt := &ast.SetEnvelopeStatement{Token: p.curToken}
 	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
@@ -3586,6 +3619,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseListStatement()
 	case token.NOTE:
 		return p.parseNoteStatement()
+	case token.NOISE:
+		return p.parseNoiseStatement()
 	case token.RUN:
 		return p.parseRunStatement()
 	case token.NEW:

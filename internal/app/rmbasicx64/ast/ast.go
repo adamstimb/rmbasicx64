@@ -794,6 +794,21 @@ func (s *SetToneStatement) String() string {
 	return out.String()
 }
 
+type NoiseStatement struct {
+	Token  token.Token
+	Values []Expression
+}
+
+func (s *NoiseStatement) statementNode() {}
+func (s *NoiseStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *NoiseStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
 type SetVoiceStatement struct {
 	Token token.Token
 	Value Expression
