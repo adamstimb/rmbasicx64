@@ -1778,6 +1778,11 @@ func (p *Parser) parseForStatement() *ast.ForStatement {
 func (p *Parser) parseNextStatement() *ast.NextStatement {
 	stmt := &ast.NextStatement{Token: p.curToken}
 	p.nextToken() // consume NEXT
+	// NEXT (no variable name)
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// NEXT var
 	// Require variable name
 	if !p.curTokenIs(token.IdentifierLiteral) {
 		p.ErrorTokenIndex = p.curToken.Index
