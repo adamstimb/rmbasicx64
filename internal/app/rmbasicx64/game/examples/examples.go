@@ -208,6 +208,70 @@ func WriteExamples(workspacePath string) {
 80 ENDFUN
 `,
 		},
+		{
+			filename: "music1.BAS",
+			program: `10 SET SOUND TRUE
+20 DIM First%(53), Second%(53)
+30 FOR I% = 0 TO 53
+40   READ First%(I%)
+50   DATA 0,100,15,4,50,15,2,100,15,7,50,15
+60   DATA 4,50,15,2,50,15,0,50,15,2,100,15,7,50,15 
+70   DATA 4,50,15,2,50,15,0,50,15,2,50,15
+80   DATA 4,50,15,5,50,15,4,100,15,2,50,15
+90   DATA 0,150,15
+100 NEXT I%
+110 FOR J% = 0 TO 53
+120   READ Second%(J%)
+130   DATA 4,100,15,0,50,15,7,150,15,0,100,15
+140   DATA 4,50,15,0,2,0,7,150,15,0,100,15,4,50,15 
+150   DATA 5,100,15,2,50,15,7,100,15,0,2,0,5,50,15 
+160   DATA 0,2,0,4,150,15,0,0,0,0,0,0
+170 NEXT J%
+180 FOR K% = 0 TO 51 STEP 3
+190   SET VOICE 1
+200   NOTE PITCH(1, First%(K%)), First%(K% + 1), First%(K% + 2)
+210   SET VOICE 2
+220   NOTE PITCH (0, Second%(K%)), Second%(K% + 1), Second%(K% + 2)
+230 NEXT K%
+`,
+		},
+		{
+			filename: "music2.BAS",
+			program: `10 SET SOUND TRUE
+20 SET ENVELOPE 5 TO 10, 15; 0, 15; 0, 15; 10 
+30 SET ENVELOPE 5
+40 FOR I% = 1 TO 30
+50   NOTE PITCH (RND(3), RND(11))
+60 NEXT I%
+`,
+		},
+		{
+			filename: "music3.BAS",
+			program: `10 SET SOUND TRUE
+20 SET SOUND TRUE
+30 DIM First%(35), Second%(35)
+40 FOR I% = 0 TO 35
+50   READ First%(I%)
+60   DATA 0,3,4,2,2,3,7,2,4,2,2,2,0,2,2,3,7,2,4,2,2,2,0,2,2,2
+70   DATA 4,2,5,2,4,3,2,2,0,4
+80 NEXT I%
+90 FOR J% = 0 TO 35
+100   READ Second%(J%)
+110   DATA 4,3,0,2,7,4,0,3,4,1,1,7,4,1,3,4,2,5,3,2,2,7,3
+120   DATA 1,1,5,2,1,1,4,4,1,0,1,0,1
+130 NEXT J%
+140 SET ENVELOPE 1 TO 0, 0; 2, 0; 0, 0; 0
+150 SET ENVELOPE 2 TO 5, 15; 10, 15; 0, 15; 70 
+160 SET ENVELOPE 3 TO 10, 15; 20, 15; 0, 15; 70 
+170 SET ENVELOPE 4 TO 15, 15; 30, 15; 0, 15; 105 
+180 FOR K% = 0 TO 34 STEP 2
+190   SET VOICE 1
+200   NOTE PITCH(1, First%(K%)) ENVELOPE First%(K% + 1)
+210   SET VOICE 2
+220   NOTE PITCH(0, Second%(K%)) ENVELOPE Second%(K% + 1)
+230 NEXT K%
+`,
+		},
 	}
 
 	for _, example := range examples {

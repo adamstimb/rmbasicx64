@@ -185,6 +185,7 @@ var Builtins = map[string]string{
 	"PATH$":  "PATH$",
 	"STR$":   "STR$",
 	"CHR$":   "CHR$",
+	"PITCH":  "PITCH",
 }
 
 // getIdentifier extracts an identifier (keyword, variable, etc) from the source code

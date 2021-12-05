@@ -501,6 +501,211 @@ func (p *Parser) parseListStatement() *ast.ListStatement {
 	}
 }
 
+func (p *Parser) parseNoteStatement() *ast.NoteStatement {
+	stmt := &ast.NoteStatement{Token: p.curToken}
+	p.nextToken() // consume NOTE
+	if p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		return nil
+	}
+	// NOTE e1
+	if val, ok := p.requireExpression(); ok {
+		stmt.Pitch1 = val
+	} else {
+		return nil
+	}
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// NOTE e1 [TO e2]
+	if p.curTokenIs(token.TO) {
+		p.nextToken() // consume TO
+		if val, ok := p.requireExpression(); ok {
+			stmt.Pitch2 = val
+		} else {
+			return nil
+		}
+		if p.onEndOfInstruction() {
+			return stmt
+		}
+	}
+	// NOTE e1 [TO e2][, e3]
+	if p.curTokenIs(token.Comma) {
+		p.nextToken() // consume ,
+		if val, ok := p.requireExpression(); ok {
+			stmt.Duration = val
+		} else {
+			return nil
+		}
+		if p.onEndOfInstruction() {
+			return stmt
+		}
+	}
+	// NOTE e1 [TO e2][, e3][, e4]
+	if p.curTokenIs(token.Comma) {
+		p.nextToken() // consume ,
+		if val, ok := p.requireExpression(); ok {
+			stmt.Volume = val
+		} else {
+			return nil
+		}
+		if p.onEndOfInstruction() {
+			return stmt
+		}
+	}
+	// Handle options list
+	for {
+		if p.onEndOfInstruction() {
+			break
+		}
+		tokenType := p.curToken.TokenType
+		switch tokenType {
+		case token.VOICE:
+			p.nextToken()
+			if val, ok := p.requireExpression(); ok {
+				stmt.Voice = val
+			} else {
+				return nil
+			}
+		case token.ENVELOPE:
+			p.nextToken()
+			if val, ok := p.requireExpression(); ok {
+				stmt.Envelope = val
+			} else {
+				return nil
+			}
+		default:
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.UnknownSetAskAttribute)
+			return nil
+
+		}
+		//p.nextToken()
+	}
+	return stmt
+}
+
+func (p *Parser) parseNoiseStatement() *ast.NoiseStatement {
+	stmt := &ast.NoiseStatement{Token: p.curToken}
+	p.nextToken() // consume NOISE
+	if p.onEndOfInstruction() {
+		p.ErrorTokenIndex = p.curToken.Index
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		return nil
+	}
+	// NOISE e1
+	if val, ok := p.requireExpression(); ok {
+		stmt.Values = append(stmt.Values, val)
+	} else {
+		return nil
+	}
+	if p.onEndOfInstruction() {
+		return stmt
+	}
+	// NOISE e1[, e2...] (TODO: max 5 optional args)
+	for {
+		if !p.requireComma() {
+			return nil
+		}
+		if val, ok := p.requireExpression(); ok {
+			stmt.Values = append(stmt.Values, val)
+		} else {
+			return nil
+		}
+		if p.onEndOfInstruction() {
+			return stmt
+		}
+	}
+}
+
+func (p *Parser) parseSetEnvelopeStatement() *ast.SetEnvelopeStatement {
+	stmt := &ast.SetEnvelopeStatement{Token: p.curToken}
+	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index + 1
+		return nil
+	}
+	p.nextToken()
+	// Get Slot, Row
+	if val, ok := p.requireExpression(); ok {
+		stmt.Slot = val
+	} else {
+		return nil
+	}
+	if p.onEndOfInstruction() {
+		// SET ENVELOPE e1
+		return stmt
+	}
+	// SET ENVELOPE e1 TO e2, e3; e4, e5; e6, e7; e7
+	// Get TO
+	if !p.requireTo() {
+		return nil
+	}
+	// Get AttackTime, AttackLevel;
+	if val, ok := p.requireExpression(); ok {
+		stmt.AttackTime = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	if val, ok := p.requireExpression(); ok {
+		stmt.AttackLevel = val
+	} else {
+		return nil
+	}
+	if !p.requireSemicolon() {
+		return nil
+	}
+	// Get DecayTime, DecayLevel;
+	if val, ok := p.requireExpression(); ok {
+		stmt.DecayTime = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	if val, ok := p.requireExpression(); ok {
+		stmt.DecayLevel = val
+	} else {
+		return nil
+	}
+	if !p.requireSemicolon() {
+		return nil
+	}
+	// Get SustainTime, SustainLevel;
+	if val, ok := p.requireExpression(); ok {
+		stmt.SustainTime = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	if val, ok := p.requireExpression(); ok {
+		stmt.SustainLevel = val
+	} else {
+		return nil
+	}
+	if !p.requireSemicolon() {
+		return nil
+	}
+	// Get ReleaseTime and finish
+	if val, ok := p.requireExpression(); ok {
+		stmt.ReleaseTime = val
+	} else {
+		return nil
+	}
+	if !p.requireEndOfInstruction() {
+		return nil
+	} else {
+		return stmt
+	}
+}
+
 func (p *Parser) parseRunStatement() *ast.RunStatement {
 	stmt := &ast.RunStatement{Token: p.curToken}
 	p.nextToken()
@@ -1453,7 +1658,6 @@ func (p *Parser) parseDataStatement() *ast.DataStatement {
 func (p *Parser) parseReadStatement() *ast.ReadStatement {
 	stmt := &ast.ReadStatement{Token: p.curToken}
 	p.nextToken() // consume READ
-	// TODO: Accept and parse arrays
 	// Require variable name
 	if !p.curTokenIs(token.IdentifierLiteral) {
 		p.ErrorTokenIndex = p.curToken.Index
@@ -1465,11 +1669,45 @@ func (p *Parser) parseReadStatement() *ast.ReadStatement {
 		ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 		p.nextToken()
 		// parse array subscripts
-		if subscripts, ok := p.getArraySubscripts(); ok {
-			ident.Subscripts = subscripts
-		} else {
-			return nil
+		//if subscripts, ok := p.getArraySubscripts(); ok {
+		//	log.Printf("got array subscripts: %v", subscripts)
+		//	ident.Subscripts = subscripts
+		//} else {
+		//	return nil
+		//}
+		if p.curTokenIs(token.LeftParen) {
+			p.nextToken()
+			for {
+				//// Catch array reference
+				//if p.curTokenIs(token.RightParen) {
+				//	// is array reference without subscripts
+				//	ident.IsArrayReference = true
+				//	if !p.requireClosingBracket() {
+				//		return nil
+				//	} else {
+				//		break
+				//	}
+				//}
+				val, ok := p.requireExpression()
+				if !ok {
+					return nil
+				}
+				ident.Subscripts = append(ident.Subscripts, val)
+				if p.curTokenIs(token.RightParen) {
+					p.nextToken()
+					break
+				}
+				if !p.requireComma() {
+					return nil
+				}
+				if p.onEndOfInstruction() {
+					p.ErrorTokenIndex = p.curToken.Index
+					p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.ClosingBracketIsNeeded)
+					return nil
+				}
+			}
 		}
+
 		stmt.VariableList = append(stmt.VariableList, ident)
 		if !p.onEndOfInstruction() {
 			// require comma
@@ -1702,45 +1940,55 @@ func (p *Parser) parseEndfunStatement() *ast.EndfunStatement {
 func (p *Parser) parseDimStatement() *ast.DimStatement {
 	stmt := &ast.DimStatement{Token: p.curToken}
 	p.nextToken() // consume DIM
-	// Require variable name
-	if !p.curTokenIs(token.IdentifierLiteral) {
-		p.ErrorTokenIndex = p.curToken.Index
-		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
-		return nil
-	}
-	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-	// Require at least one subscript or zero if array reference
-	p.nextToken()
-	if !p.requireOpenBracket() {
-		return nil
-	}
+	// Get all arrays to be dimensioned
 	for {
-		// Catch array reference
-		if p.curTokenIs(token.RightParen) {
-			// is array reference without subscripts
-			stmt.Name.IsArrayReference = true
-			if !p.requireClosingBracket() {
+		item := &ast.DimStatementPayloadItem{}
+		// Require variable name
+		if !p.curTokenIs(token.IdentifierLiteral) {
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+			return nil
+		}
+		item.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		// Require at least one subscript or zero if array reference
+		p.nextToken()
+		if !p.requireOpenBracket() {
+			return nil
+		}
+		for {
+			// Catch array reference
+			if p.curTokenIs(token.RightParen) {
+				// is array reference without subscripts
+				item.Name.IsArrayReference = true
+				if !p.requireClosingBracket() {
+					return nil
+				} else {
+					break
+				}
+			}
+			val, ok := p.requireExpression()
+			if !ok {
 				return nil
-			} else {
+			}
+			item.Subscripts = append(item.Subscripts, val)
+			if p.curTokenIs(token.RightParen) {
+				p.nextToken()
 				break
 			}
+			if !p.requireComma() {
+				return nil
+			}
+			if p.onEndOfInstruction() {
+				p.ErrorTokenIndex = p.curToken.Index
+				p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.ClosingBracketIsNeeded)
+				return nil
+			}
 		}
-		val, ok := p.requireExpression()
-		if !ok {
-			return nil
-		}
-		stmt.Subscripts = append(stmt.Subscripts, val)
-		if p.curTokenIs(token.RightParen) {
+		stmt.Payload = append(stmt.Payload, *item)
+		if p.curTokenIs(token.Comma) {
 			p.nextToken()
+		} else {
 			break
-		}
-		if !p.requireComma() {
-			return nil
-		}
-		if p.onEndOfInstruction() {
-			p.ErrorTokenIndex = p.curToken.Index
-			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.ClosingBracketIsNeeded)
-			return nil
 		}
 	}
 	// Require end of instruction
@@ -2770,6 +3018,51 @@ func (p *Parser) parseSetConfigBootStatement() *ast.SetConfigBootStatement {
 	return nil
 }
 
+func (p *Parser) parseSetSoundStatement() *ast.SetSoundStatement {
+	stmt := &ast.SetSoundStatement{Token: p.curToken}
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index
+		return nil
+	}
+	stmt.Value = p.parseExpression(LOWEST)
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseSetToneStatement() *ast.SetToneStatement {
+	stmt := &ast.SetToneStatement{Token: p.curToken}
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index
+		return nil
+	}
+	stmt.Value = p.parseExpression(LOWEST)
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseSetVoiceStatement() *ast.SetVoiceStatement {
+	stmt := &ast.SetVoiceStatement{Token: p.curToken}
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index
+		return nil
+	}
+	stmt.Value = p.parseExpression(LOWEST)
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parseSetFillStyleStatement() *ast.SetFillStyleStatement {
 	stmt := &ast.SetFillStyleStatement{Token: p.curToken}
 	p.nextToken()
@@ -3324,6 +3617,10 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseEndStatement()
 	case token.LIST:
 		return p.parseListStatement()
+	case token.NOTE:
+		return p.parseNoteStatement()
+	case token.NOISE:
+		return p.parseNoiseStatement()
 	case token.RUN:
 		return p.parseRunStatement()
 	case token.NEW:
@@ -3413,6 +3710,14 @@ func (p *Parser) parseStatement() ast.Statement {
 			return p.parseSetColourStatement()
 		case token.PATTERN:
 			return p.parseSetPatternStatement()
+		case token.SOUND:
+			return p.parseSetSoundStatement()
+		case token.TONE:
+			return p.parseSetToneStatement()
+		case token.VOICE:
+			return p.parseSetVoiceStatement()
+		case token.ENVELOPE:
+			return p.parseSetEnvelopeStatement()
 		case token.CONFIG:
 			p.nextToken()
 			switch p.curToken.TokenType {
