@@ -2826,19 +2826,26 @@ func evalForStatement(g *game.Game, stmt *ast.ForStatement, env *object.Environm
 }
 
 func evalNextStatement(g *game.Game, stmt *ast.NextStatement, env *object.Environment) object.Object {
+
 	// Ensure we're inside the FOR loop before evaluating condition
 	if forStmt, ok := env.JumpStack.Peek().(*ast.ForStatement); ok {
+		// Get optional var name
+		var controlVar string
+		if stmt.Name != nil {
+			controlVar = stmt.Name.Value
+		} else {
+			controlVar = forStmt.Name.Value
+		}
 		// Get value of counter variable
 		var counterVal float64
-		if obj, ok := env.Get(stmt.Name.Value); ok {
+		if obj, ok := env.Get(controlVar); ok {
 			if val, ok := obj.(*object.Numeric); ok {
 				counterVal = val.Value
 			} else {
 				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index}
 			}
 		} else {
-			// TODO: Set warning, somehow
-			env.Set(stmt.Name.Value, &object.Numeric{Value: 0})
+			env.Set(controlVar, &object.Numeric{Value: 0})
 			counterVal = 0
 		}
 		// Evaluate condition
@@ -2852,7 +2859,7 @@ func evalNextStatement(g *game.Game, stmt *ast.NextStatement, env *object.Enviro
 		if !conditionMet {
 			// increment counter and loop again
 			counterVal += forStmt.StepValue
-			env.Set(stmt.Name.Value, &object.Numeric{Value: counterVal})
+			env.Set(controlVar, &object.Numeric{Value: counterVal})
 			env.Program.Jump(forStmt.LineNumber, forStmt.StatementNumber)
 			return nil
 		} else {
