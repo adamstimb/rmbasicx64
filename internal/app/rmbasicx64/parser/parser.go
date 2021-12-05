@@ -603,7 +603,7 @@ func (p *Parser) parseNoiseStatement() *ast.NoiseStatement {
 	if p.onEndOfInstruction() {
 		return stmt
 	}
-	// NOISE e1[, e2...]
+	// NOISE e1[, e2...] (TODO: max 5 optional args)
 	for {
 		if !p.requireComma() {
 			return nil
