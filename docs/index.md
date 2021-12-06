@@ -6,7 +6,7 @@ _Released 7th December 2021_
 
 - Check the [release notes](releases.md)
 
-- [Download the installer (Windows only)](/adamstimb/rmbasicx64/releases/latest/download/rmbasicx64setup.exe)
+- [Download the installer (Windows only)](https://github.com/adamstimb/rmbasicx64/releases/latest/download/rmbasicx64setup.exe)
 
 - Or [build from source (Windows, Linux, macOS)](https://github.com/adamstimb/rmbasicx64)
 
