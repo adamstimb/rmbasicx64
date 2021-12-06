@@ -1,11 +1,5 @@
 .VSCodeCounter
-build/rmbasicx64
-build/rmbasicx64.exe
-build/rmbasicx64setup.exe
-build/rmbasicx64config.yaml
-build/*.yaml
-build/*.yml
-build/RMBASICx64 Workspace/**
+build/**
 *.BAS
 .env
 .DS_Store
