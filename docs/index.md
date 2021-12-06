@@ -1,5 +1,7 @@
 [**Home**](index.md) - [Quickstart](quickstart.md) - [History](history.md) - [Reference](reference.md) - [Releases](releases.md)
 
+_RM BASICx64 is a tribute project and is in no way linked to or endorsed by RM plc._
+
 # Version 0.22
 
 _Released 7th December 2021_
