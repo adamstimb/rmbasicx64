@@ -1,0 +1,32 @@
+---
+---
+
+@import "{{ site.theme }}";
+.inner {
+    color: whitesmoke;
+    h1, h2, h3, h4, h5, h6 {
+        color: whitesmoke;
+    }
+    a {
+        color: cyan;
+    }
+    table {
+        th, td {
+            border: 1px solid whitesmoke;
+        }
+        th {
+            color: royalblue;
+            background: whitesmoke;
+        }
+    }
+    code, pre {
+        white-space: pre-wrap; 
+        background-color: darkblue;
+        color: whitesmoke;
+        border: solid 1px darkblue;
+        border-radius: 0rem;
+    }
+}
+#main_content_wrap {
+    background: royalblue;
+}
