@@ -302,6 +302,7 @@ func (bs *ClgStatement) String() string {
 
 type ListStatement struct {
 	Token          token.Token
+	Channel        Expression
 	TextBoxSlot    Expression
 	FromLinenumber token.Token
 	ToLinenumber   token.Token
@@ -539,8 +540,9 @@ func (s *SetMouseStatement) String() string {
 }
 
 type GetStatement struct {
-	Token token.Token
-	Value Expression
+	Token   token.Token
+	Channel Expression
+	Value   Expression
 }
 
 func (s *GetStatement) statementNode() {}
@@ -659,6 +661,7 @@ func (s *HomeStatement) String() string {
 
 type DirStatement struct {
 	Token       token.Token
+	Channel     Expression
 	TextBoxSlot Expression
 	Value       Expression
 }
@@ -824,6 +827,53 @@ func (s *SetVoiceStatement) String() string {
 	return out.String()
 }
 
+type CreateStatement struct {
+	Token   token.Token
+	Channel Expression
+	Path    Expression
+}
+
+func (s *CreateStatement) statementNode() {}
+func (s *CreateStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *CreateStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type OpenStatement struct {
+	Token   token.Token
+	Channel Expression
+	Path    Expression
+}
+
+func (s *OpenStatement) statementNode() {}
+func (s *OpenStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *OpenStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type CloseStatement struct {
+	Token   token.Token
+	Channel Expression
+}
+
+func (s *CloseStatement) statementNode() {}
+func (s *CloseStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *CloseStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
 type SetColourStatement struct {
 	Token       token.Token
 	PaletteSlot Expression
@@ -889,6 +939,7 @@ func (s *RemStatement) String() string {
 
 type InputStatement struct {
 	Token           token.Token
+	Channel         Expression
 	TextBoxSlot     Expression
 	Prompt          string
 	AddQuestionMark bool
@@ -908,6 +959,7 @@ func (s *InputStatement) String() string {
 type PrintStatement struct {
 	Token       token.Token
 	Value       Expression
+	Channel     Expression
 	TextBoxSlot Expression
 	PrintList   []interface{}
 }
@@ -926,6 +978,7 @@ func (ps *PrintStatement) String() string {
 type PutStatement struct {
 	Token       token.Token
 	Value       Expression
+	Channel     Expression
 	TextBoxSlot Expression
 	PrintList   []interface{}
 }

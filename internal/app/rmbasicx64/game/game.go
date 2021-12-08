@@ -19,12 +19,12 @@ type AppConfig struct {
 type Game struct {
 	Count int
 	nimgobus.Nimbus
-	Config            AppConfig
-	PrettyPrintIndent string
-	PaddingX          int
-	PaddingY          int
-	Scale             float64
-	WorkspacePath     string
+	Config AppConfig
+	//PrettyPrintIndent string
+	PaddingX      int
+	PaddingY      int
+	Scale         float64
+	WorkspacePath string
 }
 
 func (g *Game) GetTPS() int {

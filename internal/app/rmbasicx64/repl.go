@@ -40,7 +40,7 @@ func welcomeScreen(g *game.Game) {
 	g.Print("This is a tribute project and is in no way linked to or endorsed by RM plc.")
 	g.Put(13)
 	g.Put(13)
-	g.Print("RM BASICx64 Version 0.22 3rd December 2021")
+	g.Print("RM BASICx64 Version 0.23 8th December 2021")
 	g.Put(13)
 	// Generate and print workspace available notification
 	workspaceAvailable := fmt.Sprintf("%dG bytes workspace available.", bToGb(memInfo.Available))
@@ -124,7 +124,7 @@ func StartUi(g *game.Game) {
 	if g.Config.Boot {
 		g.Boot()
 	}
-	g.PrettyPrintIndent = ""
+	//g.PrettyPrintIndent = ""
 	welcomeScreen(g)
 	repl(g)
 }

@@ -434,7 +434,22 @@ func (p *Parser) parseListStatement() *ast.ListStatement {
 		// LIST
 		return stmt
 	}
-
+	// Handle optional #e  for Channel
+	if p.curTokenIs(token.Hash) {
+		p.nextToken()
+		val, ok := p.requireExpression()
+		if ok {
+			stmt.Channel = val
+		} else {
+			return nil
+		}
+		if p.onEndOfInstruction() {
+			return stmt
+		}
+		if !p.requireComma() {
+			return nil
+		}
+	}
 	// Handle optional ~e1, for TextBoxSlot
 	if p.curTokenIs(token.Tilde) {
 		p.nextToken()
@@ -787,6 +802,22 @@ func (p *Parser) parseDirStatement() *ast.DirStatement {
 	if p.onEndOfInstruction() {
 		return stmt
 	}
+	// Handle optional #e,  for Channel
+	if p.curTokenIs(token.Hash) {
+		p.nextToken()
+		val, ok := p.requireExpression()
+		if ok {
+			stmt.Channel = val
+		} else {
+			return nil
+		}
+		if p.onEndOfInstruction() {
+			return stmt
+		}
+		if !p.requireComma() {
+			return nil
+		}
+	}
 	// Handle optional ~e1, for TextBoxSlot
 	if p.curTokenIs(token.Tilde) {
 		p.nextToken()
@@ -955,7 +986,19 @@ func (p *Parser) parseInputStatement() *ast.InputStatement {
 		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
 		return nil
 	}
-
+	// Handle optional #e,  for Channel
+	if p.curTokenIs(token.Hash) {
+		p.nextToken()
+		val, ok := p.requireExpression()
+		if ok {
+			stmt.Channel = val
+		} else {
+			return nil
+		}
+		if !p.requireComma() {
+			return nil
+		}
+	}
 	// Handle optional ~e1, for TextBoxSlot
 	if p.curTokenIs(token.Tilde) {
 		p.nextToken()
@@ -1012,6 +1055,22 @@ func (p *Parser) parsePrintStatement() *ast.PrintStatement {
 		return stmt
 	}
 	p.nextToken()
+	// Handle optional #e,  for Channel
+	if p.curTokenIs(token.Hash) {
+		p.nextToken()
+		val, ok := p.requireExpression()
+		if ok {
+			stmt.Channel = val
+		} else {
+			return nil
+		}
+		if p.onEndOfInstruction() {
+			return stmt
+		}
+		if !p.requireComma() {
+			return nil
+		}
+	}
 	// Handle optional ~e1, for TextBoxSlot
 	if p.curTokenIs(token.Tilde) {
 		p.nextToken()
@@ -1064,6 +1123,22 @@ func (p *Parser) parsePutStatement() *ast.PutStatement {
 		return stmt
 	}
 	p.nextToken()
+	// Handle optional #e,  for Channel
+	if p.curTokenIs(token.Hash) {
+		p.nextToken()
+		val, ok := p.requireExpression()
+		if ok {
+			stmt.Channel = val
+		} else {
+			return nil
+		}
+		if p.onEndOfInstruction() {
+			return stmt
+		}
+		if !p.requireComma() {
+			return nil
+		}
+	}
 	// Handle optional ~e1, for TextBoxSlot
 	if p.curTokenIs(token.Tilde) {
 		p.nextToken()
@@ -2569,6 +2644,94 @@ func (p *Parser) parseSquashStatement() *ast.SquashStatement {
 	return nil
 }
 
+func (p *Parser) parseCloseStatement() *ast.CloseStatement {
+	stmt := &ast.CloseStatement{Token: p.curToken}
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		// Close all
+		return stmt
+	}
+	// Get #
+	if !p.curTokenIs(token.Hash) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.WrongChannelNumberUsed)
+		p.ErrorTokenIndex = p.curToken.Index
+		return nil
+	}
+	p.nextToken()
+	// Get required channel number
+	if val, ok := p.requireExpression(); ok {
+		stmt.Channel = val
+	} else {
+		return nil
+	}
+	if p.requireEndOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseCreateStatement() *ast.CreateStatement {
+	stmt := &ast.CreateStatement{Token: p.curToken}
+	p.nextToken()
+	// Get required #
+	if !p.curTokenIs(token.Hash) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.WrongChannelNumberUsed)
+		p.ErrorTokenIndex = p.curToken.Index
+		return nil
+	}
+	p.nextToken()
+	// Get required channel number
+	if val, ok := p.requireExpression(); ok {
+		stmt.Channel = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	// Get required name
+	if val, ok := p.requireExpression(); ok {
+		stmt.Path = val
+	} else {
+		return nil
+	}
+	if p.requireEndOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
+func (p *Parser) parseOpenStatement() *ast.OpenStatement {
+	stmt := &ast.OpenStatement{Token: p.curToken}
+	p.nextToken()
+	// Get required #
+	if !p.curTokenIs(token.Hash) {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.WrongChannelNumberUsed)
+		p.ErrorTokenIndex = p.curToken.Index
+		return nil
+	}
+	p.nextToken()
+	// Get required channel number
+	if val, ok := p.requireExpression(); ok {
+		stmt.Channel = val
+	} else {
+		return nil
+	}
+	if !p.requireComma() {
+		return nil
+	}
+	// Get required name
+	if val, ok := p.requireExpression(); ok {
+		stmt.Path = val
+	} else {
+		return nil
+	}
+	if p.requireEndOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parseSetModeStatement() *ast.SetModeStatement {
 	stmt := &ast.SetModeStatement{Token: p.curToken}
 	if p.peekTokenIs(token.Colon) || p.peekTokenIs(token.NewLine) || p.peekTokenIs(token.EOF) {
@@ -3465,20 +3628,9 @@ func (p *Parser) JumpToToken(i int) {
 // -- Line
 
 func (p *Parser) PrettyPrint() string {
-	indent := "  "
-	lineString := p.g.PrettyPrintIndent
-	// Add indent for following lines
-	if p.curTokenIs(token.REPEAT) || p.curTokenIs(token.FOR) || p.curTokenIs(token.FUNCTION) || p.curTokenIs(token.PROCEDURE) {
-		p.g.PrettyPrintIndent += indent
-	}
-	// Remove indent for this and following lines
-	if p.curTokenIs(token.UNTIL) || p.curTokenIs(token.NEXT) || p.curTokenIs(token.ENDFUN) || p.curTokenIs(token.ENDPROC) {
-		if len(p.g.PrettyPrintIndent) >= 2 {
-			p.g.PrettyPrintIndent = p.g.PrettyPrintIndent[:len(p.g.PrettyPrintIndent)-2]
-			lineString = p.g.PrettyPrintIndent
-		}
-	}
 	// Build string
+	var lineString string
+	var previousToken string
 	for {
 		if p.ErrorTokenIndex > 0 {
 			if p.curToken.Index == p.ErrorTokenIndex {
@@ -3489,6 +3641,15 @@ func (p *Parser) PrettyPrint() string {
 		if p.curTokenIs(token.EOF) || p.curTokenIs(token.NewLine) {
 			break
 		}
+		// Function or array
+		if previousToken == token.IdentifierLiteral && p.curTokenIs(token.LeftParen) {
+			lineString = strings.TrimSpace(lineString)
+			lineString += "("
+			p.nextToken()
+			previousToken = p.curToken.TokenType
+			continue
+		}
+		previousToken = p.curToken.TokenType
 		// Put string literals in double-quotes
 		if p.curToken.TokenType == token.StringLiteral {
 			lineString += fmt.Sprintf("%q", p.curToken.Literal) + " "
@@ -3504,6 +3665,12 @@ func (p *Parser) PrettyPrint() string {
 		// Never a space after ~
 		if p.curToken.TokenType == token.Tilde {
 			lineString += "~"
+			p.nextToken()
+			continue
+		}
+		// Never a space after #
+		if p.curToken.TokenType == token.Hash {
+			lineString += "#"
 			p.nextToken()
 			continue
 		}
@@ -3546,12 +3713,6 @@ func (p *Parser) PrettyPrint() string {
 		// Otherwise add literal with trailing space
 		curLiteral := p.curToken.Literal
 		lineString += curLiteral + " "
-		//_, ok := lexer.Builtins[curLiteral]
-		//if ok {
-		//	lineString += p.curToken.Literal
-		//} else {
-		//	lineString += p.curToken.Literal + " "
-		//}
 		p.nextToken()
 	}
 	return strings.TrimRight(lineString, " ")
@@ -3782,6 +3943,12 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseDelblockStatement()
 	case token.KEEP:
 		return p.parseKeepStatement()
+	case token.CLOSE:
+		return p.parseCloseStatement()
+	case token.CREATE:
+		return p.parseCreateStatement()
+	case token.OPEN:
+		return p.parseOpenStatement()
 	case token.MOVE:
 		return p.parseMoveStatement()
 	case token.LET:

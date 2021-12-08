@@ -3,6 +3,7 @@ package object
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
@@ -95,6 +96,7 @@ func (p *program) AddLine(lineNumber int, line string) {
 		p.lines[lineNumber] = line
 		p.Sort()
 	}
+	p.Indent()
 }
 func (p *program) EndOfProgram() bool {
 	if p.curLineIndex >= len(p.lines) {
@@ -157,6 +159,34 @@ func (p *program) Renumber() {
 	p.lines = make(map[int]string)
 	p.lines = newLines
 	p.Sort()
+}
+
+// Indent is used to tidy the code and make it easier to read
+func (p *program) Indent() {
+	newProg := make(map[int]string)
+	indent := ""
+	for i := 0; i < len(p.lines); i++ {
+		line := p.lines[p.sortedIndex[i]]
+		line = strings.TrimSpace(line)
+		fields := strings.Fields(line)
+		var firstWord string
+		if len(fields) > 0 {
+			firstWord = fields[0]
+		} else {
+			continue
+		}
+		switch firstWord {
+		case "FOR", "PROCEDURE", "FUNCTION", "REPEAT":
+			newProg[p.sortedIndex[i]] = indent + line + "\n"
+			indent += "  "
+		case "NEXT", "ENDPROC", "ENDFUNC", "UNTIL":
+			indent = strings.TrimPrefix(indent, "  ")
+			newProg[p.sortedIndex[i]] = indent + line + "\n"
+		default:
+			newProg[p.sortedIndex[i]] = indent + line + "\n"
+		}
+	}
+	p.lines = newProg
 }
 
 // Dump and Copy are used to transfer the program from one env to another
