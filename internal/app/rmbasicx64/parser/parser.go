@@ -3628,20 +3628,9 @@ func (p *Parser) JumpToToken(i int) {
 // -- Line
 
 func (p *Parser) PrettyPrint() string {
-	indent := "  "
-	lineString := p.g.PrettyPrintIndent
-	// Add indent for following lines
-	if p.curTokenIs(token.REPEAT) || p.curTokenIs(token.FOR) || p.curTokenIs(token.FUNCTION) || p.curTokenIs(token.PROCEDURE) {
-		p.g.PrettyPrintIndent += indent
-	}
-	// Remove indent for this and following lines
-	if p.curTokenIs(token.UNTIL) || p.curTokenIs(token.NEXT) || p.curTokenIs(token.ENDFUN) || p.curTokenIs(token.ENDPROC) {
-		if len(p.g.PrettyPrintIndent) >= 2 {
-			p.g.PrettyPrintIndent = p.g.PrettyPrintIndent[:len(p.g.PrettyPrintIndent)-2]
-			lineString = p.g.PrettyPrintIndent
-		}
-	}
 	// Build string
+	var lineString string
+	var previousToken string
 	for {
 		if p.ErrorTokenIndex > 0 {
 			if p.curToken.Index == p.ErrorTokenIndex {
@@ -3652,6 +3641,15 @@ func (p *Parser) PrettyPrint() string {
 		if p.curTokenIs(token.EOF) || p.curTokenIs(token.NewLine) {
 			break
 		}
+		// Function or array
+		if previousToken == token.IdentifierLiteral && p.curTokenIs(token.LeftParen) {
+			lineString = strings.TrimSpace(lineString)
+			lineString += "("
+			p.nextToken()
+			previousToken = p.curToken.TokenType
+			continue
+		}
+		previousToken = p.curToken.TokenType
 		// Put string literals in double-quotes
 		if p.curToken.TokenType == token.StringLiteral {
 			lineString += fmt.Sprintf("%q", p.curToken.Literal) + " "
@@ -3667,6 +3665,12 @@ func (p *Parser) PrettyPrint() string {
 		// Never a space after ~
 		if p.curToken.TokenType == token.Tilde {
 			lineString += "~"
+			p.nextToken()
+			continue
+		}
+		// Never a space after #
+		if p.curToken.TokenType == token.Hash {
+			lineString += "#"
 			p.nextToken()
 			continue
 		}
@@ -3709,12 +3713,6 @@ func (p *Parser) PrettyPrint() string {
 		// Otherwise add literal with trailing space
 		curLiteral := p.curToken.Literal
 		lineString += curLiteral + " "
-		//_, ok := lexer.Builtins[curLiteral]
-		//if ok {
-		//	lineString += p.curToken.Literal
-		//} else {
-		//	lineString += p.curToken.Literal + " "
-		//}
 		p.nextToken()
 	}
 	return strings.TrimRight(lineString, " ")
