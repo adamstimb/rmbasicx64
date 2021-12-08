@@ -3,6 +3,7 @@ package evaluator
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"math"
@@ -48,6 +49,12 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalSaveStatement(g, node, env)
 	case *ast.LoadStatement:
 		return evalLoadStatement(g, node, env)
+	case *ast.CreateStatement:
+		return evalCreateStatement(g, node, env)
+	case *ast.OpenStatement:
+		return evalOpenStatement(g, node, env)
+	case *ast.CloseStatement:
+		return evalCloseStatement(g, node, env)
 	case *ast.FetchStatement:
 		return evalFetchStatement(g, node, env)
 	case *ast.WriteblockStatement:
@@ -346,6 +353,19 @@ func evalPrintStatement(g *game.Game, stmt *ast.PrintStatement, env *object.Envi
 	oldTextBoxSlot, _, _, _, _ := g.AskWriting()
 	tempTextBoxSlot := oldTextBoxSlot
 	_, curY := g.AskCurpos()
+	channel := 0
+	// Evaluate and handle Channel if set
+	if stmt.Channel != nil {
+		if val, ok := Eval(g, stmt.Channel, env).(*object.Numeric); ok {
+			if val.Value < 11 || val.Value > 127 {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.WrongChannelNumberUsed), ErrorTokenIndex: stmt.Token.Index}
+			} else {
+				channel = int(val.Value)
+			}
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index}
+		}
+	}
 	// Evaluate and handle TextBoxSlot if set
 	if stmt.TextBoxSlot != nil {
 		obj := Eval(g, stmt.TextBoxSlot, env)
@@ -358,7 +378,9 @@ func evalPrintStatement(g *game.Game, stmt *ast.PrintStatement, env *object.Envi
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
 	}
-	g.SetWriting(tempTextBoxSlot)
+	if channel == 0 {
+		g.SetWriting(tempTextBoxSlot)
+	}
 
 	for _, val := range stmt.PrintList {
 		// Handle seperator type
@@ -369,15 +391,26 @@ func evalPrintStatement(g *game.Game, stmt *ast.PrintStatement, env *object.Envi
 			case "nextPrintZone":
 				printStr += "     " // TODO: Implement actual print zones in Nimgobus
 			case "newLine":
-				g.Print(printStr)
-				g.Put(13)
+				if channel == 0 {
+					g.Print(printStr)
+					g.Put(13)
+				} else {
+					obj := writeStringToFile(g, channel, printStr)
+					if isError(obj) {
+						return obj
+					}
+					obj = writeStringToFile(g, channel, "\n")
+					if isError(obj) {
+						return obj
+					}
+				}
 				printStr = ""
 			}
 			continue
 		}
 		obj := Eval(g, val.(ast.Node), env)
 		if isError(obj) {
-			if oldTextBoxSlot != tempTextBoxSlot {
+			if oldTextBoxSlot != tempTextBoxSlot && channel == 0 {
 				g.SetWriting(oldTextBoxSlot)
 				g.SetCurpos(1, curY)
 			}
@@ -397,9 +430,20 @@ func evalPrintStatement(g *game.Game, stmt *ast.PrintStatement, env *object.Envi
 			printStr += stringVal.Value
 		}
 	}
-	g.Print(printStr)
-	g.Put(13)
-	if oldTextBoxSlot != tempTextBoxSlot {
+	if channel == 0 {
+		g.Print(printStr)
+		g.Put(13)
+	} else {
+		obj := writeStringToFile(g, channel, printStr)
+		if isError(obj) {
+			return obj
+		}
+		obj = writeStringToFile(g, channel, "\n")
+		if isError(obj) {
+			return obj
+		}
+	}
+	if oldTextBoxSlot != tempTextBoxSlot && channel == 0 {
 		g.SetWriting(oldTextBoxSlot)
 		g.SetCurpos(1, curY)
 	}
@@ -411,6 +455,19 @@ func evalInputStatement(g *game.Game, stmt *ast.InputStatement, env *object.Envi
 	oldTextBoxSlot, _, _, _, _ := g.AskWriting()
 	tempTextBoxSlot := oldTextBoxSlot
 	_, curY := g.AskCurpos()
+	channel := 0
+	// Evaluate and handle Channel if set
+	if stmt.Channel != nil {
+		if val, ok := Eval(g, stmt.Channel, env).(*object.Numeric); ok {
+			if val.Value < 11 || val.Value > 127 {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.WrongChannelNumberUsed), ErrorTokenIndex: stmt.Token.Index}
+			} else {
+				channel = int(val.Value)
+			}
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index}
+		}
+	}
 	// Evaluate and handle TextBoxSlot if set
 	if stmt.TextBoxSlot != nil {
 		obj := Eval(g, stmt.TextBoxSlot, env)
@@ -423,13 +480,22 @@ func evalInputStatement(g *game.Game, stmt *ast.InputStatement, env *object.Envi
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
 	}
-	g.SetWriting(tempTextBoxSlot)
-
-	g.Print(stmt.Prompt)
-	if stmt.AddQuestionMark {
-		g.Print("?")
+	// Get raw input
+	var raw string
+	if channel == 0 {
+		g.SetWriting(tempTextBoxSlot)
+		g.Print(stmt.Prompt)
+		if stmt.AddQuestionMark {
+			g.Print("?")
+		}
+		raw = g.Input("")
+	} else {
+		rawFromFile, obj := readLineFromFile(g, channel)
+		if isError(obj) {
+			return obj
+		}
+		raw = rawFromFile
 	}
-	raw := g.Input("")
 
 	// Parse the raw input
 	suffix := stmt.ReceiveVar.Token.Literal[len(stmt.ReceiveVar.Token.Literal)-1:]
@@ -477,7 +543,7 @@ func evalInputStatement(g *game.Game, stmt *ast.InputStatement, env *object.Envi
 		env.Set(stmt.ReceiveVar.Token.Literal, obj)
 	}
 
-	if oldTextBoxSlot != tempTextBoxSlot {
+	if oldTextBoxSlot != tempTextBoxSlot && channel == 0 {
 		g.SetWriting(oldTextBoxSlot)
 		g.SetCurpos(1, curY)
 	}
@@ -489,6 +555,19 @@ func evalPutStatement(g *game.Game, stmt *ast.PutStatement, env *object.Environm
 	oldTextBoxSlot, _, _, _, _ := g.AskWriting()
 	tempTextBoxSlot := oldTextBoxSlot
 	_, curY := g.AskCurpos()
+	channel := 0
+	// Evaluate and handle Channel if set
+	if stmt.Channel != nil {
+		if val, ok := Eval(g, stmt.Channel, env).(*object.Numeric); ok {
+			if val.Value < 11 || val.Value > 127 {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.WrongChannelNumberUsed), ErrorTokenIndex: stmt.Token.Index}
+			} else {
+				channel = int(val.Value)
+			}
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index}
+		}
+	}
 	// Evaluate and handle TextBoxSlot if set
 	if stmt.TextBoxSlot != nil {
 		obj := Eval(g, stmt.TextBoxSlot, env)
@@ -501,12 +580,14 @@ func evalPutStatement(g *game.Game, stmt *ast.PutStatement, env *object.Environm
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
 	}
-	g.SetWriting(tempTextBoxSlot)
+	if channel == 0 {
+		g.SetWriting(tempTextBoxSlot)
+	}
 
 	for _, val := range stmt.PrintList {
 		obj := Eval(g, val.(ast.Node), env)
 		if isError(obj) {
-			if oldTextBoxSlot != tempTextBoxSlot {
+			if oldTextBoxSlot != tempTextBoxSlot && channel == 0 {
 				g.SetWriting(oldTextBoxSlot)
 				g.SetCurpos(1, curY)
 			}
@@ -519,9 +600,16 @@ func evalPutStatement(g *game.Game, stmt *ast.PutStatement, env *object.Environm
 		}
 	}
 	for _, val := range printList {
-		g.Put(val)
+		if channel == 0 {
+			g.Put(val)
+		} else {
+			obj := writeStringToFile(g, channel, string(rune(val)))
+			if isError(obj) {
+				return obj
+			}
+		}
 	}
-	if oldTextBoxSlot != tempTextBoxSlot {
+	if oldTextBoxSlot != tempTextBoxSlot && channel == 0 {
 		g.SetWriting(oldTextBoxSlot)
 		g.SetCurpos(1, curY)
 	}
@@ -1502,6 +1590,185 @@ func evalLoadStatement(g *game.Game, stmt *ast.LoadStatement, env *object.Enviro
 		}
 	}
 	return obj
+}
+
+func evalCloseStatement(g *game.Game, stmt *ast.CloseStatement, env *object.Environment) object.Object {
+	// If no arg then close all files
+	if stmt.Channel == nil {
+		for _, fileObj := range g.FileChannels {
+			fileObj.File.Close()
+		}
+		g.FileChannels = make(map[int]*nimgobus.FileObj)
+		return nil
+	}
+	// Otherwise close the specified file
+	obj := Eval(g, stmt.Channel, env)
+	if isError(obj) {
+		return obj
+	}
+	if intVal, ok := obj.(*object.Numeric); ok {
+		channel := int(intVal.Value)
+		if _, ok := g.FileChannels[channel]; ok {
+			g.FileChannels[channel].File.Close()
+			delete(g.FileChannels, channel)
+		}
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	return nil
+}
+
+func evalCreateStatement(g *game.Game, stmt *ast.CreateStatement, env *object.Environment) object.Object {
+	// Evaluate filename
+	obj := Eval(g, stmt.Path, env)
+	if isError(obj) {
+		return obj
+	}
+	filename := ""
+	if stringVal, ok := obj.(*object.String); ok {
+		filename = stringVal.Value
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Don't allow * or ?
+	if strings.Contains(filename, "*") || strings.Contains(filename, "?") {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ExactFilenameIsNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Add .BAS if necessary
+	if !strings.HasSuffix(strings.ToUpper(filename), ".BAS") {
+		filename += ".BAS"
+	}
+	// Preprend workspace folder
+	fullpath := filepath.Join(g.WorkspacePath, filename)
+	// Don't allow directories
+	if isDirectory(fullpath) {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FilenameIsADirectory), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Evaluate Channel number (must be numeric)
+	obj = Eval(g, stmt.Channel, env)
+	if isError(obj) {
+		return obj
+	}
+	channel := 0
+	if intVal, ok := obj.(*object.Numeric); ok {
+		channel = int(intVal.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	if channel < 11 || channel > 127 {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.WrongChannelNumberUsed), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Is channel already in use?
+	if _, ok := g.FileChannels[channel]; ok {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NamedChannelAlreadyInUse), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Create a file object and add it to the file channels
+	file, err := os.Create(fullpath)
+	if err != nil {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure)}
+	}
+	g.FileChannels[channel] = &nimgobus.FileObj{File: file, Writing: true}
+	return nil
+}
+
+func evalOpenStatement(g *game.Game, stmt *ast.OpenStatement, env *object.Environment) object.Object {
+	// Evaluate filename
+	obj := Eval(g, stmt.Path, env)
+	if isError(obj) {
+		return obj
+	}
+	filename := ""
+	if stringVal, ok := obj.(*object.String); ok {
+		filename = stringVal.Value
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.StringExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Don't allow * or ?
+	if strings.Contains(filename, "*") || strings.Contains(filename, "?") {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ExactFilenameIsNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Add .BAS if necessary
+	if !strings.HasSuffix(strings.ToUpper(filename), ".BAS") {
+		filename += ".BAS"
+	}
+	// Preprend workspace folder
+	fullpath := filepath.Join(g.WorkspacePath, filename)
+	// Don't allow directories
+	if isDirectory(fullpath) {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FilenameIsADirectory), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Check if file exists
+	_, err := os.Stat(fullpath)
+	if err != nil {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.UnableToOpenNamedFile), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Evaluate Channel number (must be numeric)
+	obj = Eval(g, stmt.Channel, env)
+	if isError(obj) {
+		return obj
+	}
+	channel := 0
+	if intVal, ok := obj.(*object.Numeric); ok {
+		channel = int(intVal.Value)
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	if channel < 11 || channel > 127 {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.WrongChannelNumberUsed), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Is channel already in use?
+	if _, ok := g.FileChannels[channel]; ok {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NamedChannelAlreadyInUse), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	// Open a file object and add it to the file channels
+	file, err := os.Open(fullpath)
+	if err != nil {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure)}
+	}
+	g.FileChannels[channel] = &nimgobus.FileObj{File: file, Writing: false}
+	return nil
+}
+
+func writeStringToFile(g *game.Game, channel int, writeString string) object.Object {
+	if fileObj, ok := g.FileChannels[channel]; ok {
+		if !fileObj.Writing {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ChannelNotOpenForOutput)}
+		}
+		_, err := g.FileChannels[channel].File.WriteString(writeString)
+		if err != nil {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure)}
+		}
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ChannelNotOpenForOutput)}
+	}
+	return nil
+}
+
+func readLineFromFile(g *game.Game, channel int) (lineString string, obj object.Object) {
+	if fileObj, ok := g.FileChannels[channel]; ok {
+		if fileObj.Writing {
+			return "", &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ChannelNotOpenForInput)}
+		}
+		for {
+			b := make([]byte, 1)
+			_, err := g.FileChannels[channel].File.Read(b)
+			// break if EOF or error
+			if err == io.EOF {
+				return "", &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ReadingPastEndOfFile)}
+			}
+			if err != nil {
+				return "", &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.FileOperationFailure)}
+			}
+			// break if we have a newline
+			if b[0] == '\n' {
+				break
+			}
+			lineString = lineString + string(b)
+		}
+	} else {
+		return "", &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ChannelNotOpenForOutput)}
+	}
+	return lineString, nil
 }
 
 func evalFetchStatement(g *game.Game, stmt *ast.FetchStatement, env *object.Environment) object.Object {
@@ -2984,6 +3251,19 @@ func evalListStatement(g *game.Game, stmt *ast.ListStatement, env *object.Enviro
 	oldTextBoxSlot, _, _, _, _ := g.AskWriting()
 	tempTextBoxSlot := oldTextBoxSlot
 	_, curY := g.AskCurpos()
+	channel := 0
+	// Evaluate and handle Channel if set
+	if stmt.Channel != nil {
+		if val, ok := Eval(g, stmt.Channel, env).(*object.Numeric); ok {
+			if val.Value < 11 || val.Value > 127 {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.WrongChannelNumberUsed), ErrorTokenIndex: stmt.Token.Index}
+			} else {
+				channel = int(val.Value)
+			}
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index}
+		}
+	}
 	// Evaluate and handle TextBoxSlot if set
 	if stmt.TextBoxSlot != nil {
 		obj := Eval(g, stmt.TextBoxSlot, env)
@@ -2996,7 +3276,9 @@ func evalListStatement(g *game.Game, stmt *ast.ListStatement, env *object.Enviro
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
 	}
-	g.SetWriting(tempTextBoxSlot)
+	if channel == 0 {
+		g.SetWriting(tempTextBoxSlot)
+	}
 
 	fromLinenumber := 0
 	toLinenumber := 0
@@ -3010,17 +3292,28 @@ func evalListStatement(g *game.Game, stmt *ast.ListStatement, env *object.Enviro
 	}
 	listing := env.Program.List(fromLinenumber, toLinenumber, stmt.FromLineOnly)
 	if listing == nil {
-		if oldTextBoxSlot != tempTextBoxSlot {
+		if oldTextBoxSlot != tempTextBoxSlot && channel == 0 {
 			g.SetWriting(oldTextBoxSlot)
 			g.SetCurpos(1, curY)
 		}
 		return nil
 	}
 	for _, listString := range listing {
-		g.Print(listString)
-		g.Put(13)
+		if channel == 0 {
+			g.Print(listString)
+			g.Put(13)
+		} else {
+			obj := writeStringToFile(g, channel, listString)
+			if isError(obj) {
+				return obj
+			}
+			obj = writeStringToFile(g, channel, "\n")
+			if isError(obj) {
+				return obj
+			}
+		}
 	}
-	if oldTextBoxSlot != tempTextBoxSlot {
+	if oldTextBoxSlot != tempTextBoxSlot && channel == 0 {
 		g.SetWriting(oldTextBoxSlot)
 		g.SetCurpos(1, curY)
 	}
@@ -3219,6 +3512,19 @@ func evalDirStatement(g *game.Game, stmt *ast.DirStatement, env *object.Environm
 	oldTextBoxSlot, _, _, _, _ := g.AskWriting()
 	tempTextBoxSlot := oldTextBoxSlot
 	_, curY := g.AskCurpos()
+	channel := 0
+	// Evaluate and handle Channel if set
+	if stmt.Channel != nil {
+		if val, ok := Eval(g, stmt.Channel, env).(*object.Numeric); ok {
+			if val.Value < 11 || val.Value > 127 {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.WrongChannelNumberUsed), ErrorTokenIndex: stmt.Token.Index}
+			} else {
+				channel = int(val.Value)
+			}
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index}
+		}
+	}
 	// Evaluate and handle TextBoxSlot if set
 	if stmt.TextBoxSlot != nil {
 		obj := Eval(g, stmt.TextBoxSlot, env)
@@ -3231,14 +3537,16 @@ func evalDirStatement(g *game.Game, stmt *ast.DirStatement, env *object.Environm
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
 	}
-	g.SetWriting(tempTextBoxSlot)
+	if channel == 0 {
+		g.SetWriting(tempTextBoxSlot)
+	}
 
 	// evaluate path if given
 	val := ""
 	if stmt.Value != nil {
 		obj := Eval(g, stmt.Value, env)
 		if isError(obj) {
-			if oldTextBoxSlot != tempTextBoxSlot {
+			if oldTextBoxSlot != tempTextBoxSlot && channel == 0 {
 				g.SetWriting(oldTextBoxSlot)
 				g.SetCurpos(1, curY)
 			}
@@ -3247,7 +3555,7 @@ func evalDirStatement(g *game.Game, stmt *ast.DirStatement, env *object.Environm
 		if stringVal, ok := obj.(*object.String); ok {
 			val = stringVal.Value
 		} else {
-			if oldTextBoxSlot != tempTextBoxSlot {
+			if oldTextBoxSlot != tempTextBoxSlot && channel == 0 {
 				g.SetWriting(oldTextBoxSlot)
 				g.SetCurpos(1, curY)
 			}
@@ -3266,15 +3574,27 @@ func evalDirStatement(g *game.Game, stmt *ast.DirStatement, env *object.Environm
 	nimbusPath := strings.ReplaceAll(systemPath[len(g.WorkspacePath):], "/", "\\")
 	files, err := filepath.Glob(systemPath)
 	if err != nil {
-		if oldTextBoxSlot != tempTextBoxSlot {
+		if oldTextBoxSlot != tempTextBoxSlot && channel == 0 {
 			g.SetWriting(oldTextBoxSlot)
 			g.SetCurpos(1, curY)
 		}
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.DirectoryCannotBeFound), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
-	g.Print(fmt.Sprintf("Directory of %s", nimbusPath))
-	g.Put(13)
-	g.Put(13)
+	if channel == 0 {
+		g.Print(fmt.Sprintf("Directory of %s", nimbusPath))
+		g.Put(13)
+		g.Put(13)
+	} else {
+		obj := writeStringToFile(g, channel, fmt.Sprintf("Directory of %s", nimbusPath))
+		if isError(obj) {
+			return obj
+		}
+		writeStringToFile(g, channel, "\n")
+		obj = writeStringToFile(g, channel, "\n")
+		if isError(obj) {
+			return obj
+		}
+	}
 	// list subdirs first - get rid of wildcard expression if present
 	var subdirsSystemPath string
 	pathStrings := strings.Split(systemPath, "*")
@@ -3287,7 +3607,7 @@ func evalDirStatement(g *game.Game, stmt *ast.DirStatement, env *object.Environm
 	}
 	dirs, err := ioutil.ReadDir(subdirsSystemPath)
 	if err != nil {
-		if oldTextBoxSlot != tempTextBoxSlot {
+		if oldTextBoxSlot != tempTextBoxSlot && channel == 0 {
 			g.SetWriting(oldTextBoxSlot)
 			g.SetCurpos(1, curY)
 		}
@@ -3298,15 +3618,26 @@ func evalDirStatement(g *game.Game, stmt *ast.DirStatement, env *object.Environm
 			dirName := d.Name()
 			dirDate := d.ModTime().Format("2006-01-02 15:04:05")
 			dirString := fmt.Sprintf("%16s %6s       %16s", dirName, "<DIR>", dirDate)
-			g.Print(dirString)
-			g.Put(13)
+			if channel == 0 {
+				g.Print(dirString)
+				g.Put(13)
+			} else {
+				obj := writeStringToFile(g, channel, dirString)
+				if isError(obj) {
+					return obj
+				}
+				obj = writeStringToFile(g, channel, "\n")
+				if isError(obj) {
+					return obj
+				}
+			}
 		}
 	}
 	// then list files
 	for _, f := range files {
 		fileInfo, err := os.Stat(f)
 		if err != nil {
-			if oldTextBoxSlot != tempTextBoxSlot {
+			if oldTextBoxSlot != tempTextBoxSlot && channel == 0 {
 				g.SetWriting(oldTextBoxSlot)
 				g.SetCurpos(1, curY)
 			}
@@ -3318,12 +3649,30 @@ func evalDirStatement(g *game.Game, stmt *ast.DirStatement, env *object.Environm
 		var dirString string
 		if !fileInfo.IsDir() {
 			dirString = fmt.Sprintf("%16s %6d Bytes %16s", fileName, fileSize, fileDate)
-			g.Print(dirString)
-			g.Put(13)
+			if channel == 0 {
+				g.Print(dirString)
+				g.Put(13)
+			} else {
+				obj := writeStringToFile(g, channel, dirString)
+				if isError(obj) {
+					return obj
+				}
+				obj = writeStringToFile(g, channel, "\n")
+				if isError(obj) {
+					return obj
+				}
+			}
 		}
 	}
-	g.Put(13)
-	if oldTextBoxSlot != tempTextBoxSlot {
+	if channel == 0 {
+		g.Put(13)
+	} else {
+		obj := writeStringToFile(g, channel, "\n")
+		if isError(obj) {
+			return obj
+		}
+	}
+	if oldTextBoxSlot != tempTextBoxSlot && channel == 0 {
 		g.SetWriting(oldTextBoxSlot)
 		g.SetCurpos(1, curY)
 	}

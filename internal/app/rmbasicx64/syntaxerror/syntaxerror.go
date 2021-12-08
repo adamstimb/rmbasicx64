@@ -67,6 +67,12 @@ const (
 	UnableToEraseTheFile
 	UnableToRenameTheFile
 	VariableUsedAsLocal
+	WrongChannelNumberUsed
+	NamedChannelAlreadyInUse
+	ChannelNotOpenForInput
+	ChannelNotOpenForOutput
+	ReadingPastEndOfFile
+	TooManyFilesOpen
 )
 
 // ErrorMessage returns the template error message for a given error code
@@ -137,6 +143,12 @@ func ErrorMessage(errorCode int) string {
 		UnableToEraseTheFile:                         "Unable to erase the file",
 		UnableToRenameTheFile:                        "Unable to rename the file",
 		VariableUsedAsLocal:                          "Variable used as local",
+		WrongChannelNumberUsed:                       "Wrong channel number used",
+		NamedChannelAlreadyInUse:                     "Named channel already in use",
+		ChannelNotOpenForInput:                       "Channel not open for input",
+		ChannelNotOpenForOutput:                      "Channel not open for output",
+		ReadingPastEndOfFile:                         "Reading past end of file",
+		TooManyFilesOpen:                             "Too many files open",
 	}
 	return errorMessages[errorCode]
 }
