@@ -194,6 +194,18 @@ CIRCLE 15, 50, 100 BRUSH 2
 CIRCLE 30, 0, 150; 50, 150; 100, 150 BRUSH 1 OVER FALSE
 ```
 
+## CLOSE
+
+Close a file channel.
+
+### Syntax
+
+CLOSE [#_e_]
+
+### Remarks
+
+`CLOSE` without an argument closes all file channels.  To close a specific channel, pass the channel number prefixed by `#`.
+
 ## CLS
 
 Clears the screen or a selected writing area.
@@ -224,6 +236,18 @@ PRINT COS(90)
 
 ```
 
+## CREATE
+
+Open a file channel in writing mode.
+
+### Syntax
+
+CREATE #_e1_, _e2$_
+
+### Remarks
+
+As in the original RM Basic, channels #11 to #127 are user-defined and can be assign to files.  The filename _e2$_ must be valid file path (see [Filepaths](#filepaths) for details).
+
 ## DATA
 
 Specify numeric and/or string constants that will be assigned to variables with the READ statement.
@@ -244,9 +268,13 @@ Print a directory listing
 
 ### Syntax
 
-DIR [~_e1_] [_e2$_]
+DIR [#_e1_,] [~_e2_,] [_e3$_]
 
 ### Remarks
+
+_e1_ is a file channel that has already been open in writing mode (see [CREATE][#create] for details).
+
+_e2_ is a writing area that has been defined with [SET WRITING][#set-writing]; this is ignored if a file channel has been passed.
 
 `DIR` without an argument lists all .BAS files in the current working directory.  Old-school MS-DOS wildcards are supported, so to list all JPGs use `DIR "*.JPG"` and all files `DIR "*.*"`.  To list folders in a subdirectory use `DIR "myfolder\"`.  Just like RM Basic, if the file extension is omitted as in the last example, *.BAS is automatically appended.  Unlike RM Basic (and MS-DOS 3.1) the filepaths are case-sensitive.
 
@@ -472,11 +500,15 @@ Receive input and assign input to a variable.
 
 ### Syntax
 
-INPUT [~_e1_] _e$_[;] _v_
+INPUT [#_e1_,] [~_e1_,] _e$_[;] _v_
 
 ### Remarks
 
-_e$_ is a prompt that is written to the screen.  If a semicolon follows the prompt, a "?" character is printed after the prompt.  The user can then key in a response which is parsed and stored in the variable _v_.  Note that parsing input into multiple variables is not yet supported.
+_e1_ is a file channel that has already been open in reading mode (see [OPEN][#open] for details).
+
+_e2_ is a writing area that has been defined with [SET WRITING][#set-writing]; this is ignored if a file channel has been passed.
+
+_e$_ is a prompt that is written to the screen.  If a semicolon follows the prompt, a "?" character is printed after the prompt.  The user can then key in a response which is parsed and stored in the variable _v_.  Note that parsing input into multiple variables is not yet supported.  The prompt is ignore if a file channel has been passed.
 
 ### Example
 
@@ -582,9 +614,13 @@ List the stored program.
 
 ### Syntax
 
-LIST [~_e1_] [_e2_] [TO [_e3_]]
+LIST [#_e1_,] [~_e2_,] [_e3_] [TO [_e4_]]
 
 ### Remarks
+
+_e1_ is a file channel that has already been open in writing mode (see [CREATE][#create] for details).
+
+_e2_ is a writing area that has been defined with [SET WRITING][#set-writing]; this is ignored if a file channel has been passed.
 
 `LIST` by itself lists the entire program.  A single line can be listed by passing the line number, e.g. `LIST 130`.  The program from a particular line to the end can be listed by passing an unlimited range, e.g. `LIST 130 TO`.  The program can be listed between to lines by passing a limited range, e.g. `LIST 90 TO 130`.
 
@@ -706,6 +742,18 @@ NOTE _e1_ [TO _e2_] [,_e3_ [ ,_e4_]] [ENVELOPE _e5_] [VOICE _e6_]
 
 Not all options are implemented.  This thing is complicated.  Please refer to the original manual!
 
+## OPEN
+
+Open a file channel in reading mode.
+
+### Syntax
+
+OPEN #_e1_, _e2$_
+
+### Remarks
+
+As in the original RM Basic, channels #11 to #127 are user-defined and can be assign to files.  The filename _e2$_ must be valid file path (see [Filepaths](#filepaths) for details).
+
 ## OR
 
 Bitwise OR on two expressions.
@@ -786,9 +834,13 @@ Prints strings and/or numbers on the screen.
 
 ### Syntax
 
-PRINT [_print list_]
+PRINT [#_e1_,] [~_e2_,] [_print list_]
 
 ### Remarks
+
+_e1_ is a file channel that has already been open in writing mode (see [CREATE][#create] for details).
+
+_e2_ is a writing area that has been defined with [SET WRITING][#set-writing]; this is ignored if a file channel has been passed.
 
 _print list_ is a list of expressions (numeric and/or string). Each expression must be separated by a semicolon, comma, space or exclamation mark.  The expressions are evaluated and then printed on screen.  Using semicolon or space between the expressions causes the results to be printed on the same line immediately following one another.  Using a comma causes the following result to be printed in the next print zone (this isn't properly implemented yet).  Using an exclamation mark causes the next result to be printed on a new line.  Ending the _print list_ with a semicolon or comma causes the cursor to remain on the same line, so that the next PRINT statement not start on a new line.
 

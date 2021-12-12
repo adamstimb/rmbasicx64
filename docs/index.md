@@ -2,9 +2,9 @@
 
 _RM BASICx64 is a tribute project and is in no way linked to or endorsed by RM plc._
 
-# Version 0.22
+# Version 0.23
 
-_Released 7th December 2021_
+_Released 12th December 2021_
 
 - Check the [release notes](releases.md)
 

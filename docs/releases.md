@@ -2,6 +2,21 @@
 
 # Releases
 
+## 0.23
+
+12th December 2021
+
+### Bug fixes
+
+- Fixed automatic indenting of stored programs
+
+### New stuff
+
+- OPEN implemented
+- CREATE implemented
+- CLOSE implemented
+- PRINT, DIR, LIST, etc. accept optional file channel
+
 ## 0.22
 
 7th December 2021
