@@ -327,11 +327,14 @@ func WriteExamples(workspacePath string) {
 510 Op% := Y% / 10 - 8
 520 Op% := - Op% + 8
 530 IF Op% = 1 THEN Ed : GOTO 130
-540 If Op% = 2 THEN Savdat : GOTO 130
-550 If Op% = 3 THEN Loadat : GOTO 130
-560 If Op% = 4 THEN View : GOTO 130
-570 If Op% = 5 THEN Plott : GOTO 130
+540 IF Op% = 2 THEN Savdat : GOTO 130
+550 IF Op% = 3 THEN Loadat : GOTO 130
+560 IF Op% = 4 THEN View : GOTO 130
+570 IF Op% = 5 THEN Plott : GOTO 130
 580 IF Op% = 6 THEN Directory : GOTO 130
+590 IF Op% = 7 THEN Cut : GOTO 130
+600 IF Op% = 8 THEN Quit : END
+610 GOTO 450
 `,
 		},
 	}
