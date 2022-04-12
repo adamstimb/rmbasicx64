@@ -272,6 +272,68 @@ func WriteExamples(workspacePath string) {
 230 NEXT K%
 `,
 		},
+		{
+			filename: "lathe.BAS",
+			program: `10 REM *****************************
+20 REM *                           *
+30 REM * Lathe Simulation Program. *
+40 REM * 1986-1987 (C) Rob Baines. *
+50 REM *          A Level          *
+60 REM *      Technical Graphics   *
+70 REM *                           *
+80 REM *****************************
+90 SET MODE 40
+100 GLOBAL Ro(), Yo(), T%, F%, T1x%(), T1y%()
+110 SET MOUSE
+120 DIM Ro(50), Yo(50), T1x%(10), T1%(10)
+130 SET PAPER 5
+140 SET BORDER 5
+150 CLG
+160 AREA 80, 40; 270, 40; 270, 200; 80, 200; 80, 40 BRUSH 8
+170 AREA 80, 40; 270, 40; 270, 200; 80, 200; 80, 40 BRUSH 0 STYLE 0
+180 AREA 70, 50; 260, 50; 260, 210; 70, 210; 70, 50 BRUSH 7
+190 AREA 70, 50; 260, 50; 260, 210; 70, 210; 70, 50 BRUSH 0 STYLE 0
+200 SET WRITING 4 TO 11, 10; 31, 18
+210 SET WRITING 4
+220 HOME
+230 SET PAPER 7
+240 AREA 75, 205; 255, 205; 255, 180; 75, 180; 75, 180 BRUSH 15
+250 AREA 75, 205; 255, 205; 255, 180; 75, 180; 75, 180 BRUSH 0 STYLE 0
+260 PLOT "Lathe Simulation", 82, 193 BRUSH 0
+270 PLOT "Lathe Simulation", 83, 192 BRUSH 2
+280 PLOT "by Rob Baines", 120, 182 BRUSH 0
+290 PLOT "by Rob Baines", 121, 181 BRUSH 4
+300 AREA 75, 60; 255, 60; 255, 170; 75, 170; 75, 60 BRUSH 15
+310 AREA 75, 60; 255, 60; 255, 170; 75, 170; 75, 60 BRUSH 0 STYLE 0
+320 SET PAPER 15
+330 SET PEN 3
+340 PRINT "1.) Edit a shape"
+350 PRINT "2.) Save data"
+360 PRINT "3.) Load data"
+370 PRINT "4.) 3D view"
+380 PRINT "5.) Plot shape"
+390 PRINT "6.) Directory"
+400 PRINT "7.) Cut shape"
+410 PRINT "8.) Quit"
+420 SET PEN 5
+430 PRINT "Please select option";
+440 SET POINTS STYLE 2
+450 ASK MOUSE X%, Y%, B%
+460 AREA X%, Y%; X%, Y% - 10; X% + %, Y% - 10; X% + 7, Y% - 20; 10 + X%, Y% - 20; X% + 15, Y% - 20; X% + 9, Y% - 10; X% + 15, Y% - 10; X%, Y% BRUSH 5 OVER FALSE STYLE 0
+470 AREA X%, Y%; X%, Y% - 10; X% + %, Y% - 10; X% + 7, Y% - 20; 10 + X%, Y% - 20; X% + 15, Y% - 20; X% + 9, Y% - 10; X% + 15, Y% - 10; X%, Y% BRUSH 5 OVER FALSE STYLE 0
+480 IF B% = 1 OR B% = 2 THEN 500
+490 GOTO 450
+500 IF X% < 75 OR X% > 255 THEN 450
+510 Op% := Y% / 10 - 8
+520 Op% := - Op% + 8
+530 IF Op% = 1 THEN Ed : GOTO 130
+540 If Op% = 2 THEN Savdat : GOTO 130
+550 If Op% = 3 THEN Loadat : GOTO 130
+560 If Op% = 4 THEN View : GOTO 130
+570 If Op% = 5 THEN Plott : GOTO 130
+580 IF Op% = 6 THEN Directory : GOTO 130
+`,
+		},
 	}
 
 	for _, example := range examples {
