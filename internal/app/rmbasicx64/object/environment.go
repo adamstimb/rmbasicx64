@@ -6,7 +6,9 @@ import (
 	"strings"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/lexer"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
 )
 
 type program struct {
@@ -165,39 +167,44 @@ func (p *program) Renumber() {
 func (p *program) Indent() {
 	newProg := make(map[int]string)
 	indent := ""
+	nextIndent := ""
 	for i := 0; i < len(p.lines); i++ {
 		line := p.lines[p.sortedIndex[i]]
 		// new version:
-		// Tokenize the line
-		// If any of the tokens are FOR, PROCEDURE, FUNCTION or REPEAT then:
-		//   newProg[p.sortedIndex[i]] = indent + line + "\n"
-		//	 indent += "  "
-		//   continue
-		// If any of the tokens are NEXT, ENDPROC, ENDFUNC, UNTIL then:
-		//   indent = strings.TrimPrefix(indent, "  ")
-		//	 newProg[p.sortedIndex[i]] = indent + line + "\n"
-		//   continue
-		// newProg[p.sortedIndex[i]] = indent + line + "\n"
+		nextIndent = indent
+		l := &lexer.Lexer{}
+		tokens := l.Scan(line)
+		for _, toke := range tokens {
+			tokenType := toke.TokenType
+			switch tokenType {
+			case token.FOR, token.PROCEDURE, token.FUNCTION, token.REPEAT:
+				nextIndent += "  "
+			case token.NEXT, token.ENDPROC, token.ENDFUN, token.UNTIL:
+				nextIndent = strings.TrimPrefix(nextIndent, "  ")
+			}
+		}
+		indent = nextIndent
+		newProg[p.sortedIndex[i]] = indent + line + "\n"
 
-		// old version:
-		line = strings.TrimSpace(line)
-		fields := strings.Fields(line)
-		var firstWord string
-		if len(fields) > 0 {
-			firstWord = fields[0]
-		} else {
-			continue
-		}
-		switch firstWord {
-		case "FOR", "PROCEDURE", "FUNCTION", "REPEAT":
-			newProg[p.sortedIndex[i]] = indent + line + "\n"
-			indent += "  "
-		case "NEXT", "ENDPROC", "ENDFUNC", "UNTIL":
-			indent = strings.TrimPrefix(indent, "  ")
-			newProg[p.sortedIndex[i]] = indent + line + "\n"
-		default:
-			newProg[p.sortedIndex[i]] = indent + line + "\n"
-		}
+		//// old version:
+		//line = strings.TrimSpace(line)
+		//fields := strings.Fields(line)
+		//var firstWord string
+		//if len(fields) > 0 {
+		//	firstWord = fields[0]
+		//} else {
+		//	continue
+		//}
+		//switch firstWord {
+		//case "FOR", "PROCEDURE", "FUNCTION", "REPEAT":
+		//	newProg[p.sortedIndex[i]] = indent + line + "\n"
+		//	indent += "  "
+		//case "NEXT", "ENDPROC", "ENDFUNC", "UNTIL":
+		//	indent = strings.TrimPrefix(indent, "  ")
+		//	newProg[p.sortedIndex[i]] = indent + line + "\n"
+		//default:
+		//	newProg[p.sortedIndex[i]] = indent + line + "\n"
+		//}
 	}
 	p.lines = newProg
 }
