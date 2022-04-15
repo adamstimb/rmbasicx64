@@ -652,6 +652,26 @@ func WriteExamples(workspacePath string) {
 3720   ASK MOUSE X%, Y%, B%
 3730   IF B% = 0 THEN 3720
 3740 ENDPROC
+3750 PROCEDURE Tooldraw Tx, Ty, Tn%
+3760   GLOBAL Tlx%(), Tly%(), Pt%
+3770   IF Tn% = Pt% THEN 3860
+3780   IF Tn% = 1 THEN RESTORE 3880
+3790   IF Tn% = 2 THEN RESTORE 3890
+3800   READ Ts%
+3810   FOR D% := 1 TO Ts%
+3820     READ Tlx%(D%), Tly%(D%)
+3830   NEXT
+3840   FOR D% := 1 TO Ts% - 1
+3850     LINE Tx + Tlx%(D%), (125 - Ty) + Tly%(D%); Tx + Tlx%(D% + 1), (125 - Ty) + Tly%(D% + 1) BRUSH 15
+3860   NEXT
+3870 ENDPROC
+3880 DATA 5,0,0,10,-10,10,-50,0,-50,0,0
+3890 DATA 5,0,-10,10,0,10,-50,0,-50,0,-10
+3900 PROCEDURE Erasetool Tx, Ty, Tn%
+3910   GLOBAL Tlx%(), Tly%(), Pt%
+3920   IF Tn% = 1 THEN 3940
+3930   IF Tn% = 2 THEN 3960
+
 
 
 
