@@ -167,6 +167,19 @@ func (p *program) Indent() {
 	indent := ""
 	for i := 0; i < len(p.lines); i++ {
 		line := p.lines[p.sortedIndex[i]]
+		// new version:
+		// Tokenize the line
+		// If any of the tokens are FOR, PROCEDURE, FUNCTION or REPEAT then:
+		//   newProg[p.sortedIndex[i]] = indent + line + "\n"
+		//	 indent += "  "
+		//   continue
+		// If any of the tokens are NEXT, ENDPROC, ENDFUNC, UNTIL then:
+		//   indent = strings.TrimPrefix(indent, "  ")
+		//	 newProg[p.sortedIndex[i]] = indent + line + "\n"
+		//   continue
+		// newProg[p.sortedIndex[i]] = indent + line + "\n"
+
+		// old version:
 		line = strings.TrimSpace(line)
 		fields := strings.Fields(line)
 		var firstWord string
