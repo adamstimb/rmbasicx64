@@ -671,9 +671,25 @@ func WriteExamples(workspacePath string) {
 3910   GLOBAL Tlx%(), Tly%(), Pt%
 3920   IF Tn% = 1 THEN 3940
 3930   IF Tn% = 2 THEN 3960
-
-
-
+3940   AREA Tx + 0, (125 - Ty) - 0; Tx + 10, (125 - Ty) - 10; Tx + 10, (125 - Ty) - 50; Tx + 0, (125 - Ty) - 50; Tx + 0, (125 - Ty) - 0; Tx + 0, (125 - Ty) - 0 BRUSH 1
+3950 AREA Tx + 0, (125 + Ty) + 0; Tx + 10, (125 + Ty) + 10; Tx + 10, (125 + Ty) + 50; Tx + 0, (125 + Ty) + 50; Tx + 0, (125 + Ty) + 0; Tx + 0, (125 + Ty) + 0 BRUSH 1 : ENDPROC
+3960 AREA Tx + 0, Ty - 10; Tx + 10, Ty + 0; Tx + 10, Ty - 50; Tx + 0, Ty - 50; Tx + 0, Ty - 10 BRUSH 1
+3970 AREA Tx + 0, Ty + 125 + 10; Tx + 10, Ty + 125 - 0; Tx + 10, Ty + 125 + 50; Tx + 0, Ty + 125 + 50; Tx + 0, Ty + 125 + 10 BRUSH 1 : ENDPROC
+3980 PROCEDURE Calc Tx RECEIVE Ra
+3990   GLOBAL Ro(), Yo(), T%, F$, Tlx%(), Tly%(), Pt%
+4000   Calx := Tx - 160
+4010   FOR N := 1 TO T% - 1
+4020     IF Calx > Yo(N) AND Calx < Yo(N + 1) THEN 4080
+4030     If Calx = Yo(N) THEN 4060
+4040   NEXT
+4050 Ra := 90 : ENDPROC
+4060 Ra := Ro(N)
+4070 ENDPROC
+4080 L := Calx - Yo(N) : M := Yo(N + 1) - Calx
+4090 Le := Yo(N + 1) - Yo(N) : H := Ro(N + 1) - Ro(N)
+4100 H1 := (M * H) / (L + M)
+4110 Ra := Ro(N) - H1 + H
+4120 ENDPROC 
 
 
 
