@@ -170,6 +170,7 @@ func (p *program) Indent() {
 	nextIndent := ""
 	for i := 0; i < len(p.lines); i++ {
 		line := p.lines[p.sortedIndex[i]]
+
 		// new version:
 		nextIndent = indent
 		l := &lexer.Lexer{}
@@ -205,6 +206,7 @@ func (p *program) Indent() {
 		//default:
 		//	newProg[p.sortedIndex[i]] = indent + line + "\n"
 		//}
+
 	}
 	p.lines = newProg
 }
