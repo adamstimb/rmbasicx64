@@ -635,7 +635,23 @@ func WriteExamples(workspacePath string) {
 3610     LINE Yo(N) + Cx, Cy + Ro(N); Yo(N + 1) + Cx, Cy + Ro(N + 1) BRUSH 15 STYLE 2
 3620     LINE Yo(N) + Cx, Cy - Ro(N); Yo(N + 1) + Cx, Cy - Ro(N + 1) BRUSH 15 STYLE 2
 3630   NEXT
-
+3640   Maxin% := Ymax% + 160 : Tn% := 1
+3650   FOR Ty := Rmax% TO 5 STEP - 5
+3660     FOR Tx := Ymax% + 160 TO Ymin% + 160 STEP - 1
+3670       Calc Tx RECEIVE Ra
+3680       Tooldraw Tx, Ty, Tn%
+3690       Erasetool Tx, Ty, Tn%
+3700     IF Tv <> INT(Ra) THEN NEXT Tx
+3705     IF Tx < Maxin% THEN Maxin% := Tx
+3710   Tx := Ymax% + 160 : NEXT Ty
+3711   FOR Tx := Ymax% + 160 TO Maxin% STEP - 1
+3712     Calc Tx RECEIVE Ra
+3713     Tooldraw Tx, Ty, Tn%
+3714     Erasetool Tx, Ty, Tn%
+3715   Ty := Ra : NEXT Tx
+3720   ASK MOUSE X%, Y%, B%
+3730   IF B% = 0 THEN 3720
+3740 ENDPROC
 
 
 
