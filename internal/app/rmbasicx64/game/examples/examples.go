@@ -597,7 +597,44 @@ func WriteExamples(workspacePath string) {
 3230   PRINT #15, "D "; (Px4 * Scx) - Ox; " "; (Py4 * Scv) - Ov; " "; (Px1 * Scx) - Ox; " "; (Py1 * Scv) - Ov;
 3240 NEXT
 3250 RETURN
-
+3260 PROCEDURE Angle RETURN Ang
+3270   SET MOUSE
+3280   PLOT "Please select an angle.", 65, 170 SIZE 1, 2 BRUSH 0
+3290   PLOT "Please select an angle.", 66, 169 SIZE 1, 2 BRUSH 4
+3300   PLOT "0", 50, 100 SIZE 5, 5 BRUSH 0
+3310   PLOT "0", 51, 99 SIZE 5, 5 BRUSH 15
+3320   PLOT "30", 190, 100 SIZE 5, 5 BRUSH 0
+3330   PLOT "30", 191, 99 SIZE 5, 5 BRUSH 15
+3340   PLOT "o", 85, 140 BRUSH 0 SIZE 1, 2
+3350   PLOT "o", 86, 139 BRUSH 15 SIZE 1, 2
+3360   PLOT "o", 265, 140 BRUSH 0 SIZE 1, 2
+3370   PLOT "o", 266, 139 BRUSH 15 SIZE 1, 2
+3380   ASK MOUSE X%, Y%, B%
+3390   POINTS X%, Y% OVER FALSE BRUSH 15 STYLE 2
+3400   POINTS X%, Y% OVER FALSE BRUSH 15 STYLE 2
+3410   IF B% = 0 THEN 3380
+3420   IF X% > 50 AND X% < 98 THEN Ang := 0 : GOTO 3450
+3430   IF X% > 190 AND X% < 270 THEN Ang := 30 : GOTO 3450
+3440   GOTO 3380
+3450 ENDPROC
+3460 SET MODE 40 : SET MOUSE
+3470 PROCEDURE Cut
+3480   GLOBAL T%, F$, Yo(), Ro()
+3490   SET PAPER 1 : SET BORDER 1 : CLG
+3500   Ymax% := 0 : Rmax% := 0 : Ymin% := 0
+3510   FOR N := 1 TO T%
+3520     IF Yo(N) > Ymax% THEN Ymax% := Yo(N)
+3530     IF Yo(N) < Ymin% THEN Ymin% := Yo(N)
+3540     IF ABS Ro(N) > Rmax% THEN Rmax% := ABS Ro(N)
+3550   NEXT
+3560   Cx := 160 : Cy := 125
+3570   AREA Ymax% + Cx, Cy + Rmax%; Ymax% + Cx, Cy - Rmax%; Ymin% + Cx, Cy + Rmax%; Ymin% + Cx, Cy - Rmax%; Ymin% + Cx, Cy + Rmax% BRUSH 7
+3580   AREA Ymax% + Cx, Cy + Rmax%; Ymax% + Cx, Cy - Rmax%; Ymin% + Cx, Cy + Rmax%; Ymin% + Cx, Cy - Rmax%; Ymax% + Cx, Cy + Rmax% BRUSH 0 STYLE 0
+3590   FOR N := 1 TO T% - 2
+3600     Cx := 160 : Cy := 125
+3610     LINE Yo(N) + Cx, Cy + Ro(N); Yo(N + 1) + Cx, Cy + Ro(N + 1) BRUSH 15 STYLE 2
+3620     LINE Yo(N) + Cx, Cy - Ro(N); Yo(N + 1) + Cx, Cy - Ro(N + 1) BRUSH 15 STYLE 2
+3630   NEXT
 
 
 
