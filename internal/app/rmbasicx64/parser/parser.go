@@ -3703,7 +3703,7 @@ func (p *Parser) PrettyPrint() string {
 		}
 		// Remove trailing space if ;
 		if len(lineString) > 0 {
-			if lineString[len(lineString)-1] == ' ' && p.curToken.TokenType == token.Comma {
+			if lineString[len(lineString)-1] == ' ' && p.curToken.TokenType == token.Semicolon {
 				lineString = lineString[0 : len(lineString)-1]
 				lineString += "; "
 				p.nextToken()

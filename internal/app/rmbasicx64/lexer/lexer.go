@@ -1,7 +1,6 @@
 package lexer
 
 import (
-	"log"
 	"regexp"
 	"strings"
 	"unicode"
@@ -396,8 +395,8 @@ func (s *Lexer) scanToken() {
 			s.getIdentifier(r)
 			return
 		}
-		// unexpected chars are tokenized as Illegal
-		log.Printf("lexer found illegal token: %q", r)
+		// unexpected chars are tokenized as Illegal - this kind of drifted so let's just comment it out
+		//log.Printf("lexer found illegal token: %q", r)
 		s.addToken(token.Illegal, string(r))
 	}
 }
