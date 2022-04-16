@@ -3,6 +3,7 @@ package object
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/lexer"
@@ -165,59 +166,32 @@ func (p *program) Renumber() {
 // Indent is used to tidy the code and make it easier to read
 func (p *program) Indent() {
 	newProg := make(map[int]string)
-	indents := make(map[int]int)
-
+	indents := make(map[int]string)
+	indents[0] = ""
 	// Populate indents map (how many indents are needed for each line of code)
 	for i := 0; i < len(p.lines); i++ {
 		line := p.lines[p.sortedIndex[i]]
-
 		l := &lexer.Lexer{}
 		tokens := l.Scan(line)
 		for _, toke := range tokens {
 			tokenType := toke.TokenType
 			switch tokenType {
 			case token.FOR, token.PROCEDURE, token.FUNCTION, token.REPEAT:
-				// The next line needs to be indented one more level
-				if i < len(p.lines)-1 {
-					indents[p.sortedIndex[i+1]] = previousIndents + 1
+				// Increment the indentation level from the next line to the end
+				for j := i + 1; j < len(p.lines); j++ {
+					indents[j] = indents[i] + "  "
 				}
 			case token.NEXT, token.ENDPROC, token.ENDFUN, token.UNTIL:
-				// This line needs to be unindented one level
-				indents[p.sortedIndex[i]] = previousIndents - 1
+				// Decrement the indentation level from this line to the end
+				for j := i; j < len(p.lines); j++ {
+					indents[j] = strings.TrimPrefix(indents[j], "  ")
+				}
 			}
 		}
-
-		//// old version:
-		//line = strings.TrimSpace(line)
-		//fields := strings.Fields(line)
-		//var firstWord string
-		//if len(fields) > 0 {
-		//	firstWord = fields[0]
-		//} else {
-		//	continue
-		//}
-		//switch firstWord {
-		//case "FOR", "PROCEDURE", "FUNCTION", "REPEAT":
-		//	newProg[p.sortedIndex[i]] = indent + line + "\n"
-		//	indent += "  "
-		//case "NEXT", "ENDPROC", "ENDFUNC", "UNTIL":
-		//	indent = strings.TrimPrefix(indent, "  ")
-		//	newProg[p.sortedIndex[i]] = indent + line + "\n"
-		//default:
-		//	newProg[p.sortedIndex[i]] = indent + line + "\n"
-		//}
-
 	}
-
 	// Insert the indents into newProg
 	for i := 0; i < len(p.lines); i++ {
-		// Generate the indent string
-		indent := ""
-		for a := 0; a < indents[p.sortedIndex[i]]; a++ {
-			indent += "  "
-		}
-		// Insert the indent into the new program
-		newProg[p.sortedIndex[i]] = indent + p.lines[p.sortedIndex[i]]
+		newProg[p.sortedIndex[i]] = indents[i] + strings.TrimSpace(p.lines[p.sortedIndex[i]])
 	}
 	// Overwrite p.lines with newProg
 	p.lines = newProg

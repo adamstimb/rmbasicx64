@@ -690,9 +690,6 @@ func WriteExamples(workspacePath string) {
 4100 H1 := (M * H) / (L + M)
 4110 Ra := Ro(N) - H1 + H
 4120 ENDPROC 
-
-
-
 `,
 		},
 	}
