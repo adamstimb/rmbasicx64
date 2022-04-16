@@ -6,7 +6,9 @@ import (
 	"strings"
 
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/ast"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/lexer"
 	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/syntaxerror"
+	"github.com/adamstimb/rmbasicx64/internal/app/rmbasicx64/token"
 )
 
 type program struct {
@@ -164,28 +166,34 @@ func (p *program) Renumber() {
 // Indent is used to tidy the code and make it easier to read
 func (p *program) Indent() {
 	newProg := make(map[int]string)
-	indent := ""
+	indents := make(map[int]string)
+	indents[0] = ""
+	// Populate indents map (how many indents are needed for each line of code)
 	for i := 0; i < len(p.lines); i++ {
 		line := p.lines[p.sortedIndex[i]]
-		line = strings.TrimSpace(line)
-		fields := strings.Fields(line)
-		var firstWord string
-		if len(fields) > 0 {
-			firstWord = fields[0]
-		} else {
-			continue
-		}
-		switch firstWord {
-		case "FOR", "PROCEDURE", "FUNCTION", "REPEAT":
-			newProg[p.sortedIndex[i]] = indent + line + "\n"
-			indent += "  "
-		case "NEXT", "ENDPROC", "ENDFUNC", "UNTIL":
-			indent = strings.TrimPrefix(indent, "  ")
-			newProg[p.sortedIndex[i]] = indent + line + "\n"
-		default:
-			newProg[p.sortedIndex[i]] = indent + line + "\n"
+		l := &lexer.Lexer{}
+		tokens := l.Scan(line)
+		for _, toke := range tokens {
+			tokenType := toke.TokenType
+			switch tokenType {
+			case token.FOR, token.PROCEDURE, token.FUNCTION, token.REPEAT:
+				// Increment the indentation level from the next line to the end
+				for j := i + 1; j < len(p.lines); j++ {
+					indents[j] = indents[i] + "  "
+				}
+			case token.NEXT, token.ENDPROC, token.ENDFUN, token.UNTIL:
+				// Decrement the indentation level from this line to the end
+				for j := i; j < len(p.lines); j++ {
+					indents[j] = strings.TrimPrefix(indents[j], "  ")
+				}
+			}
 		}
 	}
+	// Insert the indents into newProg
+	for i := 0; i < len(p.lines); i++ {
+		newProg[p.sortedIndex[i]] = indents[i] + strings.TrimSpace(p.lines[p.sortedIndex[i]])
+	}
+	// Overwrite p.lines with newProg
 	p.lines = newProg
 }
 
