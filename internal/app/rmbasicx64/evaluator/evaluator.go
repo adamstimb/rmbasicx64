@@ -1160,7 +1160,7 @@ func evalAreaStatement(g *game.Game, stmt *ast.AreaStatement, env *object.Enviro
 			return obj
 		}
 		if val, ok := obj.(*object.Numeric); ok {
-			if g.ValidateColour(int(val.Value)) {
+			if g.ValidateBrush(int(val.Value)) {
 				Brush = int(val.Value)
 			} else {
 				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}

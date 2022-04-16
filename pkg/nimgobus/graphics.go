@@ -26,6 +26,23 @@ func (n *Nimbus) ValidateColour(c int) bool {
 	return true
 }
 
+// ValidateBrush validates if a colour/palette slot is valid for the current screen mode
+func (n *Nimbus) ValidateBrush(c int) bool {
+	maxC := 15
+	if n.mode == 80 {
+		maxC = 3
+	}
+	// Validate pattern
+	if c >= 128 && c <= 135 {
+		return true
+	}
+	// Validate solid colour
+	if c < 0 || c > maxC {
+		return false
+	}
+	return true
+}
+
 // ValidateStyle validates if a style slot is valid
 func (n *Nimbus) ValidateStyle(s int) bool {
 	if s < 1 || s > 5 {
