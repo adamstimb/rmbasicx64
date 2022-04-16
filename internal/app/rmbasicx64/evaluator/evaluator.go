@@ -828,7 +828,7 @@ func evalCircleStatement(g *game.Game, stmt *ast.CircleStatement, env *object.En
 			return obj
 		}
 		if val, ok := obj.(*object.Numeric); ok {
-			if val.Value >= 0 {
+			if g.ValidateBrush(int(val.Value)) {
 				Brush = int(val.Value)
 			} else {
 				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
@@ -1030,7 +1030,7 @@ func evalFloodStatement(g *game.Game, stmt *ast.FloodStatement, env *object.Envi
 			return obj
 		}
 		if val, ok := obj.(*object.Numeric); ok {
-			if g.ValidateColour(int(val.Value)) {
+			if g.ValidateBrush(int(val.Value)) {
 				Brush = int(val.Value)
 			} else {
 				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
