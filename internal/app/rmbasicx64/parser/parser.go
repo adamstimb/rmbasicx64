@@ -1922,13 +1922,23 @@ func (p *Parser) parseSubroutineStatement() *ast.SubroutineStatement {
 func (p *Parser) parseGosubStatement() *ast.GosubStatement {
 	stmt := &ast.GosubStatement{Token: p.curToken}
 	p.nextToken() // consume SUBROUTINE
-	// Require name
-	if !p.curTokenIs(token.IdentifierLiteral) {
-		p.ErrorTokenIndex = p.curToken.Index
-		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NameOfDefinitionRequired)
-		return nil
+	// If it's an identifier then we've got a label so shove that in the Name
+	if p.curTokenIs(token.IdentifierLiteral) {
+		fmt.Printf("Got identifier: %s\n", p.curToken.Literal)
+		stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	} else {
+		// If it's not an identifier then it must be a line number and nothing else
+		stmt.Name = nil
+		if p.curTokenIs(token.NumericLiteral) {
+			fmt.Printf("Got line number: %s\n", p.curToken.Literal)
+			val, _ := strconv.ParseFloat(p.curToken.Literal, 64)
+			stmt.LineNumber = int(val)
+		} else {
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.LineNumberLabelNeeded)
+			return nil
+		}
 	}
-	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 	p.nextToken()
 	// Require end of instruction
 	if p.endOfInstruction() {
