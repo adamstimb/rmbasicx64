@@ -43,7 +43,7 @@ func (p *Program) String() string {
 	return out.String()
 }
 
-// This represents a line of code, which code contain several statements
+// This represents a line of code, which can contain several statements
 type Line struct {
 	Statements []Statement
 	LineNumber int

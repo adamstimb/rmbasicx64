@@ -2841,7 +2841,6 @@ func evalGosubStatement(g *game.Game, stmt *ast.GosubStatement, env *object.Envi
 		// Jump to line number
 		val, _ := strconv.ParseFloat(stmt.Name.Value, 64)
 		env.Program.Jump(int(val), 0)
-		//env.Program.Next()
 	}
 	return nil
 }
@@ -4111,22 +4110,39 @@ func evalBlockStatement(g *game.Game, block *ast.BlockStatement, env *object.Env
 }
 
 func evalIfStatement(g *game.Game, ie *ast.IfStatement, env *object.Environment) object.Object {
+	fmt.Printf("evalIfStatement: %v\n", ie)
 	condition := Eval(g, ie.Condition, env)
 	if isError(condition) {
 		return condition
 	}
 	var returnObject object.Object
 	if isTruthy(condition) {
+		fmt.Printf("is truthy\n")
+		// Special case THEN lineNumber
+
+		// If LineString can be parsed as a float then it's a lineNumber
+		if _, err := strconv.ParseFloat(ie.Consequence.LineString, 64); err == nil {
+			fmt.Printf("is line number\n")
+			// Create a GOTO statement, evaluate it and return
+			gotoStmt := &ast.GotoStatement{Linenumber: token.Token{TokenType: token.NumericLiteral, Literal: ie.Consequence.LineString}}
+			return evalGotoStatement(g, gotoStmt, env)
+		}
+
+		// Normal case THEN statements
 		for _, stmt := range ie.Consequence.Statements {
+			fmt.Printf("is statement")
 			obj := Eval(g, stmt, env)
 			returnObject = obj
 			if isError(obj) {
 				return obj
 			}
 		}
-		//return NULL
 		return returnObject
 	} else if ie.Alternative != nil {
+		fmt.Printf("is false")
+		// Special case ELSE lineNumber
+
+		// Normal case ELSE statements
 		for _, stmt := range ie.Alternative.Statements {
 			obj := Eval(g, stmt, env)
 			returnObject = obj
