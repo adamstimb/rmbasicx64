@@ -1414,6 +1414,7 @@ func (s *SubroutineStatement) String() string {
 type GosubStatement struct {
 	Token           token.Token
 	Name            *Identifier
+	IsLabel         bool
 	LineNumber      int
 	StatementNumber int
 }

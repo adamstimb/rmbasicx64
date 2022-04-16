@@ -1926,13 +1926,14 @@ func (p *Parser) parseGosubStatement() *ast.GosubStatement {
 	if p.curTokenIs(token.IdentifierLiteral) {
 		fmt.Printf("Got identifier: %s\n", p.curToken.Literal)
 		stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		stmt.IsLabel = true
 	} else {
 		// If it's not an identifier then it must be a line number and nothing else
-		stmt.Name = nil
 		if p.curTokenIs(token.NumericLiteral) {
 			fmt.Printf("Got line number: %s\n", p.curToken.Literal)
-			val, _ := strconv.ParseFloat(p.curToken.Literal, 64)
-			stmt.LineNumber = int(val)
+			//val, _ := strconv.ParseFloat(p.curToken.Literal, 64)
+			stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+			stmt.IsLabel = false
 		} else {
 			p.ErrorTokenIndex = p.curToken.Index
 			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.LineNumberLabelNeeded)

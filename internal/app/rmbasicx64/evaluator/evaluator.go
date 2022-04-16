@@ -2831,19 +2831,17 @@ func evalGosubStatement(g *game.Game, stmt *ast.GosubStatement, env *object.Envi
 	stmt.StatementNumber = env.Program.CurrentStatementNumber
 	env.JumpStack.Push(stmt)
 
-	// If we have a Name then try to get location of subroutine and jump.  Yield error if not found (run on emulator
-	// to find out which one)
-	if stmt.Name != nil {
+	if stmt.IsLabel {
+		// Jump to subroutine label
 		if sub, ok := env.GetSubroutine(stmt.Name.Value); ok {
 			env.Program.Jump(sub.LineNumber, sub.StatementNumber)
 			env.Program.Next()
-		} else {
-			// return whichever error
 		}
 	} else {
-		// Jump to line number if specified and it exists in program
-		env.Program.Jump(stmt.LineNumber, 0)
-		env.Program.Next()
+		// Jump to line number
+		val, _ := strconv.ParseFloat(stmt.Name.Value, 64)
+		env.Program.Jump(int(val), 0)
+		//env.Program.Next()
 	}
 	return nil
 }
