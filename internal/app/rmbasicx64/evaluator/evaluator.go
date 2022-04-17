@@ -498,6 +498,19 @@ func evalInputStatement(g *game.Game, stmt *ast.InputStatement, env *object.Envi
 	}
 
 	// Parse the raw input
+	//
+	// The INPUT command reads data from the keyboard
+	// (or specified channel) and assigns, appropriately, a number or a string to each
+	// variable. The following rules apply:
+	// - string data should be separated by commas, and numeric data by spaces or commas
+	// - the number of entered values must be the same as the number of variables
+	// - if you do not enter enough data at the keyboard, a double question mark prompt
+	//	 is displayed on the screen
+	// - if you press <ENTER> without entering data at the keyboard, either an empty
+	//   string or zero will be assigned to the relevant variable
+	// - if there is not enough entered data from an input channel, an end of file error
+	//   will occur
+	// - if you enter too much data, a warning is displayed on the screen
 	suffix := stmt.ReceiveVar.Token.Literal[len(stmt.ReceiveVar.Token.Literal)-1:]
 	var obj object.Object
 	switch suffix {
