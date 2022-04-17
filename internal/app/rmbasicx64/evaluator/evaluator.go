@@ -1655,7 +1655,10 @@ func evalCreateStatement(g *game.Game, stmt *ast.CreateStatement, env *object.En
 	} else {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
-	if channel < 11 || channel > 127 {
+	// To keep things simple(r) we will allow any file channel between 0 and 127.  This way if someone
+	// was using a printer in 1987 the program will still run and the printer output will go to a file
+	// instead.
+	if channel < 0 || channel > 127 {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.WrongChannelNumberUsed), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
 	// Is channel already in use?
