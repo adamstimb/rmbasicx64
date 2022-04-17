@@ -4110,27 +4110,23 @@ func evalBlockStatement(g *game.Game, block *ast.BlockStatement, env *object.Env
 }
 
 func evalIfStatement(g *game.Game, ie *ast.IfStatement, env *object.Environment) object.Object {
-	fmt.Printf("evalIfStatement: %v\n", ie)
 	condition := Eval(g, ie.Condition, env)
 	if isError(condition) {
 		return condition
 	}
 	var returnObject object.Object
 	if isTruthy(condition) {
-		fmt.Printf("is truthy\n")
-		// Special case THEN lineNumber
-
-		// If LineString can be parsed as a float then it's a lineNumber
-		if _, err := strconv.ParseFloat(ie.Consequence.LineString, 64); err == nil {
-			fmt.Printf("is line number\n")
-			// Create a GOTO statement, evaluate it and return
-			gotoStmt := &ast.GotoStatement{Linenumber: token.Token{TokenType: token.NumericLiteral, Literal: ie.Consequence.LineString}}
-			return evalGotoStatement(g, gotoStmt, env)
+		// Special case THEN lineNumber (empty LineString and LineNumber > 0)
+		if ie.Consequence.LineString == "" && ie.Consequence.LineNumber > 0 {
+			if env.Program.Jump(ie.Consequence.LineNumber, 0) {
+				return nil
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.LineNumberDoesNotExist), ErrorTokenIndex: 0}
+			}
 		}
 
 		// Normal case THEN statements
 		for _, stmt := range ie.Consequence.Statements {
-			fmt.Printf("is statement")
 			obj := Eval(g, stmt, env)
 			returnObject = obj
 			if isError(obj) {
@@ -4139,8 +4135,14 @@ func evalIfStatement(g *game.Game, ie *ast.IfStatement, env *object.Environment)
 		}
 		return returnObject
 	} else if ie.Alternative != nil {
-		fmt.Printf("is false")
 		// Special case ELSE lineNumber
+		if ie.Alternative.LineString == "" && ie.Alternative.LineNumber > 0 {
+			if env.Program.Jump(ie.Alternative.LineNumber, 0) {
+				return nil
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.LineNumberDoesNotExist), ErrorTokenIndex: 0}
+			}
+		}
 
 		// Normal case ELSE statements
 		for _, stmt := range ie.Alternative.Statements {
@@ -4151,7 +4153,6 @@ func evalIfStatement(g *game.Game, ie *ast.IfStatement, env *object.Environment)
 			}
 		}
 	}
-	//return NULL
 	return returnObject
 }
 

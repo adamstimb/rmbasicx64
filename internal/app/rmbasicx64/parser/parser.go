@@ -367,7 +367,7 @@ func (p *Parser) parseIfStatement() ast.Statement {
 	}
 	p.nextToken() // consume THEN
 	p.inConditional = false
-	stmt.Consequence = p.ParseLine() //p.parseIfConsequence()
+	stmt.Consequence = p.ParseLine()
 	if p.curTokenIs(token.ELSE) {
 		p.nextToken()
 		stmt.Alternative = p.ParseLine()
@@ -1924,14 +1924,11 @@ func (p *Parser) parseGosubStatement() *ast.GosubStatement {
 	p.nextToken() // consume SUBROUTINE
 	// If it's an identifier then we've got a label so shove that in the Name
 	if p.curTokenIs(token.IdentifierLiteral) {
-		fmt.Printf("Got identifier: %s\n", p.curToken.Literal)
 		stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 		stmt.IsLabel = true
 	} else {
 		// If it's not an identifier then it must be a line number and nothing else
 		if p.curTokenIs(token.NumericLiteral) {
-			fmt.Printf("Got line number: %s\n", p.curToken.Literal)
-			//val, _ := strconv.ParseFloat(p.curToken.Literal, 64)
 			stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 			stmt.IsLabel = false
 		} else {
@@ -3730,7 +3727,6 @@ func (p *Parser) PrettyPrint() string {
 }
 
 func (p *Parser) ParseLine() *ast.Line {
-
 	statements := []ast.Statement{}
 
 	// Catch new line for stored program
@@ -3743,7 +3739,6 @@ func (p *Parser) ParseLine() *ast.Line {
 		lineString := p.PrettyPrint()
 		return &ast.Line{Statements: nil, LineNumber: lineNumber, LineString: lineString}
 	}
-
 	for !(p.curTokenIs(token.EOF) || p.curTokenIs(token.NewLine)) {
 		// Catch ELSE
 		if p.curTokenIs(token.ELSE) {
