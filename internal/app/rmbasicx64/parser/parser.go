@@ -367,7 +367,7 @@ func (p *Parser) parseIfStatement() ast.Statement {
 	}
 	p.nextToken() // consume THEN
 	p.inConditional = false
-	stmt.Consequence = p.ParseLine() //p.parseIfConsequence()
+	stmt.Consequence = p.ParseLine()
 	if p.curTokenIs(token.ELSE) {
 		p.nextToken()
 		stmt.Alternative = p.ParseLine()
@@ -1922,13 +1922,21 @@ func (p *Parser) parseSubroutineStatement() *ast.SubroutineStatement {
 func (p *Parser) parseGosubStatement() *ast.GosubStatement {
 	stmt := &ast.GosubStatement{Token: p.curToken}
 	p.nextToken() // consume SUBROUTINE
-	// Require name
-	if !p.curTokenIs(token.IdentifierLiteral) {
-		p.ErrorTokenIndex = p.curToken.Index
-		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NameOfDefinitionRequired)
-		return nil
+	// If it's an identifier then we've got a label so shove that in the Name
+	if p.curTokenIs(token.IdentifierLiteral) {
+		stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		stmt.IsLabel = true
+	} else {
+		// If it's not an identifier then it must be a line number and nothing else
+		if p.curTokenIs(token.NumericLiteral) {
+			stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+			stmt.IsLabel = false
+		} else {
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.LineNumberLabelNeeded)
+			return nil
+		}
 	}
-	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 	p.nextToken()
 	// Require end of instruction
 	if p.endOfInstruction() {
@@ -3719,7 +3727,6 @@ func (p *Parser) PrettyPrint() string {
 }
 
 func (p *Parser) ParseLine() *ast.Line {
-
 	statements := []ast.Statement{}
 
 	// Catch new line for stored program
@@ -3732,7 +3739,6 @@ func (p *Parser) ParseLine() *ast.Line {
 		lineString := p.PrettyPrint()
 		return &ast.Line{Statements: nil, LineNumber: lineNumber, LineString: lineString}
 	}
-
 	for !(p.curTokenIs(token.EOF) || p.curTokenIs(token.NewLine)) {
 		// Catch ELSE
 		if p.curTokenIs(token.ELSE) {

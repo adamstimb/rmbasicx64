@@ -2831,13 +2831,16 @@ func evalGosubStatement(g *game.Game, stmt *ast.GosubStatement, env *object.Envi
 	stmt.StatementNumber = env.Program.CurrentStatementNumber
 	env.JumpStack.Push(stmt)
 
-	// Try to get location of subroutine and jump.  Yield error if not found (run on emulator
-	// to find out which one)
-	if sub, ok := env.GetSubroutine(stmt.Name.Value); ok {
-		env.Program.Jump(sub.LineNumber, sub.StatementNumber)
-		env.Program.Next()
+	if stmt.IsLabel {
+		// Jump to subroutine label
+		if sub, ok := env.GetSubroutine(stmt.Name.Value); ok {
+			env.Program.Jump(sub.LineNumber, sub.StatementNumber)
+			env.Program.Next()
+		}
 	} else {
-		// return whichever error
+		// Jump to line number
+		val, _ := strconv.ParseFloat(stmt.Name.Value, 64)
+		env.Program.Jump(int(val), 0)
 	}
 	return nil
 }
@@ -4113,6 +4116,16 @@ func evalIfStatement(g *game.Game, ie *ast.IfStatement, env *object.Environment)
 	}
 	var returnObject object.Object
 	if isTruthy(condition) {
+		// Special case THEN lineNumber (empty LineString and LineNumber > 0)
+		if ie.Consequence.LineString == "" && ie.Consequence.LineNumber > 0 {
+			if env.Program.Jump(ie.Consequence.LineNumber, 0) {
+				return nil
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.LineNumberDoesNotExist), ErrorTokenIndex: 0}
+			}
+		}
+
+		// Normal case THEN statements
 		for _, stmt := range ie.Consequence.Statements {
 			obj := Eval(g, stmt, env)
 			returnObject = obj
@@ -4120,9 +4133,18 @@ func evalIfStatement(g *game.Game, ie *ast.IfStatement, env *object.Environment)
 				return obj
 			}
 		}
-		//return NULL
 		return returnObject
 	} else if ie.Alternative != nil {
+		// Special case ELSE lineNumber
+		if ie.Alternative.LineString == "" && ie.Alternative.LineNumber > 0 {
+			if env.Program.Jump(ie.Alternative.LineNumber, 0) {
+				return nil
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.LineNumberDoesNotExist), ErrorTokenIndex: 0}
+			}
+		}
+
+		// Normal case ELSE statements
 		for _, stmt := range ie.Alternative.Statements {
 			obj := Eval(g, stmt, env)
 			returnObject = obj
@@ -4131,7 +4153,6 @@ func evalIfStatement(g *game.Game, ie *ast.IfStatement, env *object.Environment)
 			}
 		}
 	}
-	//return NULL
 	return returnObject
 }
 
