@@ -767,6 +767,21 @@ func (s *SetConfigBootStatement) String() string {
 	return out.String()
 }
 
+type SetPointsStyleStatement struct {
+	Token token.Token
+	Value Expression
+}
+
+func (s *SetPointsStyleStatement) statementNode() {}
+func (s *SetPointsStyleStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *SetPointsStyleStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
 type SetSoundStatement struct {
 	Token token.Token
 	Value Expression
