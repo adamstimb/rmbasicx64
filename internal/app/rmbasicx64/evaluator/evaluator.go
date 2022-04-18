@@ -143,6 +143,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalSetFillStyleStatement(g, node, env)
 	case *ast.SetPointsStyleStatement:
 		return evalSetPointsStyleStatement(g, node, env)
+	case *ast.SetBrushStatement:
+		return evalSetBrushStatement(g, node, env)
 	case *ast.CircleStatement:
 		return evalCircleStatement(g, node, env)
 	case *ast.PointsStatement:
@@ -2230,6 +2232,23 @@ func evalSetPaperStatement(g *game.Game, stmt *ast.SetPaperStatement, env *objec
 	if val, ok := obj.(*object.Numeric); ok {
 		if g.ValidateColour(int(val.Value)) {
 			g.SetPaper(int(val.Value))
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	return nil
+}
+
+func evalSetBrushStatement(g *game.Game, stmt *ast.SetBrushStatement, env *object.Environment) object.Object {
+	obj := Eval(g, stmt.Brush, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		if g.ValidateColour(int(val.Value)) {
+			g.SetBrush(int(val.Value))
 		} else {
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
