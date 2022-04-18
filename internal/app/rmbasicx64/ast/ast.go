@@ -768,8 +768,8 @@ func (s *SetConfigBootStatement) String() string {
 }
 
 type SetPointsStyleStatement struct {
-	Token token.Token
-	Value Expression
+	Token     token.Token
+	FillStyle Expression
 }
 
 func (s *SetPointsStyleStatement) statementNode() {}

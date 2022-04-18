@@ -141,6 +141,8 @@ func Eval(g *game.Game, node ast.Node, env *object.Environment) object.Object {
 		return evalAreaStatement(g, node, env)
 	case *ast.SetFillStyleStatement:
 		return evalSetFillStyleStatement(g, node, env)
+	case *ast.SetPointsStyleStatement:
+		return evalSetPointsStyleStatement(g, node, env)
 	case *ast.CircleStatement:
 		return evalCircleStatement(g, node, env)
 	case *ast.PointsStatement:
@@ -1346,6 +1348,59 @@ func evalSetFillStyleStatement(g *game.Game, stmt *ast.SetFillStyleStatement, en
 	// Handle fill style
 	var fillStyle nimgobus.FillStyle
 	obj := Eval(g, stmt.FillStyle, env)
+	if isError(obj) {
+		return obj
+	}
+	if val, ok := obj.(*object.Numeric); ok {
+		if val.Value >= 0 && val.Value <= 2 {
+			fillStyle.Style = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	} else {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	if fillStyle.Style == 2 {
+		obj := Eval(g, stmt.FillHatching, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			if val.Value >= 0 && val.Value <= 5 {
+				fillStyle.Hatching = int(val.Value)
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+		if stmt.FillColour2 == nil {
+			fillStyle.Colour2 = -1
+		} else {
+			obj := Eval(g, stmt.FillColour2, env)
+			if isError(obj) {
+				return obj
+			}
+			if val, ok := obj.(*object.Numeric); ok {
+				if val.Value >= 0 && val.Value <= 5 {
+					fillStyle.Colour2 = int(val.Value)
+				} else {
+					return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+				}
+			} else {
+				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+			}
+		}
+	}
+	// Execute
+	g.SetFillStyle(fillStyle.Style, fillStyle.Hatching, fillStyle.Colour2)
+	return nil
+}
+
+func evalSetPointsStyleStatement(g *game.Game, stmt *ast.SetPointsStyleStatement, env *object.Environment) object.Object {
+	// Handle points style
+	var pointsStyle nimgobus.PointStyle
+	obj := Eval(g, stmt.PointStyle, env)
 	if isError(obj) {
 		return obj
 	}

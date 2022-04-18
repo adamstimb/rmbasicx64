@@ -3211,7 +3211,7 @@ func (p *Parser) parseSetPointsStyleStatement() *ast.SetPointsStyleStatement {
 		p.ErrorTokenIndex = p.curToken.Index
 		return nil
 	}
-	stmt.Value = p.parseExpression(LOWEST)
+	stmt.FillStyle = p.parseExpression(LOWEST)
 	if p.endOfInstruction() {
 		return stmt
 	}
