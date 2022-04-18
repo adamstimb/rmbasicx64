@@ -1031,17 +1031,21 @@ func (p *Parser) parseInputStatement() *ast.InputStatement {
 		p.nextToken()
 	}
 
-	// Get required identifier
-	if !p.curTokenIs(token.IdentifierLiteral) {
-		p.ErrorTokenIndex = p.curToken.Index
-		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
-		return nil
-	}
-	stmt.ReceiveVar = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-	p.nextToken()
-
-	if !p.requireEndOfInstruction() {
-		return nil
+	// Get required identifier(s)
+	for !(p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF)) {
+		if !p.curTokenIs(token.IdentifierLiteral) {
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+			return nil
+		}
+		stmt.ReceiveVars = append(stmt.ReceiveVars, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+		p.nextToken()
+		if p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF) {
+			break
+		}
+		if !p.requireComma() {
+			return nil
+		}
 	}
 	return stmt
 }

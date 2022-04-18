@@ -498,49 +498,131 @@ func evalInputStatement(g *game.Game, stmt *ast.InputStatement, env *object.Envi
 	}
 
 	// Parse the raw input
-	suffix := stmt.ReceiveVar.Token.Literal[len(stmt.ReceiveVar.Token.Literal)-1:]
-	var obj object.Object
-	switch suffix {
-	case "$":
-		// String var:
-		obj = &object.String{Value: raw}
-	case "%":
-		// Integer var:
-		if num, err := strconv.ParseFloat(raw, 64); err == nil {
-			obj = &object.Numeric{Value: float64(int(num))}
-		} else {
-			obj = &object.Numeric{Value: 0.0}
+	//
+	// The INPUT command reads data from the keyboard
+	// (or specified channel) and assigns, appropriately, a number or a string to each
+	// variable. The following rules apply:
+	// - string data should be separated by commas, and numeric data by spaces or commas
+	// - the number of entered values must be the same as the number of variables
+	// - if you do not enter enough data at the keyboard, a double question mark prompt
+	//	 is displayed on the screen
+	// - if you press <ENTER> without entering data at the keyboard, either an empty
+	//   string or zero will be assigned to the relevant variable
+	// - if there is not enough entered data from an input channel, an end of file error
+	//   will occur
+	// - if you enter too much data, a warning is displayed on the screen
+	//
+	// 1st pass - chunk the raw input into a list of strings
+	//
+	var varCount int
+	var rawVal string
+	rawVals := []string{}
+	for _, char := range raw {
+		if varCount > len(stmt.ReceiveVars)-1 {
+			// too much data warning
 		}
-	default:
-		// Float var:
-		if num, err := strconv.ParseFloat(raw, 64); err == nil {
-			obj = &object.Numeric{Value: num}
+		suffix := stmt.ReceiveVars[varCount].Token.Literal[len(stmt.ReceiveVars[varCount].Token.Literal)-1:]
+		if suffix == "$" {
+			// should be string therefore comma-separated
+			if char == ',' {
+				// finished collecting for this var
+				rawVals = append(rawVals, rawVal)
+				rawVal = ""
+				varCount++
+				continue
+			}
 		} else {
-			obj = &object.Numeric{Value: 0.0}
+			// should be numeric therefore space- or comma-separated
+			if char == ' ' || char == ',' {
+				// finished collecting for this var
+				rawVals = append(rawVals, rawVal)
+				rawVal = ""
+				varCount++
+				continue
+			}
+		}
+		// collect rawVal
+		rawVal += string(char)
+	}
+	// Add final rawVal
+	if rawVal != "" {
+		rawVals = append(rawVals, rawVal)
+	}
+	// Check enough data received
+	if varCount < len(stmt.ReceiveVars)-1 {
+		// not enough data received -> print ?? if from keyboard, or EOF error if from file
+		if channel == 0 {
+			g.Print("??")
+			g.Put(13)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.ReadingPastEndOfFile), ErrorTokenIndex: stmt.Token.Index}
 		}
 	}
 
-	// Set the return variable
-	var ok bool
-	// evaluate array subscripts, if any
-	var subscripts []int
-	if subs, obj, ok := evalArraySubscripts(g, env, stmt.ReceiveVar.Subscripts); ok {
-		// all good
-		subscripts = subs
-	} else {
-		return obj
-	}
-	if len(subscripts) > 0 {
-		// is array
-		if obj, ok = env.SetArray(stmt.ReceiveVar.Token.Literal, subscripts, obj); ok {
-			// all good
+	//
+	// 2nd pass - try to cast the raw input into the correct type
+	//
+	for i, receiveVar := range stmt.ReceiveVars {
+		suffix := receiveVar.Token.Literal[len(receiveVar.Token.Literal)-1:]
+		var obj object.Object
+		var raw string
+		// This is a fairly gross workaround for when not enough data has been entered
+		// and we have to assign null values to the variables:
+		if i > len(rawVals)-1 {
+			raw = "___NULL___"
 		} else {
-			// failed
+			raw = rawVals[i]
+		}
+		switch suffix {
+		case "$":
+			// String var:
+			if raw == "___NULL___" {
+				raw = ""
+			}
+			obj = &object.String{Value: raw}
+		case "%":
+			// Integer var:
+			if raw == "___NULL___" {
+				raw = "0"
+			}
+			if num, err := strconv.ParseFloat(raw, 64); err == nil {
+				obj = &object.Numeric{Value: float64(int(num))}
+			} else {
+				obj = &object.Numeric{Value: 0.0}
+			}
+		default:
+			// Float var:
+			if raw == "___NULL___" {
+				raw = "0.0"
+			}
+			if num, err := strconv.ParseFloat(raw, 64); err == nil {
+				obj = &object.Numeric{Value: num}
+			} else {
+				obj = &object.Numeric{Value: 0.0}
+			}
+		}
+		// Set the return variable
+		var ok bool
+		// evaluate array subscripts, if any
+		var subscripts []int
+		if subs, obj, ok := evalArraySubscripts(g, env, receiveVar.Subscripts); ok {
+			// all good
+			subscripts = subs
+		} else {
 			return obj
 		}
-	} else {
-		// is var
-		env.Set(stmt.ReceiveVar.Token.Literal, obj)
+		if len(subscripts) > 0 {
+			// is array
+			if obj, ok = env.SetArray(receiveVar.Token.Literal, subscripts, obj); ok {
+				// all good
+			} else {
+				// failed
+				return obj
+			}
+		} else {
+			// is var
+			env.Set(receiveVar.Token.Literal, obj)
+		}
 	}
 
 	if oldTextBoxSlot != tempTextBoxSlot && channel == 0 {
