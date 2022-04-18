@@ -3203,6 +3203,21 @@ func (p *Parser) parseSetConfigBootStatement() *ast.SetConfigBootStatement {
 	return nil
 }
 
+func (p *Parser) parseSetPointsStyleStatement() *ast.SetPointsStyleStatement {
+	stmt := &ast.SetPointsStyleStatement{Token: p.curToken}
+	p.nextToken()
+	if p.onEndOfInstruction() {
+		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded)
+		p.ErrorTokenIndex = p.curToken.Index
+		return nil
+	}
+	stmt.Value = p.parseExpression(LOWEST)
+	if p.endOfInstruction() {
+		return stmt
+	}
+	return nil
+}
+
 func (p *Parser) parseSetSoundStatement() *ast.SetSoundStatement {
 	stmt := &ast.SetSoundStatement{Token: p.curToken}
 	p.nextToken()
@@ -3910,6 +3925,12 @@ func (p *Parser) parseStatement() ast.Statement {
 			switch p.curToken.TokenType {
 			case token.STYLE:
 				return p.parseSetFillStyleStatement()
+			}
+		case token.POINTS:
+			p.nextToken()
+			switch p.curToken.TokenType {
+			case token.STYLE:
+				return p.parseSetPointsStyleStatement()
 			}
 		case token.WRITING:
 			return p.parseSetWritingStatement()
