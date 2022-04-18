@@ -1578,7 +1578,7 @@ func (s *NextStatement) String() string {
 
 type GlobalStatement struct {
 	Token token.Token
-	Name  []*Identifier
+	Names []*Identifier
 }
 
 func (s *GlobalStatement) statementNode() {}
