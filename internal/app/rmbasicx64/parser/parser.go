@@ -1900,7 +1900,6 @@ func (p *Parser) parseGlobalStatement() *ast.GlobalStatement {
 			}
 		}
 		stmt.Names = append(stmt.Names, name)
-		p.nextToken()
 		if p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF) {
 			break
 		}
