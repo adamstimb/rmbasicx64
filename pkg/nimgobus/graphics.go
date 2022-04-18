@@ -827,6 +827,16 @@ func (n *Nimbus) Keep(b int, format, path string) error {
 	return nil
 }
 
+// SetPointsStyle sets the current points style
+func (n *Nimbus) SetPointsStyle(style int) {
+	n.pointsStyle = style
+}
+
+// SetBrush sets the current brush
+func (n *Nimbus) SetBrush(brush int) {
+	n.brush = brush
+}
+
 // SetPattern defines the user-definable patterns
 func (n *Nimbus) SetPattern(slot, row, c1, c2, c3, c4 int) {
 	// clamp colours to maximum for current screen mode

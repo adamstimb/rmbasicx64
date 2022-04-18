@@ -1399,54 +1399,22 @@ func evalSetFillStyleStatement(g *game.Game, stmt *ast.SetFillStyleStatement, en
 
 func evalSetPointsStyleStatement(g *game.Game, stmt *ast.SetPointsStyleStatement, env *object.Environment) object.Object {
 	// Handle points style
-	var pointsStyle nimgobus.PointStyle
-	obj := Eval(g, stmt.PointStyle, env)
+	obj := Eval(g, stmt.PointsStyle, env)
 	if isError(obj) {
 		return obj
 	}
+	var style int
 	if val, ok := obj.(*object.Numeric); ok {
-		if val.Value >= 0 && val.Value <= 2 {
-			fillStyle.Style = int(val.Value)
+		if val.Value >= 0 && val.Value <= 3 {
+			style = int(val.Value)
 		} else {
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
 	} else {
 		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 	}
-	if fillStyle.Style == 2 {
-		obj := Eval(g, stmt.FillHatching, env)
-		if isError(obj) {
-			return obj
-		}
-		if val, ok := obj.(*object.Numeric); ok {
-			if val.Value >= 0 && val.Value <= 5 {
-				fillStyle.Hatching = int(val.Value)
-			} else {
-				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
-			}
-		} else {
-			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
-		}
-		if stmt.FillColour2 == nil {
-			fillStyle.Colour2 = -1
-		} else {
-			obj := Eval(g, stmt.FillColour2, env)
-			if isError(obj) {
-				return obj
-			}
-			if val, ok := obj.(*object.Numeric); ok {
-				if val.Value >= 0 && val.Value <= 5 {
-					fillStyle.Colour2 = int(val.Value)
-				} else {
-					return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
-				}
-			} else {
-				return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
-			}
-		}
-	}
 	// Execute
-	g.SetFillStyle(fillStyle.Style, fillStyle.Hatching, fillStyle.Colour2)
+	g.SetPointsStyle(style)
 	return nil
 }
 

@@ -768,8 +768,8 @@ func (s *SetConfigBootStatement) String() string {
 }
 
 type SetPointsStyleStatement struct {
-	Token     token.Token
-	FillStyle Expression
+	Token       token.Token
+	PointsStyle Expression
 }
 
 func (s *SetPointsStyleStatement) statementNode() {}
@@ -777,6 +777,21 @@ func (s *SetPointsStyleStatement) TokenLiteral() string {
 	return s.Token.Literal
 }
 func (s *SetPointsStyleStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(s.TokenLiteral())
+	return out.String()
+}
+
+type SetBrushStatement struct {
+	Token token.Token
+	Brush Expression
+}
+
+func (s *SetBrushStatement) statementNode() {}
+func (s *SetBrushStatement) TokenLiteral() string {
+	return s.Token.Literal
+}
+func (s *SetBrushStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(s.TokenLiteral())
 	return out.String()
