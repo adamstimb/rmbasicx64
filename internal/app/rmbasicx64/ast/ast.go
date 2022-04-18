@@ -943,7 +943,7 @@ type InputStatement struct {
 	TextBoxSlot     Expression
 	Prompt          string
 	AddQuestionMark bool
-	ReceiveVar      *Identifier
+	ReceiveVars     []*Identifier
 }
 
 func (s *InputStatement) statementNode() {}

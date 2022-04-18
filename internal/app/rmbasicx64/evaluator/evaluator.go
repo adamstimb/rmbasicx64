@@ -511,6 +511,19 @@ func evalInputStatement(g *game.Game, stmt *ast.InputStatement, env *object.Envi
 	// - if there is not enough entered data from an input channel, an end of file error
 	//   will occur
 	// - if you enter too much data, a warning is displayed on the screen
+	var varCount int
+	for _, char := range raw {
+		if varCount > len(stmt.ReceiveVars) {
+			// too much input
+		}
+		suffix := stmt.ReceiveVars[varCount].Token.Literal[len(stmt.ReceiveVars[varCount].Token.Literal)-1:]
+		if suffix == "$" {
+			// should be string therefore comma-separated
+		} else {
+			// should be numeric therefore space- or comma-separated
+		}
+	}
+
 	suffix := stmt.ReceiveVar.Token.Literal[len(stmt.ReceiveVar.Token.Literal)-1:]
 	var obj object.Object
 	switch suffix {
