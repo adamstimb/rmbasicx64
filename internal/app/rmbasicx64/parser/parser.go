@@ -1848,10 +1848,10 @@ func (p *Parser) parseForStatement() *ast.ForStatement {
 		stmt.Step = val
 	}
 	// Require end of instruction
-	if p.endOfInstruction() {
-		return stmt
+	if !p.requireEndOfInstruction() {
+		return nil
 	}
-	return nil
+	return stmt
 }
 
 func (p *Parser) parseNextStatement() *ast.NextStatement {
