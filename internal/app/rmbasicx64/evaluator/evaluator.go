@@ -624,50 +624,6 @@ func evalInputStatement(g *game.Game, stmt *ast.InputStatement, env *object.Envi
 			env.Set(receiveVar.Token.Literal, obj)
 		}
 	}
-	//suffix := stmt.ReceiveVar.Token.Literal[len(stmt.ReceiveVar.Token.Literal)-1:]
-	//var obj object.Object
-	//switch suffix {
-	//case "$":
-	//	// String var:
-	//	obj = &object.String{Value: raw}
-	//case "%":
-	//	// Integer var:
-	//	if num, err := strconv.ParseFloat(raw, 64); err == nil {
-	//		obj = &object.Numeric{Value: float64(int(num))}
-	//	} else {
-	//		obj = &object.Numeric{Value: 0.0}
-	//	}
-	//default:
-	//	// Float var:
-	//	if num, err := strconv.ParseFloat(raw, 64); err == nil {
-	//		obj = &object.Numeric{Value: num}
-	//	} else {
-	//		obj = &object.Numeric{Value: 0.0}
-	//	}
-	//}
-
-	//// Set the return variable
-	//var ok bool
-	//// evaluate array subscripts, if any
-	//var subscripts []int
-	//if subs, obj, ok := evalArraySubscripts(g, env, stmt.ReceiveVar.Subscripts); ok {
-	//	// all good
-	//	subscripts = subs
-	//} else {
-	//	return obj
-	//}
-	//if len(subscripts) > 0 {
-	//	// is array
-	//	if obj, ok = env.SetArray(stmt.ReceiveVar.Token.Literal, subscripts, obj); ok {
-	//		// all good
-	//	} else {
-	//		// failed
-	//		return obj
-	//	}
-	//} else {
-	//	// is var
-	//	env.Set(stmt.ReceiveVar.Token.Literal, obj)
-	//}
 
 	if oldTextBoxSlot != tempTextBoxSlot && channel == 0 {
 		g.SetWriting(oldTextBoxSlot)
