@@ -1879,30 +1879,35 @@ func (p *Parser) parseNextStatement() *ast.NextStatement {
 func (p *Parser) parseGlobalStatement() *ast.GlobalStatement {
 	stmt := &ast.GlobalStatement{Token: p.curToken}
 	p.nextToken() // consume GLOBAL
-	// Require variable name
-	if !p.curTokenIs(token.IdentifierLiteral) {
-		p.ErrorTokenIndex = p.curToken.Index
-		p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
-		return nil
-	}
-	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-	// Catch array reference
-	p.nextToken()
-	if p.curTokenIs(token.LeftParen) {
+	for !(p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF)) {
+		// Require variable name
+		if !p.curTokenIs(token.IdentifierLiteral) {
+			p.ErrorTokenIndex = p.curToken.Index
+			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
+			return nil
+		}
+		name := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		// Catch array reference
 		p.nextToken()
-		if p.curTokenIs(token.RightParen) {
-			// is array reference without subscripts
-			stmt.Name.IsArrayReference = true
-			if !p.requireClosingBracket() {
-				return nil
+		if p.curTokenIs(token.LeftParen) {
+			p.nextToken()
+			if p.curTokenIs(token.RightParen) {
+				// is array reference without subscripts
+				name.IsArrayReference = true
+				if !p.requireClosingBracket() {
+					return nil
+				}
 			}
 		}
+		stmt.Names = append(stmt.Names, name)
+		if p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF) {
+			break
+		}
+		if !p.requireComma() {
+			return nil
+		}
 	}
-	// Require end of instruction
-	if p.requireEndOfInstruction() {
-		return stmt
-	}
-	return nil
+	return stmt
 }
 
 func (p *Parser) parseSubroutineStatement() *ast.SubroutineStatement {

@@ -3227,8 +3227,10 @@ func evalNextStatement(g *game.Game, stmt *ast.NextStatement, env *object.Enviro
 }
 
 func evalGlobalStatement(g *game.Game, stmt *ast.GlobalStatement, env *object.Environment) object.Object {
-	if !env.Global(stmt.Name.Value) {
-		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.VariableUsedAsLocal), ErrorTokenIndex: stmt.Token.Index}
+	for _, name := range stmt.Names {
+		if !env.Global(name.Value) {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.VariableUsedAsLocal), ErrorTokenIndex: stmt.Token.Index}
+		}
 	}
 	return nil
 }

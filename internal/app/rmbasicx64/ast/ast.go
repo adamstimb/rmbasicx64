@@ -1578,7 +1578,7 @@ func (s *NextStatement) String() string {
 
 type GlobalStatement struct {
 	Token token.Token
-	Name  *Identifier
+	Names []*Identifier
 }
 
 func (s *GlobalStatement) statementNode() {}
@@ -1588,7 +1588,7 @@ func (s *GlobalStatement) TokenLiteral() string {
 func (s *GlobalStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(s.TokenLiteral() + " ")
-	out.WriteString(s.Name.String())
+	//out.WriteString(s.Name.String())
 	return out.String()
 }
 
