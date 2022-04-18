@@ -565,13 +565,26 @@ func evalInputStatement(g *game.Game, stmt *ast.InputStatement, env *object.Envi
 	for i, receiveVar := range stmt.ReceiveVars {
 		suffix := receiveVar.Token.Literal[len(receiveVar.Token.Literal)-1:]
 		var obj object.Object
-		raw := rawVals[i]
+		var raw string
+		// This is a fairly gross workaround for when not enough data has been entered
+		// and we have to assign null values to the variables:
+		if i > len(rawVals)-1 {
+			raw = "___NULL___"
+		} else {
+			raw = rawVals[i]
+		}
 		switch suffix {
 		case "$":
 			// String var:
+			if raw == "___NULL___" {
+				raw = ""
+			}
 			obj = &object.String{Value: raw}
 		case "%":
 			// Integer var:
+			if raw == "___NULL___" {
+				raw = "0"
+			}
 			if num, err := strconv.ParseFloat(raw, 64); err == nil {
 				obj = &object.Numeric{Value: float64(int(num))}
 			} else {
@@ -579,6 +592,9 @@ func evalInputStatement(g *game.Game, stmt *ast.InputStatement, env *object.Envi
 			}
 		default:
 			// Float var:
+			if raw == "___NULL___" {
+				raw = "0.0"
+			}
 			if num, err := strconv.ParseFloat(raw, 64); err == nil {
 				obj = &object.Numeric{Value: num}
 			} else {
