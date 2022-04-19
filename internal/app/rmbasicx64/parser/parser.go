@@ -1715,17 +1715,32 @@ func (p *Parser) parseDataStatement() *ast.DataStatement {
 		return nil
 	}
 	// Get item list
+	expectNegative := false
 	for !p.onEndOfInstruction() {
+		// Negative numbers: Need to collect the minus first then stick it on the next NumericLiteral token
+		if p.curTokenIs(token.Minus) {
+			expectNegative = true
+			p.nextToken()
+			continue
+		}
 		// Commas without a preceding value are regarded as representing an item with 0 value
 		if p.curTokenIs(token.Comma) {
+			expectNegative = false
 			stmt.ItemList = append(stmt.ItemList, token.Token{TokenType: token.NumericLiteral, Literal: "0", Index: p.curToken.Index})
 			p.nextToken()
 			continue
 		}
 		// Token must be string literal, numeric literal or an identifier literal without $ or % postfix
 		// (this is interpreted as a string literal)
+
 		if (p.curTokenIs(token.NumericLiteral) || p.curTokenIs(token.StringLiteral)) || (p.curTokenIs(token.IdentifierLiteral) && (p.curToken.Literal[len(p.curToken.Literal)-1] != '%' && p.curToken.Literal[len(p.curToken.Literal)-1] != '$')) {
-			stmt.ItemList = append(stmt.ItemList, p.curToken)
+			curToken := p.curToken
+			// Handle negative number
+			if expectNegative {
+				curToken.Literal = "-" + curToken.Literal
+				expectNegative = false
+			}
+			stmt.ItemList = append(stmt.ItemList, curToken)
 			// each item must be followed by either end of instruction or comma
 			p.nextToken()
 			if p.onEndOfInstruction() {
