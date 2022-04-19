@@ -1033,7 +1033,6 @@ func (p *Parser) parseInputStatement() *ast.InputStatement {
 
 	// Get required identifier(s)
 	for !(p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF)) {
-		fmt.Printf("top of loop, current token: %v\n", p.curToken)
 		receive := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 		if !p.curTokenIs(token.IdentifierLiteral) {
 			p.ErrorTokenIndex = p.curToken.Index
@@ -1041,11 +1040,9 @@ func (p *Parser) parseInputStatement() *ast.InputStatement {
 			return nil
 		}
 		if subscripts, ok := p.getArraySubscripts(); ok {
-			fmt.Printf("got subs '%v' - current token is '%v' \n", subscripts, p.curToken)
 			receive.Subscripts = subscripts
 			if len(subscripts) == 0 {
 				// back up the lexer
-				fmt.Printf("back up lexer\n")
 				p.l.SetTokenPosition(p.l.CurrentPosition - 2)
 				p.nextToken()
 			}
@@ -1057,8 +1054,6 @@ func (p *Parser) parseInputStatement() *ast.InputStatement {
 			break
 		}
 		if !p.requireComma() {
-			fmt.Printf("p.requireComma: got '%v' - current token is '%v' \n", p.curToken, p.curToken)
-			fmt.Printf("curToken.Literal='%v'\n", p.curToken.Literal)
 			return nil
 		}
 	}
@@ -1703,14 +1698,11 @@ func (p *Parser) parseAreaStatement() *ast.AreaStatement {
 				}
 			}
 		default:
-			fmt.Printf("unknown set/ask attrib, current token: %v\n", p.curToken)
 			p.ErrorTokenIndex = p.curToken.Index
 			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.UnknownSetAskAttribute)
 			return nil
 		}
-		fmt.Printf("end of loop, current token: %v\n", p.curToken)
 		p.nextToken()
-		fmt.Printf("current token: %v\n", p.curToken)
 	}
 	return stmt
 }
@@ -1744,6 +1736,7 @@ func (p *Parser) parseDataStatement() *ast.DataStatement {
 			}
 		} else {
 			p.ErrorTokenIndex = p.curToken.Index
+			fmt.Printf("p.curtoken.literal=%s\n", p.curToken.Literal)
 			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.UnableToReadExcessData)
 			return nil
 		}
