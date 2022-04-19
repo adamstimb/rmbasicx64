@@ -675,7 +675,7 @@ func WriteExamples(workspacePath string) {
 3950 AREA Tx + 0, (125 + Ty) + 0; Tx + 10, (125 + Ty) + 10; Tx + 10, (125 + Ty) + 50; Tx + 0, (125 + Ty) + 50; Tx + 0, (125 + Ty) + 0; Tx + 0, (125 + Ty) + 0 BRUSH 1 : ENDPROC
 3960 AREA Tx + 0, Ty - 10; Tx + 10, Ty + 0; Tx + 10, Ty - 50; Tx + 0, Ty - 50; Tx + 0, Ty - 10 BRUSH 1
 3970 AREA Tx + 0, Ty + 125 + 10; Tx + 10, Ty + 125 - 0; Tx + 10, Ty + 125 + 50; Tx + 0, Ty + 125 + 50; Tx + 0, Ty + 125 + 10 BRUSH 1 : ENDPROC
-3980 PROCEDURE Calc Tx RECEIVE Ra
+3980 PROCEDURE Calc Tx RETURN Ra
 3990   GLOBAL Ro(), Yo(), T%, F$, Tlx%(), Tly%(), Pt%
 4000   Calx := Tx - 160
 4010   FOR N := 1 TO T% - 1

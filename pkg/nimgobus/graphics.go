@@ -1004,7 +1004,6 @@ func (n *Nimbus) AskDrawing(p ...int) (slot, x1, y1, x2, y2 int) {
 func (n *Nimbus) Clg() {
 	// Create one big sprite with every pixel set to paperColour and draw it
 	_, x1, y1, x2, y2 := n.AskDrawing()
-	log.Printf("Clg: %d, %d, %d, %d, %d", x1, y1, x2, y2, n.paperColour)
 	width := (x2 - x1) + 1
 	height := (y2 - y1) + 1
 	blankPaper := make2dArray(width, height)
