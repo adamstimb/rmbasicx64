@@ -111,6 +111,8 @@ type Nimbus struct {
 	charImages1            [256][][]int         // as above
 	pointsStyles           [][][]int            // An array of 2d arrays representing the built-in points styles
 	pointsStyle            int                  // The current points style
+	lineStyles             [][]int              // An array of 2d arrays representing the built-in line styles
+	lineStyle              int                  // The current line style
 	patterns               [][4][4]int          // The brush patterns
 	hatchings              [][16][16]int        // The fill hatchings
 	fillStyle              FillStyle            // The current fill style
@@ -175,6 +177,8 @@ func (n *Nimbus) Init() {
 	n.Clearblock()
 	n.pointsStyles = append(n.pointsStyles, defaultPointsStyles...)
 	n.pointsStyle = 1
+	n.lineStyles = append(n.lineStyles, defaultLineStyles...)
+	n.lineStyle = 0
 	n.borderSize = 50
 	n.patterns = append(n.patterns, defaultHighResPatterns...)
 	n.hatchings = append(n.hatchings, defaultHatchings...)

@@ -845,7 +845,7 @@ func evalPlotStatement(g *game.Game, stmt *ast.PlotStatement, env *object.Enviro
 
 func evalLineStatement(g *game.Game, stmt *ast.LineStatement, env *object.Environment) object.Object {
 	// Handle defaults
-	var Brush, Over int
+	var Brush, Over, Style int
 	if stmt.Brush == nil {
 		Brush = -255
 	} else {
@@ -876,6 +876,23 @@ func evalLineStatement(g *game.Game, stmt *ast.LineStatement, env *object.Enviro
 			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
 		}
 	}
+	if stmt.Style == nil {
+		Style = -255
+	} else {
+		obj := Eval(g, stmt.Style, env)
+		if isError(obj) {
+			return obj
+		}
+		if val, ok := obj.(*object.Numeric); ok {
+			Style = int(val.Value)
+		} else {
+			return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumericExpressionNeeded), ErrorTokenIndex: stmt.Token.Index + 1}
+		}
+	}
+	if Style < 1 || Style > 6 {
+		return &object.Error{Message: syntaxerror.ErrorMessage(syntaxerror.NumberNotAllowedInRange), ErrorTokenIndex: stmt.Token.Index + 1}
+	}
+	Style--
 	// Handle coord list
 	var coordList []nimgobus.XyCoord
 	var X, Y int
@@ -898,7 +915,7 @@ func evalLineStatement(g *game.Game, stmt *ast.LineStatement, env *object.Enviro
 		coordList = append(coordList, nimgobus.XyCoord{X, Y})
 	}
 	// Execute
-	opt := nimgobus.LineOptions{Brush: Brush, Over: Over}
+	opt := nimgobus.LineOptions{Brush: Brush, Over: Over, Style: Style}
 	g.Line(opt, coordList)
 	return nil
 }

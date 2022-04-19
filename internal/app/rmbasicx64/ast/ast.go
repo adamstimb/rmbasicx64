@@ -1052,6 +1052,7 @@ type LineStatement struct {
 	CoordList []Expression
 	Brush     Expression
 	Over      Expression
+	Style     Expression
 }
 
 func (ps *LineStatement) statementNode() {}

@@ -432,13 +432,13 @@ func WriteExamples(workspacePath string) {
 1560   PLOT "Enter filename to be save. (8 Chars)", 10, 75 SIZE 1, 2 BRUSH 0
 1570   PLOT "Enter filename to be save. (8 Chars)", 11, 74 SIZE 1, 2 BRUSH 9
 1580   HOME : INPUT F%
-1590   IF LEN F$  > 8 OR LEN F$ = 0 THEN 1730 : REM Uh oh!
+1590   IF LEN(F$)  > 8 OR LEN(F$) = 0 THEN 1730 : REM Uh oh!
 1600   F$ := F$ + ".3dt"
 1610   PLOT "Please Wait...", 91, 199 SIZE 1, 2 BRUSH 0
 1620   PLOT "Please Wait...", 90, 200 SIZE 1, 2 BRUSH 8
 1630   P$ := "Saving:- " + F$
-1640   PLOT P$, 70 + ((8 - LEN F$) * 4), 170 SIZE 1, 2 BRUSH 0
-1650   PLOT P$, 71 + ((8 - LEN F$) * 4), 169 SIZE 1, 2 BRUSH 2
+1640   PLOT P$, 70 + ((8 - LEN(F$)) * 4), 170 SIZE 1, 2 BRUSH 0
+1650   PLOT P$, 71 + ((8 - LEN(F$)) * 4), 169 SIZE 1, 2 BRUSH 2
 1660   CREATE #11, F$
 1670   PRINT #11, T%
 1680   FOR D% := 1 TO T%
@@ -462,13 +462,13 @@ func WriteExamples(workspacePath string) {
 1860   PLOT "Enter filename to be loaded. (8 Chars)", 10, 75 SIZE 1, 2 BRUSH 0
 1870   PLOT "Enter filename to be loaded. (8 Chars)", 11, 74 SIZE 1, 2 BRUSH 9
 1880   HOME : INPUT F$
-1890   IF LEN F$ > 8 OR LEN F$ = 0 THEN 1880
+1890   IF LEN(F$) > 8 OR LEN(F$) = 0 THEN 1880
 1900   F$ := F$ + ".3dt"
 1910   PLOT "Please Wait...", 91, 199 SIZE 1, 2 BRUSH 0
 1920   PLOT "Please Wait...", 90, 200 SIZE 1, 2 BRUSH 8
 1930   P$ := "Loading:- " + F$
-1940   PLOT P$, 70 + ((8 - LEN F$) * 4), 170 SIZE 1, 2 BRUSH 0
-1950   PLOT P$, 71 + ((8 - LEN F$) * 4), 169 SIZE 1, 2 BRUSH 2
+1940   PLOT P$, 70 + ((8 - LEN(F$)) * 4), 170 SIZE 1, 2 BRUSH 0
+1950   PLOT P$, 71 + ((8 - LEN(F$)) * 4), 169 SIZE 1, 2 BRUSH 2
 1960   OPEN #11, F$
 1970   INPUT #11, T%
 1980   FOR D% := 1 TO T%
@@ -494,7 +494,7 @@ func WriteExamples(workspacePath string) {
 2180   Angle RECEIVE Ang
 2190   A := Ang
 2200   SET PAPER 2 : CLG : SET PAPER 15
-2210   S := SIN A : C := COS 30
+2210   S := SIN(A) : C := COS(30)
 2220   B := 1 : Cx := 160 : Cy := 75 : Dist := 100 : D := 200
 2230   Mousey RECEIVE Cx, Cy
 2240   SET PATTERN 136, 1 TO 0, 8, 0, 8
@@ -518,12 +518,12 @@ func WriteExamples(workspacePath string) {
 2420   SET DRAWING 0
 2430 ENDPROC
 2440 FOR A := 135 - 185 - 180 TO 105 STEP 30
-2450   X := R1 * SIN A
-2460   Z := R1 * COS A
+2450   X := R1 * SIN(A)
+2460   Z := R1 * COS(A)
 2470   Px1 := ((X - Z) * C) + Cx
 2480   Py1 := (Y1 - (X + Z) * S) + Cy
-2490   X := R2 * SIN A
-2500   Z := R2 * COS A
+2490   X := R2 * SIN(A)
+2500   Z := R2 * COS(A)
 2510   Px2 := ((X - Z) * C) + Cx
 2520   Py2 := (Y2 - (X + Z) * S) + Cy
 2530   X := R2 * SIN(A + 30)
@@ -567,19 +567,19 @@ func WriteExamples(workspacePath string) {
 2910   IF Ang = 90 THEN Sta := - 230
 2920   FOR N := 1 TO T% - 2
 2930     Ox := 700 : Ov := 700 : Scx := 6 : Scv = 5 : R1 := Ro(N) : R2 := Ro(N + 1) : Y1 := Yo(N) : Y2 := Yo(N + 1) : GOSUB 3010
-2940     X := Ro(N + 1) * SIN A
-2950     Z := Ro(N + 1) * COS A
-2960     PRINT #15, "M "; Ox - LEN F$ * 4; " "; Scv * Yo(0) - Ov
+2940     X := Ro(N + 1) * SIN(A)
+2950     Z := Ro(N + 1) * COS(A)
+2960     PRINT #15, "M "; Ox - LEN(F$ * 4); " "; Scv * Yo(0) - Ov
 2970     PRINT #15, "P Drawing := ": F$
 3000 CLOSE #15 : ENDPROC
-3010 Cv := 400 : Cx := 400 : S := SIN Ang : C := COS 30
+3010 Cv := 400 : Cx := 400 : S := SIN(Ang) : C := COS 30
 3020 FOR A := Sta TO 105 STEP 30
-3030   X := R1 * SIN A
-3040   Z := R1 * COS A
+3030   X := R1 * SIN(A)
+3040   Z := R1 * COS(A)
 3050   Px1 := ((X - Z) * C) + Cx
 3060   Py1 := (Y1 - (X + Z) * S) + Cy
-3070   X := R2 * SIN A
-3080   Z := R2 * COS A
+3070   X := R2 * SIN(A)
+3080   Z := R2 * COS(A)
 3090   Px2 := ((X - Z) * C) + Cx
 3100   Py2 := (Y2 - (X + Z) * S) + Cy
 3110   X := R2 * SIN(A + 30)
@@ -625,7 +625,7 @@ func WriteExamples(workspacePath string) {
 3510   FOR N := 1 TO T%
 3520     IF Yo(N) > Ymax% THEN Ymax% := Yo(N)
 3530     IF Yo(N) < Ymin% THEN Ymin% := Yo(N)
-3540     IF ABS Ro(N) > Rmax% THEN Rmax% := ABS Ro(N)
+3540     IF ABS(Ro(N)) > Rmax% THEN Rmax% := ABS(Ro(N))
 3550   NEXT
 3560   Cx := 160 : Cy := 125
 3570   AREA Ymax% + Cx, Cy + Rmax%; Ymax% + Cx, Cy - Rmax%; Ymin% + Cx, Cy + Rmax%; Ymin% + Cx, Cy - Rmax%; Ymin% + Cx, Cy + Rmax% BRUSH 7

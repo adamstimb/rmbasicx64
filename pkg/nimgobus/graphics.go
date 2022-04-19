@@ -124,11 +124,24 @@ func (n *Nimbus) Plot(opt PlotOptions, text string, x, y int) {
 	}
 }
 
+// handleLineStyle implements the selected line style for drawLine
+func (n *Nimbus) handleLineStyle(lineStyleCounter int) (int, int) {
+	maxCount := n.lineStyles[n.lineStyle][0] - 1
+	colour := n.lineStyles[n.lineStyle][lineStyleCounter]
+	lineStyleCounter++
+	if lineStyleCounter > maxCount {
+		lineStyleCounter = 0
+	}
+	return lineStyleCounter, colour
+}
+
 // drawLine implements Bresenham's line algorithm to draw a line on a 2d array
 // adapted from https://github.com/StephaneBunel/bresenham/blob/master/drawline.go
 func (n *Nimbus) drawLine(img [][]int, x1, y1, x2, y2 int) [][]int {
 	imgHeight := len(img) - 1
 	var dx, dy, e, slope int
+	lineStyleCounter := 0
+	lineStyleCounter, colour := n.handleLineStyle(lineStyleCounter)
 
 	// Because drawing p1 -> p2 is equivalent to draw p2 -> p1,
 	// I sort points in x-axis order to handle only half of possible cases.
@@ -146,15 +159,16 @@ func (n *Nimbus) drawLine(img [][]int, x1, y1, x2, y2 int) [][]int {
 
 	// Is line a point ?
 	case x1 == x2 && y1 == y2:
-		img[imgHeight-y1][x1] = 1
+		img[imgHeight-y1][x1] = colour
 
 	// Is line an horizontal ?
 	case y1 == y2:
 		for ; dx != 0; dx-- {
-			img[imgHeight-y1][x1] = 1
+			img[imgHeight-y1][x1] = colour
 			x1++
+			lineStyleCounter, colour = n.handleLineStyle(lineStyleCounter)
 		}
-		img[imgHeight-y1][x1] = 1
+		img[imgHeight-y1][x1] = colour
 
 	// Is line a vertical ?
 	case x1 == x2:
@@ -162,24 +176,27 @@ func (n *Nimbus) drawLine(img [][]int, x1, y1, x2, y2 int) [][]int {
 			y1, y2 = y2, y1
 		}
 		for ; dy != 0; dy-- {
-			img[imgHeight-y1][x1] = 1
+			img[imgHeight-y1][x1] = colour
 			y1++
+			lineStyleCounter, colour = n.handleLineStyle(lineStyleCounter)
 		}
-		img[imgHeight-y1][x1] = 1
+		img[imgHeight-y1][x1] = colour
 
 	// Is line a diagonal ?
 	case dx == dy:
 		if y1 < y2 {
 			for ; dx != 0; dx-- {
-				img[imgHeight-y1][x1] = 1
+				img[imgHeight-y1][x1] = colour
 				x1++
 				y1++
+				lineStyleCounter, colour = n.handleLineStyle(lineStyleCounter)
 			}
 		} else {
 			for ; dx != 0; dx-- {
-				img[imgHeight-y1][x1] = 1
+				img[imgHeight-y1][x1] = colour
 				x1++
 				y1--
+				lineStyleCounter, colour = n.handleLineStyle(lineStyleCounter)
 			}
 		}
 		img[imgHeight-y1][x1] = 1
@@ -190,8 +207,9 @@ func (n *Nimbus) drawLine(img [][]int, x1, y1, x2, y2 int) [][]int {
 			// BresenhamDxXRYD(img, x1, y1, x2, y2, col)
 			dy, e, slope = 2*dy, dx, 2*dx
 			for ; dx != 0; dx-- {
-				img[imgHeight-y1][x1] = 1
+				img[imgHeight-y1][x1] = colour
 				x1++
+				lineStyleCounter, colour = n.handleLineStyle(lineStyleCounter)
 				e -= dy
 				if e < 0 {
 					y1++
@@ -202,8 +220,9 @@ func (n *Nimbus) drawLine(img [][]int, x1, y1, x2, y2 int) [][]int {
 			// BresenhamDxXRYU(img, x1, y1, x2, y2, col)
 			dy, e, slope = 2*dy, dx, 2*dx
 			for ; dx != 0; dx-- {
-				img[imgHeight-y1][x1] = 1
+				img[imgHeight-y1][x1] = colour
 				x1++
+				lineStyleCounter, colour = n.handleLineStyle(lineStyleCounter)
 				e -= dy
 				if e < 0 {
 					y1--
@@ -211,7 +230,7 @@ func (n *Nimbus) drawLine(img [][]int, x1, y1, x2, y2 int) [][]int {
 				}
 			}
 		}
-		img[imgHeight-y1][x1] = 1
+		img[imgHeight-y1][x1] = colour
 
 	// higher than wide.
 	default:
@@ -219,8 +238,9 @@ func (n *Nimbus) drawLine(img [][]int, x1, y1, x2, y2 int) [][]int {
 			// BresenhamDyXRYD(img, x1, y1, x2, y2, col)
 			dx, e, slope = 2*dx, dy, 2*dy
 			for ; dy != 0; dy-- {
-				img[imgHeight-y1][x1] = 1
+				img[imgHeight-y1][x1] = colour
 				y1++
+				lineStyleCounter, colour = n.handleLineStyle(lineStyleCounter)
 				e -= dx
 				if e < 0 {
 					x1++
@@ -231,8 +251,9 @@ func (n *Nimbus) drawLine(img [][]int, x1, y1, x2, y2 int) [][]int {
 			// BresenhamDyXRYU(img, x1, y1, x2, y2, col)
 			dx, e, slope = 2*dx, dy, 2*dy
 			for ; dy != 0; dy-- {
-				img[imgHeight-y1][x1] = 1
+				img[imgHeight-y1][x1] = colour
 				y1--
+				lineStyleCounter, colour = n.handleLineStyle(lineStyleCounter)
 				e -= dx
 				if e < 0 {
 					x1++
@@ -240,7 +261,7 @@ func (n *Nimbus) drawLine(img [][]int, x1, y1, x2, y2 int) [][]int {
 				}
 			}
 		}
-		img[imgHeight-y1][x1] = 1
+		img[imgHeight-y1][x1] = colour
 	}
 	return img
 }
@@ -257,6 +278,7 @@ type LineOptions struct {
 	SizeX     int
 	SizeY     int
 	Over      int
+	Style     int
 }
 
 // Line draws a list of coordinates on the screen connected by lines
@@ -273,6 +295,15 @@ func (n *Nimbus) Line(opt LineOptions, coordList []XyCoord) {
 		over = false
 	case -1:
 		over = true
+	}
+	var oldStyle int
+	resetStyle := false
+	if opt.Style == -255 {
+		opt.Style = n.lineStyle
+	} else {
+		oldStyle = n.lineStyle
+		n.lineStyle = opt.Style
+		resetStyle = true
 	}
 	// Find optimal image size and minimum x,y
 	minX := 1000
@@ -303,6 +334,9 @@ func (n *Nimbus) Line(opt LineOptions, coordList []XyCoord) {
 	}
 	if newSprite, ok := n.applyDrawingbox(Sprite{pixels: img, x: minX, y: minY, colour: opt.Brush, over: over}, n.selectedDrawingBox); ok {
 		n.drawSprite(newSprite)
+	}
+	if resetStyle {
+		n.lineStyle = oldStyle
 	}
 	//n.drawSprite(n.applyDrawingbox(Sprite{img, minX, minY, opt.Brush, over}, 0))
 }

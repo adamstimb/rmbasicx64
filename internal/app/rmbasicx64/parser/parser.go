@@ -1033,17 +1033,32 @@ func (p *Parser) parseInputStatement() *ast.InputStatement {
 
 	// Get required identifier(s)
 	for !(p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF)) {
+		fmt.Printf("top of loop, current token: %v\n", p.curToken)
+		receive := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 		if !p.curTokenIs(token.IdentifierLiteral) {
 			p.ErrorTokenIndex = p.curToken.Index
 			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.VariableNameIsNeeded)
 			return nil
 		}
-		stmt.ReceiveVars = append(stmt.ReceiveVars, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
-		p.nextToken()
+		if subscripts, ok := p.getArraySubscripts(); ok {
+			fmt.Printf("got subs '%v' - current token is '%v' \n", subscripts, p.curToken)
+			receive.Subscripts = subscripts
+			if len(subscripts) == 0 {
+				// back up the lexer
+				fmt.Printf("back up lexer\n")
+				p.l.SetTokenPosition(p.l.CurrentPosition - 2)
+				p.nextToken()
+			}
+		} else {
+			return nil
+		}
+		stmt.ReceiveVars = append(stmt.ReceiveVars, receive)
 		if p.curTokenIs(token.Colon) || p.curTokenIs(token.NewLine) || p.curTokenIs(token.EOF) {
 			break
 		}
 		if !p.requireComma() {
+			fmt.Printf("p.requireComma: got '%v' - current token is '%v' \n", p.curToken, p.curToken)
+			fmt.Printf("curToken.Literal='%v'\n", p.curToken.Literal)
 			return nil
 		}
 	}
@@ -1328,6 +1343,9 @@ func (p *Parser) parseLineStatement() *ast.LineStatement {
 		case token.OVER:
 			p.nextToken()
 			stmt.Over = p.parseExpression(LOWEST)
+		case token.STYLE:
+			p.nextToken()
+			stmt.Style = p.parseExpression(LOWEST)
 		default:
 			p.ErrorTokenIndex = p.curToken.Index
 			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.UnknownSetAskAttribute)
@@ -1665,11 +1683,7 @@ func (p *Parser) parseAreaStatement() *ast.AreaStatement {
 		case token.STYLE:
 			p.nextToken()
 			// get required fill style
-			if val, ok := p.requireExpression(); ok {
-				stmt.FillStyle = val
-			} else {
-				return nil
-			}
+			stmt.FillStyle = p.parseExpression(LOWEST)
 			if p.curTokenIs(token.Comma) {
 				// get required fill hatching
 				p.nextToken()
@@ -1689,11 +1703,14 @@ func (p *Parser) parseAreaStatement() *ast.AreaStatement {
 				}
 			}
 		default:
+			fmt.Printf("unknown set/ask attrib, current token: %v\n", p.curToken)
 			p.ErrorTokenIndex = p.curToken.Index
 			p.errorMsg = syntaxerror.ErrorMessage(syntaxerror.UnknownSetAskAttribute)
 			return nil
 		}
+		fmt.Printf("end of loop, current token: %v\n", p.curToken)
 		p.nextToken()
+		fmt.Printf("current token: %v\n", p.curToken)
 	}
 	return stmt
 }
@@ -1874,6 +1891,22 @@ func (p *Parser) parseNextStatement() *ast.NextStatement {
 		return stmt
 	}
 	return nil
+}
+
+func (p *Parser) parseOptionalArrayReference(name *ast.Identifier) (*ast.Identifier, bool) {
+	// Catch array reference if present
+	p.nextToken()
+	if p.curTokenIs(token.LeftParen) {
+		p.nextToken()
+		if p.curTokenIs(token.RightParen) {
+			// is array reference without subscripts
+			name.IsArrayReference = true
+			if !p.requireClosingBracket() {
+				return nil, false
+			}
+		}
+	}
+	return name, true
 }
 
 func (p *Parser) parseGlobalStatement() *ast.GlobalStatement {
